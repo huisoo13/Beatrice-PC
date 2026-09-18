@@ -1,0 +1,17 @@
+.venv/
+.venv-win/
+__pycache__/
+*.pyc
+.DS_Store
+data/raw/*
+data/labels/*
+models/*
+outputs/*
+!**/.gitkeep
+
+# Generated application bundles
+build/
+dist/
+
+.venv-ml/
+data/yolo-first/

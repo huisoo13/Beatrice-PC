@@ -1,0 +1,7 @@
+names:
+- current_name
+- target_name
+- switch_dialog
+path: /Users/huisoo/Project/Beatrice-PC/data/character-first
+train: images
+val: images

@@ -1,0 +1,36 @@
+{
+  "referenceResolution": [
+    3440,
+    1440
+  ],
+  "regions": {
+    "dungeonName": [
+      25,
+      63,
+      355,
+      87
+    ],
+    "difficulty": [
+      140,
+      98,
+      240,
+      120
+    ]
+  },
+  "minimumConfidence": 0.65,
+  "confirmations": 3,
+  "supportedDungeonNames": [
+    "고통의 마녀, 세르카",
+    "종막 : 최후의 날",
+    "서막 : 붉어진 백야의 나선",
+    "1막 : 대지를 부수는 업화의 궤적",
+    "어둠군단장 카멘"
+  ],
+  "supportedDifficulties": [
+    "하드",
+    "노말"
+  ],
+  "vocabularySource": "제공된 SAMPLE_001~007 화면의 육안 전사. 문자 오독의 유사도 보정은 하지 않음. 새 이름·난이도는 검수 후 추가.",
+  "engine": "paddle",
+  "model": "korean_PP-OCRv5_mobile_rec"
+}

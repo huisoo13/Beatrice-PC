@@ -1,0 +1,2 @@
+image,session_id,split,scene_present,label_status,notes
+data/raw/SAMPLE_006.jpg,sample006-source-unknown,,yes,pending,사용자 제공 JPG; 원본 3440x1440; 관문 상태 육안 초안은 docs/04-sample006.md 참조; 동일 녹화 출처 미확인

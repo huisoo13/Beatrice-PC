@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "modelFamily": "YOLO26",
+  "modelSize": "n",
+  "initialWeights": "yolo26n.pt",
+  "task": "detect",
+  "inputStrategy": "top_left_gate_roi",
+  "roi": [
+    32,
+    112,
+    352,
+    224
+  ],
+  "classNames": [
+    "진행중",
+    "완료",
+    "진행 전"
+  ],
+  "status": "trained_functional_check_only",
+  "notes": "사용자가 YOLO26n 기준 진행을 확정함. 사전학습 가중치를 시작점으로 사용하며 게임 아이콘은 사용자 데이터로 별도 학습. ROI 좌표와 학습 설정은 후속 검증에서 결정.",
+  "referenceImageSize": [
+    3440,
+    1440
+  ],
+  "imageSize": 320,
+  "trainedWeights": "models/gates-yolo26n-first.pt",
+  "trainedWeightsSha256": "a57b15467271d0f080a8ca94e2004fb5546a70d3deda128c7b83a96a836cdf1b"
+}

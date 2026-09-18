@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "annotationMethod": "assistant_manual_visual",
+  "coordinateSystem": "original image pixels, xyxy, right/bottom exclusive",
+  "classes": [
+    "진행중",
+    "완료",
+    "진행 전"
+  ],
+  "boxPolicy": "아이콘 본체와 상태 체크 포함. 연결선과 버튼 제외. 발광 외곽의 흐릿한 번짐은 제외.",
+  "reviewStatus": "approved",
+  "splitStatus": "unassigned",
+  "groupingNote": "촬영 세션 독립성 미확인. 신규 6장 모두 임시 동일 그룹으로 관리하며 평가용 자동 분할하지 않음.",
+  "images": [
+    {
+      "id": "S001",
+      "title": "SAMPLE_001.jpg",
+      "path": "data/raw/SAMPLE_001.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "f533757ea1a7692010ec846e8cc7aff7ef9144ca4dbb6aafaae64bece0dd1b96",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "완료",
+          "xyxy": [
+            222,
+            133,
+            284,
+            195
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S002",
+      "title": "SAMPLE_002.jpg",
+      "path": "data/raw/SAMPLE_002.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "886aec2caf7506d4bc3f8f2f505ec37a877d146963a1fd3da6bfbfe0c1b990ca",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "완료",
+          "xyxy": [
+            222,
+            133,
+            284,
+            195
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S003",
+      "title": "SAMPLE_003.jpg",
+      "path": "data/raw/SAMPLE_003.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "dcd465b9bb82eb8a20c009d6d61c4b917e536e21097b200ce434df5564231ebf",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            85,
+            133,
+            147,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "진행중",
+          "xyxy": [
+            242,
+            145,
+            290,
+            191
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S004",
+      "title": "SAMPLE_004.jpg",
+      "path": "data/raw/SAMPLE_004.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "2be8b6af8bc405c8410d2925a61d01d1bd5b1b5c72d51620ade2567db3788e9a",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            85,
+            133,
+            147,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "완료",
+          "xyxy": [
+            235,
+            133,
+            297,
+            195
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S005",
+      "title": "SAMPLE_005.jpg",
+      "path": "data/raw/SAMPLE_005.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "4627ce9c74e2836fef105753bfb0e049c8fc0d4061cbc135b6e0abac8ca286ee",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "진행중",
+          "xyxy": [
+            87,
+            148,
+            127,
+            190
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "진행 전",
+          "xyxy": [
+            142,
+            147,
+            184,
+            190
+          ]
+        },
+        {
+          "gate": 3,
+          "state": "진행 전",
+          "xyxy": [
+            198,
+            147,
+            240,
+            190
+          ]
+        },
+        {
+          "gate": 4,
+          "state": "진행 전",
+          "xyxy": [
+            254,
+            147,
+            296,
+            190
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S007",
+      "title": "SAMPLE_007.jpg",
+      "path": "data/raw/SAMPLE_007.jpg",
+      "sessionId": "batch-20260915-session-unconfirmed",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxReview": "user_confirmed",
+      "sha256": "4aecbeac613dcc0afab8b222ee03483b6769f820019e46e787a97f8d76a4a061",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            83,
+            141,
+            132,
+            194
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "완료",
+          "xyxy": [
+            137,
+            141,
+            188,
+            194
+          ]
+        },
+        {
+          "gate": 3,
+          "state": "완료",
+          "xyxy": [
+            193,
+            141,
+            244,
+            194
+          ]
+        },
+        {
+          "gate": 4,
+          "state": "완료",
+          "xyxy": [
+            249,
+            141,
+            300,
+            194
+          ]
+        }
+      ]
+    }
+  ],
+  "duplicates": [
+    {
+      "incoming": "/Users/huisoo/Downloads/drive-download-20260915T013927Z-1-001/SAMPLE_006.jpg",
+      "existing": "data/raw/SAMPLE_006.jpg",
+      "annotation": "data/annotations/review-v1.json",
+      "reason": "SHA256 일치, 추가 등록하지 않음"
+    }
+  ],
+  "reviewedAt": "2026-09-15",
+  "reviewEvidence": "사용자가 신규 6장의 박스와 상태가 정확하다고 확인함. OCR 정답 검수는 별도."
+}

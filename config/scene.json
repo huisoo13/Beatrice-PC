@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "game": "로스트아크",
+  "scene": "레이드 화면 왼쪽 상단의 관문 진행 표시",
+  "iconStates": [
+    "진행중",
+    "완료",
+    "진행 전"
+  ],
+  "positionMeaning": true,
+  "requiresHistory": true,
+  "ocrFields": [
+    "dungeonName",
+    "difficulty"
+  ],
+  "confirmationRule": null,
+  "eventIdentityRule": null,
+  "reopenPolicy": null,
+  "uncertainPolicy": null,
+  "captureProfile": {
+    "width": null,
+    "height": null,
+    "uiScale": null,
+    "displayScale": null,
+    "screenMode": null
+  },
+  "positionDescription": "왼쪽부터 1관문. 아이콘 수는 해당 레이드 관문 수에 대응한다. 탐지 누락을 관문 수 감소로 해석하지 않는다.",
+  "historyDescription": "주기적으로 현재 상태를 관측하고 안정화한 상태 간 변화를 비교한다. 시작 시 이미 완료인 관문은 현재 상태로만 반영하며 새 완료 시각을 추정하지 않는다.",
+  "ocrDescription": "관문 표시 위의 던전 이름과 난이도를 동일 프레임에서 읽고 관문별 상태와 함께 구성한다. 원문과 정규화 값을 구분하며 읽기 실패는 null과 상태로 표현한다. OCR 엔진과 허용 난이도 목록은 미확정.",
+  "recordingIdentity": {
+    "requiredCharacterName": true,
+    "characterSource": "separate_confirmed_character_module",
+    "deduplicationScope": [
+      "characterKey",
+      "sessionID",
+      "gate"
+    ],
+    "clock": "timezone_aware_absolute_datetime",
+    "restartPolicy": "restore_after_character_and_session_confirmation"
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "approved",
+  "modelFamily": "YOLO26n",
+  "classes": [
+    "current_name",
+    "target_name",
+    "switch_dialog"
+  ],
+  "annotationMethod": "manual_visual",
+  "images": [
+    {
+      "id": "C1",
+      "title": "접속 후 현재 캐릭터",
+      "path": "data/raw/character-review/C1.jpg",
+      "sourceFrame": "outputs/character-review/t30.jpg",
+      "sessionId": "original-login",
+      "sampleApproxSeconds": 30,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "25857b8e6a960855e5120f94658dc3bf7b4c224ffd2cc96c90effc61baa89241",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "후이수"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "변경 성공 과정: 대상 선택",
+      "path": "data/raw/character-review/C2.jpg",
+      "sourceFrame": "outputs/character-followup/v1_02.jpg",
+      "sessionId": "switch-success",
+      "sampleApproxSeconds": 4.88,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "4c483d886881358e8dae3af6fd2b1db2700002b4203a4e6110b5af33e9c677ff",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "후이수"
+        },
+        {
+          "class": "target_name",
+          "xyxy": [
+            1680,
+            655,
+            1760,
+            688
+          ],
+          "text": "테베체"
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "변경 성공 후 메뉴 재확인",
+      "path": "data/raw/character-review/C3.jpg",
+      "sourceFrame": "outputs/character-followup/v1_10.jpg",
+      "sessionId": "switch-success",
+      "sampleApproxSeconds": 24.39,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "46a2aca349ca6b2ae011db67b1ed60b9d8072f4466bec3ea9776b061ca5ee90e",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "테베체"
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "취소할 대상 선택",
+      "path": "data/raw/character-review/C4.jpg",
+      "sourceFrame": "outputs/character-followup/v2_02.jpg",
+      "sessionId": "cancel-then-switch",
+      "sampleApproxSeconds": 4.42,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "cab5eaef9aac89e8456df63cf377d6fc7d98f6c1e4e3c57504137f055cc821cc",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "테베체"
+        },
+        {
+          "class": "target_name",
+          "xyxy": [
+            1668,
+            655,
+            1773,
+            688
+          ],
+          "text": "힐레우스"
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "취소 후 현재 캐릭터 유지",
+      "path": "data/raw/character-review/C5.jpg",
+      "sourceFrame": "outputs/character-followup/v2_03.jpg",
+      "sessionId": "cancel-then-switch",
+      "sampleApproxSeconds": 6.63,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "fe199c7ee29f757aa76736ef461b31b532c2ea409ccde78089e9397eaa58aa0c",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "테베체"
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "다시 선택한 변경 대상",
+      "path": "data/raw/character-review/C6.jpg",
+      "sourceFrame": "outputs/character-followup/v2_04.jpg",
+      "sessionId": "cancel-then-switch",
+      "sampleApproxSeconds": 8.83,
+      "width": 3440,
+      "height": 1440,
+      "sha256": "0f60090b6ebf703f87c559f6bcc44789a5cc2b55933dd5b864f1b1fa11d0732a",
+      "boxes": [
+        {
+          "class": "current_name",
+          "xyxy": [
+            974,
+            897,
+            1044,
+            925
+          ],
+          "text": "테베체"
+        },
+        {
+          "class": "target_name",
+          "xyxy": [
+            1680,
+            655,
+            1760,
+            688
+          ],
+          "text": "후이수"
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    }
+  ],
+  "approvalNote": "검수 초안 제시 후 사용자의 진행 요청에 따라 승인 반영"
+}

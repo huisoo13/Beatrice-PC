@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "approved",
+  "annotationMethod": "assistant_manual_visual",
+  "coordinateSystem": "original image pixels, xyxy, right/bottom exclusive",
+  "classes": [
+    "진행중",
+    "완료",
+    "진행 전"
+  ],
+  "boxPolicy": "아이콘 본체와 상태 체크 포함. 연결선과 버튼 제외. 발광 외곽의 흐릿한 번짐은 제외.",
+  "images": [
+    {
+      "id": "A",
+      "title": "기존 스크린샷 · 4관문",
+      "path": "data/raw/SAMPLE_006.jpg",
+      "sessionId": "sample006-source-unknown",
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            83,
+            141,
+            132,
+            194
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "완료",
+          "xyxy": [
+            137,
+            141,
+            188,
+            194
+          ]
+        },
+        {
+          "gate": 3,
+          "state": "진행중",
+          "xyxy": [
+            198,
+            148,
+            239,
+            190
+          ]
+        },
+        {
+          "gate": 4,
+          "state": "진행 전",
+          "xyxy": [
+            254,
+            147,
+            294,
+            190
+          ]
+        }
+      ],
+      "sha256": "ba9979bf3a5ee5b2b9d47eb6c9fae4ef5669d9bf0b5f5eabad76b0edcdad1e94",
+      "boxReview": "user_confirmed"
+    },
+    {
+      "id": "B",
+      "title": "영상 약 7.25초 · 완료 직전",
+      "path": "data/raw/label-review/t_7.25.jpg",
+      "sessionId": "sample-video-01",
+      "sampleTargetSeconds": 7.25,
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "진행중",
+          "xyxy": [
+            80,
+            145,
+            131,
+            190
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "진행 전",
+          "xyxy": [
+            230,
+            144,
+            277,
+            190
+          ]
+        }
+      ],
+      "sourceVideo": "/Users/huisoo/Downloads/SAMPLE_VIDEO.mp4",
+      "timestampNote": "이전 검토에서 임의 접근한 목표 시각; 프레임 정확도의 완료 시각 아님",
+      "sha256": "9d827f79e4c387213c4e5a5b20a9a115e5636ba9a76b353998260157cd9c2ebc",
+      "boxReview": "user_confirmed"
+    },
+    {
+      "id": "C",
+      "title": "영상 약 7.50초 · 완료 직후",
+      "path": "data/raw/label-review/t_7.50.jpg",
+      "sessionId": "sample-video-01",
+      "sampleTargetSeconds": 7.5,
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "진행중",
+          "xyxy": [
+            231,
+            145,
+            278,
+            190
+          ]
+        }
+      ],
+      "sourceVideo": "/Users/huisoo/Downloads/SAMPLE_VIDEO.mp4",
+      "timestampNote": "이전 검토에서 임의 접근한 목표 시각; 프레임 정확도의 완료 시각 아님",
+      "sha256": "e9735398a4dfc3a5d6e809c35ec5c3b7c9d5bc601c608797d7c96e091d5989c3",
+      "boxReview": "user_confirmed"
+    },
+    {
+      "id": "D",
+      "title": "영상 약 25.13초 · 어두운 화면",
+      "path": "data/raw/label-review/sample_13.jpg",
+      "sessionId": "sample-video-01",
+      "sampleTargetSeconds": 25.13,
+      "width": 3440,
+      "height": 1440,
+      "stateReview": "user_confirmed",
+      "boxes": [
+        {
+          "gate": 1,
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "gate": 2,
+          "state": "진행중",
+          "xyxy": [
+            231,
+            145,
+            278,
+            190
+          ]
+        }
+      ],
+      "sourceVideo": "/Users/huisoo/Downloads/SAMPLE_VIDEO.mp4",
+      "timestampNote": "이전 검토에서 임의 접근한 목표 시각; 프레임 정확도의 완료 시각 아님",
+      "sha256": "4c219168ee6cb58243d052fdac412f4dd851567d2c72ecb8f24a236063ac83bc",
+      "boxReview": "user_confirmed"
+    }
+  ],
+  "reviewedAt": "2026-09-15",
+  "reviewEvidence": "사용자가 모든 박스 범위와 상태가 맞다고 확인함"
+}
