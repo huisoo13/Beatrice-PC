@@ -28,9 +28,12 @@
   ],
   "supportedDifficulties": [
     "하드",
-    "노말"
+    "노말",
+    "헬",
+    "익스트림",
+    "싱글 모드"
   ],
-  "vocabularySource": "제공된 SAMPLE_001~007 화면의 육안 전사. 문자 오독의 유사도 보정은 하지 않음. 새 이름·난이도는 검수 후 추가.",
+  "vocabularySource": "던전명 목록은 참고 전사이며 이름 제한에 사용하지 않습니다. 실시간 던전 판별은 관문 UI와 supportedDifficulties의 난이도 표기를 함께 요구합니다.",
   "engine": "paddle",
   "model": "korean_PP-OCRv5_mobile_rec"
 }

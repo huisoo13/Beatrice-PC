@@ -51,10 +51,10 @@ def main():
                 boxes.sort(key=lambda v:v['xyxy'][0]);signature=[v['state'] for v in boxes]
                 row=dict(frameIndex=idx,videoSeconds=t,predictionMs=ms,boxes=boxes,counts={s:signature.count(s) for s in CLASSES})
                 if dungeon_ocr is not None:
-                    row['dungeonObservation']=dungeon_ocr.analyze(frame)
+                    row['dungeonObservation']=dungeon_ocr.analyze(frame,gate_boxes=boxes)
                     row['dungeonContext']=dungeon_tracker.update(t,row['dungeonObservation'])
                 rows.append(row)
-                cv2.imwrite(str(out/'frames'/f'{idx:06d}.png'),frame[:240,:400])
+                cv2.imwrite(str(out/'frames'/f'{idx:06d}.png'),frame[:240,:800])
                 if signature!=previous:changes.append(dict(sampleIndex=len(rows)-1,videoSeconds=t,statesLeftToRight=signature));previous=signature
                 next_t=(int(t*a.hz)+1)/a.hz
                 if len(rows)%50==0:print(f'{t:.2f}초까지 {len(rows)}회 관측',flush=True)

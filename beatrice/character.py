@@ -7,7 +7,7 @@ def valid_name(reading, minimum=.65):
     if not reading or not math.isfinite(reading.get('confidence',0)) or reading.get('confidence',0) < minimum:
         return None
     name=unicodedata.normalize('NFC', reading.get('text','')).strip()
-    if not 2 <= len(name) <= 16 or not all(c.isalnum() for c in name):
+    if not 2 <= len(name) <= 12 or not all(c.isalnum() for c in name):
         return None
     return name
 
@@ -27,6 +27,7 @@ class CharacterTracker:
         self.count=0
         self.last_time=None
         self.dialog_open=False
+        self.switch_deadline=None
 
     def update(self, seconds, observation):
         if not math.isfinite(seconds) or (self.last_time is not None and seconds <= self.last_time):
@@ -39,23 +40,36 @@ class CharacterTracker:
         name=valid_name(observation.get('currentName'))
         target=valid_name(observation.get('targetName'))
         dialog=bool(observation.get('switchDialog'))
-        if dialog:
-            if not self.dialog_open:
+        loading=bool(observation.get('switchLoading'))
+        eligible=False
+        if self.switch_deadline is not None and seconds>self.switch_deadline:
+            self.switch_deadline=None
+            if not self.switching:self.target=None
+        if not dialog and not loading and observation.get('normalMenu'):
+            self.switch_deadline=None
+            if not self.switching:self.target=None
+        if loading:
+            if self.switch_deadline is not None and not self.switching:
                 actions.append(dict(type='suspend'))
-            self.blocked=True
-            self.switching=True
-            self.target=target  # 실패한 읽기에 이전 대상 이름을 재사용하지 않습니다.
+                self.blocked=True
+                self.switching=True
+                self.switch_deadline=None
+            # 로딩 중 남아 있는 기존 초상화로 다시 확정하지 않습니다.
             self.candidate=None
             self.count=0
-            self.saw_absence=False
+        elif dialog:
+            if not self.switching:
+                self.switch_deadline=seconds+max(3,self.max_gap*2)
+                self.target=target
+            self.candidate=None
+            self.count=0
         elif name is None:
             self.candidate=None
             self.count=0
             if self.switching and not observation.get('currentRegionVisible'):
                 self.saw_absence=True
         else:
-            # 팝업 직후 남아 있는 초상화는 취소/전환을 구분하지 못합니다.
-            eligible=not self.switching or bool(observation.get('normalMenu')) or (self.saw_absence and name != self.current)
+            eligible=not self.switching or name != self.current
             if name != self.current and not self.blocked:
                 self.blocked=True
                 actions.append(dict(type='suspend'))
@@ -76,7 +90,7 @@ class CharacterTracker:
                 self.candidate=None
                 self.count=0
         self.dialog_open=dialog
-        return dict(currentName=self.current,pendingName=self.target,
+        return dict(currentName=self.current,pendingName=self.target,previewName=name if not dialog and not loading and eligible else None,
                     recordingAllowed=not self.blocked,
                     status='awaiting_current_confirmation' if self.blocked else 'confirmed',actions=actions)
 

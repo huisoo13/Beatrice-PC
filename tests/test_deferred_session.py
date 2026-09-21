@@ -115,22 +115,23 @@ class DeferredTests(unittest.TestCase):
         self.assertEqual(len(self.store.records()),1)
         self.assertEqual(self.store.pending_records(),[])
 
-    def test_normal_menu_can_resume_same_character_but_list_cannot(self):
+    def test_cancel_preserves_character_without_recording_boundary(self):
         tracker=CharacterTracker()
         obs=dict(currentName=dict(text='후이수',confidence=.99),currentRegionVisible=True)
         for i in range(3):tracker.update(i*.5,obs)
         tracker.update(1.5,dict(obs,switchDialog=True))
         for i in range(3):result=tracker.update(2+i*.5,obs)
-        self.assertFalse(result['recordingAllowed'])
+        self.assertTrue(result['recordingAllowed'])
+        self.assertEqual(result['actions'],[])
         for i in range(3):result=tracker.update(4+i*.5,dict(obs,normalMenu=True))
         self.assertTrue(result['recordingAllowed'])
         self.assertEqual(result['currentName'],'후이수')
 
-    def test_repeated_dialog_frames_one_boundary_new_dialog_new_boundary(self):
+    def test_only_loading_after_dialog_creates_one_boundary(self):
         tracker=CharacterTracker()
-        self.assertEqual(tracker.update(0,dict(switchDialog=True))['actions'],[dict(type='suspend')])
+        self.assertEqual(tracker.update(0,dict(switchDialog=True))['actions'],[])
         self.assertEqual(tracker.update(.5,dict(switchDialog=True))['actions'],[])
-        tracker.update(1,{})
-        self.assertEqual(tracker.update(1.5,dict(switchDialog=True))['actions'],[dict(type='suspend')])
+        self.assertEqual(tracker.update(1,dict(switchLoading=True))['actions'],[dict(type='suspend')])
+        self.assertEqual(tracker.update(1.5,dict(switchLoading=True))['actions'],[])
 
 if __name__=='__main__':unittest.main()

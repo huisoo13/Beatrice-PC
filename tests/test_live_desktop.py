@@ -35,6 +35,7 @@ class LiveTests(unittest.TestCase):
                 boxes=[dict(xyxy=[40,130,60,160],state='진행중' if i<6 else '완료',confidence=.99)]
                 live.update(now+timedelta(seconds=i),{},boxes,context)
             live.update(now+timedelta(seconds=9),dict(switchDialog=True),[],{})
+            live.update(now+timedelta(seconds=9.5),dict(switchLoading=True),[],{})
             for i in range(10,13):live.update(now+timedelta(seconds=i),dict(currentName=dict(text='다른캐릭터',confidence=.99),normalMenu=True),[],{})
             self.assertEqual(store.records(),[])
             self.assertIsNone(store.pending_records()[0]['resolvedEventID']);store.close()

@@ -14,7 +14,7 @@ def main():
     expected=[('고통의 마녀, 세르카','하드'),('종막 : 최후의 날','노말'),('서막 : 붉어진 백야의 나선','하드'),('1막 : 대지를 부수는 업화의 궤적','노말')]+[('어둠군단장 카멘','하드')]*3
     font=ImageFont.truetype('/System/Library/Fonts/AppleSDGothicNeo.ttc',20)
     for i,truth in enumerate(expected,1):
-        path=ROOT/f'data/raw/SAMPLE_{i:03d}.jpg';frame=cv2.imread(str(path));obs=ocr.analyze(frame)
+        path=ROOT/f'data/raw/SAMPLE_{i:03d}.jpg';frame=cv2.imread(str(path));obs=ocr.analyze_panel(frame[:240,:800])
         actual=[obs[field]['text'] if obs[field] else None for field in ['dungeonName','difficulty']]
         rows.append(dict(source=str(path),expected=dict(zip(['dungeonName','difficulty'],truth)),observation=obs,exactName=actual[0]==truth[0],exactDifficulty=actual[1]==truth[1]))
         card=Image.new('RGB',(1100,230),'#14202c');image=Image.open(path).crop((20,50,360,125)).resize((1020,150));card.paste(image,(10,5))

@@ -28,7 +28,8 @@ def main():
     else:
         frame=cv2.imread(str(args.source))
         if frame is None:raise ValueError('이미지 읽기 실패')
-        data=dict(source=str(args.source.resolve()),observation=ocr.analyze(frame),eventConfirmed=False)
+        data=dict(source=str(args.source.resolve()),observation=ocr.analyze_panel(frame[:240,:800]),
+                  purpose='ocr_only_without_dungeon_hud_validation',eventConfirmed=False)
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
     print(args.output)

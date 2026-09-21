@@ -1,5 +1,6 @@
 """Qt UI는 메인 스레드, 모델과 캡처/저장은 단일 작업자 스레드에서 실행합니다."""
 import os
+import json
 import time
 import threading
 import traceback
@@ -28,23 +29,33 @@ class Worker(QThread):
             from .layout import normalize
             from .windows_capture import WindowCapture
             from ultralytics import YOLO
-            character=CharacterVision();dungeon= DungeonOCR();tracker=DungeonTracker(max_gap=5)
+            dungeon=DungeonOCR();character=CharacterVision(reader=dungeon.reader);tracker=DungeonTracker(max_gap=5)
             model=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
             store=Store(DATA/'records.sqlite3');coordinator=LiveCoordinator(store)
             capture=WindowCapture(self.hwnd)
+            last_diagnostic=0
             while not self.stop_event.is_set():
                 started=time.monotonic();frame,reason=capture.grab()
                 at=datetime.now(timezone.utc)
                 if frame is None:
+                    context=tracker.update(at.timestamp(),{})
+                    state=coordinator.update(at,{},[],context)
+                    state.update(milliseconds=0,size='캡처 대기')
+                    self.observation.emit(state)
                     self.status.emit(reason);self.stop_event.wait(.5);continue
                 centered=normalize(frame,self.scale,True);left=normalize(frame,self.scale)
-                identity=character.analyze(centered)
-                result=model.predict(left[112:224,32:352],imgsz=320,conf=.25,iou=.5,device='cpu',verbose=False)[0]
+                identity=character.analyze(centered,loading_frame=frame,ui_scale=self.scale)
+                if started-last_diagnostic>=2:
+                    (DATA/'character-diagnostic.json').write_text(json.dumps(dict(
+                        observedAt=at.isoformat(),frameSize=list(frame.shape[:2]),uiScale=self.scale,
+                        observation=identity),ensure_ascii=False,indent=2),encoding='utf-8')
+                    last_diagnostic=started
+                result=model.predict(left[112:224,32:352],imgsz=320,conf=.65,iou=.5,agnostic_nms=True,device='cpu',verbose=False)[0]
                 boxes=[]
                 for box in result.boxes:
                     x1,y1,x2,y2=box.xyxy[0].tolist()
                     boxes.append(dict(state=model.names[int(box.cls[0])],confidence=float(box.conf[0]),xyxy=[x1+32,y1+112,x2+32,y2+112]))
-                context=tracker.update(at.timestamp(),dungeon.analyze(left))
+                context=tracker.update(at.timestamp(),dungeon.analyze(left,gate_boxes=boxes))
                 state=coordinator.update(at,identity,boxes,context)
                 state['milliseconds']=round((time.monotonic()-started)*1000)
                 state['size']=f'{frame.shape[1]} × {frame.shape[0]}'
@@ -104,8 +115,13 @@ class Window(QMainWindow):
         if self.closing:self.close()
     def update_observation(self,value):
         identity=value['identity'];name=identity['currentName'] if identity['recordingAllowed'] else '캐릭터 확인 대기'
+        if not identity['recordingAllowed'] and identity.get('previewName'):
+            name=identity['previewName']+' (확인 중)'
         self.character.setText('현재 캐릭터: '+(name or '확인 대기'))
-        dungeon=value['dungeon'];summary=f"{dungeon.get('dungeonName') or '던전 확인 대기'} / {dungeon.get('difficulty') or '난이도 확인 대기'}"
+        dungeon=value['dungeon']
+        def display(field,waiting):
+            return dungeon.get(field) or ((dungeon['preview'][field]+' (확인 중)') if dungeon.get('preview',{}).get(field) else waiting)
+        summary=f"{display('dungeonName','던전 확인 대기')} / {display('difficulty','난이도 확인 대기')}"
         self.status_label.setText(f"분석 중 · {summary} · {value['size']} · 프레임 분석 {value['milliseconds']} ms")
     def reload(self):
         records=self.store.records()+[e for e in self.store.pending_records() if e['resolvedEventID'] is None]
