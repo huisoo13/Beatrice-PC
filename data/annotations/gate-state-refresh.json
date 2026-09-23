@@ -1,0 +1,178 @@
+{
+  "purpose": "same_session_training_reconstruction_not_independent",
+  "classes": [
+    "진행중",
+    "완료",
+    "진행 전"
+  ],
+  "images": [
+    {
+      "source": "outputs\\gate-completion-review-0923\\frame-058.jpg",
+      "boxes": [
+        {
+          "state": "진행중",
+          "xyxy": [
+            80,
+            140,
+            132,
+            192
+          ]
+        },
+        {
+          "state": "진행 전",
+          "xyxy": [
+            230,
+            140,
+            282,
+            192
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs\\gate-completion-review-0923\\frame-138.jpg",
+      "boxes": [
+        {
+          "state": "진행중",
+          "xyxy": [
+            80,
+            140,
+            132,
+            192
+          ]
+        },
+        {
+          "state": "진행 전",
+          "xyxy": [
+            230,
+            140,
+            282,
+            192
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs\\gate-completion-review-0923\\frame-038.jpg",
+      "boxes": [
+        {
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "state": "진행중",
+          "xyxy": [
+            230,
+            140,
+            282,
+            192
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs\\gate-delay-review-0923\\frame-159.jpg",
+      "boxes": [
+        {
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "state": "완료",
+          "xyxy": [
+            222,
+            133,
+            284,
+            195
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs\\gate-delay-review-0923\\frame-171.jpg",
+      "boxes": [
+        {
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "state": "완료",
+          "xyxy": [
+            222,
+            133,
+            284,
+            195
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs\\gate-delay-review-0923\\frame-176.jpg",
+      "boxes": [
+        {
+          "state": "완료",
+          "xyxy": [
+            72,
+            133,
+            134,
+            195
+          ]
+        },
+        {
+          "state": "완료",
+          "xyxy": [
+            222,
+            133,
+            284,
+            195
+          ]
+        }
+      ],
+      "split": "train"
+    },
+    {
+      "source": "outputs/dungeon-review-0923/frame-107.jpg",
+      "boxes": [],
+      "split": "train"
+    },
+    {
+      "source": "outputs/dungeon-review-0923/frame-115.jpg",
+      "boxes": [],
+      "split": "train"
+    },
+    {
+      "source": "outputs/dungeon-review-0923/frame-139.jpg",
+      "boxes": [],
+      "split": "train"
+    }
+  ],
+  "jitterPixels": [
+    -3,
+    0,
+    3
+  ],
+  "cropWidths": [
+    308,
+    320
+  ]
+}

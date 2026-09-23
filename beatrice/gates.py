@@ -7,7 +7,7 @@ STATES = {'진행중', '완료', '진행 전'}
 
 class GateTracker:
     def __init__(self, session_id, expected_gates, confirmations=3, min_confidence=.5,
-                 max_center_distance=25, max_sample_gap=.6):
+                 max_center_distance=25, max_sample_gap=.6, snapshot_mode=False):
         if not session_id or expected_gates < 1 or confirmations < 2:
             raise ValueError('세션, 예상 관문 수, 확인 횟수를 확인해주세요.')
         self.session_id = session_id
@@ -24,6 +24,7 @@ class GateTracker:
         self.emitted = set()
         self.last_time = None
         self.last_valid = None
+        self.snapshot_mode=snapshot_mode
 
     def clear_candidate(self):
         self.candidate = None
@@ -61,7 +62,7 @@ class GateTracker:
             reference = self.slots or getattr(self, 'candidate_slots', None)
             if reference is not None:
                 valid = valid and all(math.dist(a,b) <= self.distance for a,b in zip(points, reference))
-            if valid and self.stable is not None:
+            if valid and self.stable is not None and not self.snapshot_mode:
                 valid = all(not (old == '완료' and b['state'] != '완료') for old,b in zip(self.stable,ordered))
         if not valid:
             self.clear_candidate()
@@ -72,6 +73,12 @@ class GateTracker:
                           stableStates=self.stable, lastValidSeconds=self.last_valid)
             return result
         states = tuple(b['state'] for b in ordered)
+        result['observedStates']=states
+        if self.snapshot_mode:
+            completed=[i for i,s in enumerate(states) if s=='완료']
+            completed += [i for i,s in enumerate(self.stable or ()) if s=='완료']
+            highest=max(completed,default=-1)
+            states=tuple('완료' if i<=highest else s for i,s in enumerate(states))
         self.last_valid = timestamp
         if states != self.candidate:
             self.candidate = states
@@ -82,6 +89,7 @@ class GateTracker:
         else:
             self.count += 1
         if self.count >= self.required:
+            if self.slots is None:self.slots=self.candidate_slots
             if self.stable is None:
                 self.slots = self.candidate_slots
                 self.stable = states

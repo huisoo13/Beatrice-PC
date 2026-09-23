@@ -13,7 +13,7 @@ class Store:
         self.db.execute('PRAGMA journal_mode=WAL')
         self.db.execute('PRAGMA busy_timeout=5000')
         version = self.db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (0, 1, 2):
+        if version not in (0, 1, 2, 3):
             raise ValueError('지원하지 않는 DB 버전')
         self.db.executescript('''
         CREATE TABLE IF NOT EXISTS sessions (
@@ -38,8 +38,20 @@ class Store:
         CREATE TABLE IF NOT EXISTS pending_events (
             event_id TEXT PRIMARY KEY, segment_id TEXT NOT NULL REFERENCES pending_segments(segment_id),
             payload TEXT NOT NULL, resolved_event_id TEXT);
-        PRAGMA user_version=2;
+        CREATE TABLE IF NOT EXISTS gate_states (
+            owner TEXT NOT NULL, dungeon_key TEXT NOT NULL, gate INTEGER NOT NULL CHECK(gate>0),
+            payload TEXT NOT NULL, PRIMARY KEY(owner,dungeon_key,gate));
         ''')
+        if version<3:
+            from .dungeon import key
+            with self.db:
+                for payload,settings in self.db.execute('SELECT payload,settings FROM events JOIN sessions USING(character_key,session_id) ORDER BY confirmed_at'):
+                    event=json.loads(payload)
+                    if not event.get('dungeonName'):continue
+                    event.update(state='완료',recordType='gate_state',expectedGates=json.loads(settings)['expectedGates'],evidenceType='legacy_completion')
+                    self.db.execute('INSERT OR IGNORE INTO gate_states VALUES (?,?,?,?)',
+                        (event['characterKey'],key(event['dungeonName']),event['gate'],json.dumps(event,ensure_ascii=False)))
+                self.db.execute('PRAGMA user_version=3')
 
     def load(self, character_key, session_id, settings, transactional=True):
         encoded = json.dumps(settings, sort_keys=True, ensure_ascii=False)
@@ -96,10 +108,37 @@ class Store:
         return [dict(json.loads(payload), syncStatus=status) for payload,status in self.db.execute(
             'SELECT payload,status FROM events JOIN outbox USING(event_id) ORDER BY confirmed_at,event_id')]
 
+    def state_records(self,owner=None,dungeon_key=None):
+        sql='SELECT payload FROM gate_states';conditions=[];values=[]
+        if owner is not None:conditions.append('owner=?');values.append(owner)
+        if dungeon_key is not None:conditions.append('dungeon_key=?');values.append(dungeon_key)
+        if conditions:sql+=' WHERE '+' AND '.join(conditions)
+        return [json.loads(row[0]) for row in self.db.execute(sql+' ORDER BY owner,dungeon_key,gate',values)]
+
+    def save_states(self,owner,dungeon_key,records,transactional=True):
+        """검증된 전체 배열만 한 트랜잭션으로 갱신. 완료 행은 변경하지 않습니다."""
+        from .gates import STATES
+        if not records or [r['gate'] for r in records]!=list(range(1,len(records)+1)):
+            raise ValueError('전체 관문 배열이 필요합니다.')
+        if any(r['state'] not in STATES for r in records):raise ValueError('관문 상태 오류')
+        changed=[]
+        with self.db if transactional else nullcontext():
+            old={r['gate']:r for r in self.state_records(owner,dungeon_key)}
+            if max((r.get('expectedGates',r['gate']) for r in old.values()),default=0)>len(records):
+                raise ValueError('기존 전체 관문보다 적은 배열입니다.')
+            for record in records:
+                previous=old.get(record['gate'])
+                if previous and (previous['state']=='완료' or previous['state']==record['state']):continue
+                row=dict(record,expectedGates=len(records),recordType='gate_state')
+                self.db.execute('INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload',
+                    (owner,dungeon_key,row['gate'],json.dumps(row,ensure_ascii=False)))
+                changed.append(row)
+        return changed
+
     def clear_all(self):
         """분석 작업자가 정지한 뒤 호출합니다. 모델/설정은 보존합니다."""
         with self.db:
-            for table in ("outbox", "pending_events", "events", "pending_segments", "sessions"):
+            for table in ("gate_states", "outbox", "pending_events", "events", "pending_segments", "sessions"):
                 self.db.execute(f"DELETE FROM {table}")
 
     def close(self):

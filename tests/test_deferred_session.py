@@ -111,7 +111,7 @@ class DeferredTests(unittest.TestCase):
         self.confirm();self.feed()
         self.store.db.executescript('DROP TABLE pending_events; DROP TABLE pending_segments; PRAGMA user_version=1;')
         self.store.close();self.store=Store(self.path)
-        self.assertEqual(self.store.db.execute('PRAGMA user_version').fetchone()[0],2)
+        self.assertEqual(self.store.db.execute('PRAGMA user_version').fetchone()[0],3)
         self.assertEqual(len(self.store.records()),1)
         self.assertEqual(self.store.pending_records(),[])
 

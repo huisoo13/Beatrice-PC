@@ -1,0 +1,28 @@
+{
+  "mode": "legacy",
+  "weights": "models/dungeon-panel.pt",
+  "className": "dungeon_panel",
+  "confidence": 0.7,
+  "imageSize": 1280,
+  "regions": {
+    "dungeonName": [
+      0.02,
+      0.07,
+      0.98,
+      0.26
+    ],
+    "difficulty": [
+      0.15,
+      0.25,
+      0.85,
+      0.46
+    ],
+    "gates": [
+      0.08,
+      0.37,
+      0.98,
+      0.92
+    ]
+  },
+  "notes": "패널 라벨은 제목·모드·관문을 포함하는 상단 기능 영역입니다. 보상 안내 하단까지 확장하지 않습니다. 내부 상대 영역은 이 라벨 정의를 기준으로 합니다. 탐지 실패 시 고정 좌표로 대체하지 않습니다."
+}

@@ -28,6 +28,7 @@ class CharacterTracker:
         self.last_time=None
         self.dialog_open=False
         self.switch_deadline=None
+        self.menu_returned_at=None
 
     def update(self, seconds, observation):
         if not math.isfinite(seconds) or (self.last_time is not None and seconds <= self.last_time):
@@ -46,8 +47,14 @@ class CharacterTracker:
             self.switch_deadline=None
             if not self.switching:self.target=None
         if not dialog and not loading and observation.get('normalMenu'):
-            self.switch_deadline=None
-            if not self.switching:self.target=None
+            if self.menu_returned_at is None:self.menu_returned_at=seconds
+            # 확인 후 팝업이 닫히고 로딩이 나타나기까지 잠깐 메뉴가 보입니다.
+            # 한 프레임으로 취소를 단정하지 않고 안정된 메뉴 복귀를 확인합니다.
+            if seconds-self.menu_returned_at>=2:
+                self.switch_deadline=None
+                if not self.switching:self.target=None
+        else:
+            self.menu_returned_at=None
         if loading:
             if self.switch_deadline is not None and not self.switching:
                 actions.append(dict(type='suspend'))

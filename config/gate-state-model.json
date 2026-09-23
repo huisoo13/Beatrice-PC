@@ -1,0 +1,12 @@
+{
+  "purpose": "activation_provenance",
+  "weights": "models/gates-yolo26n-first.pt",
+  "modelSha256": "e4287fbd5d7878fad9fbf6c70b779d5e4664959b3b608d4008ff0c338f086355",
+  "classes": ["진행중", "완료", "진행 전"],
+  "imageSize": 320,
+  "confidence": 0.65,
+  "trainingRun": "gate-state-refresh",
+  "trainingManifest": "data/annotations/gate-state-refresh.json",
+  "evaluationPurpose": "same_session_replay_and_existing_ui_regression_not_independent_accuracy",
+  "previousWeightsBackup": "outputs/gate-state-refresh/before.pt"
+}

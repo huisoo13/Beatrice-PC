@@ -26,8 +26,16 @@ class CharacterTests(unittest.TestCase):
     def test_cancel_without_readable_name_clears_switch_intent(self):
         self.feed('후이수',count=3)
         self.feed(dialog=True,target='테베체')
-        self.feed(menu=True)
+        self.feed(menu=True,count=5)
         self.assertTrue(self.feed(loading=True)['recordingAllowed'])
+
+    def test_confirm_menu_gap_before_loading_keeps_switch_intent(self):
+        self.feed('후이수',count=3)
+        self.feed(dialog=True,target='테베체')
+        self.assertTrue(self.feed('후이수',menu=True)['recordingAllowed'])
+        result=self.feed(loading=True)
+        self.assertFalse(result['recordingAllowed'])
+        self.assertEqual(result['actions'],[dict(type='suspend')])
 
     def test_loading_needs_both_icon_and_text_at_bottom_right(self):
         from unittest.mock import Mock
@@ -92,6 +100,20 @@ class CharacterTests(unittest.TestCase):
         for text in ('Lv.70', 'Lv.70 '+'가'*13, 'Lv.xx 기사', '기사', '기사 Lv.70'):
             self.assertIsNone(name_from_line(text,True))
 
+    def test_long_name_crop_keeps_separated_level_prefix(self):
+        import cv2
+        import numpy as np
+        from unittest.mock import Mock
+        from beatrice.character_vision import CharacterVision
+        frame=np.zeros((40,600,3),dtype=np.uint8)
+        cv2.putText(frame,'Lv.70',(10,28),cv2.FONT_HERSHEY_SIMPLEX,.7,(40,190,220),2)
+        # 긴 이름 군집이 레벨 군집보다 커도 레벨을 버리지 않아야 합니다.
+        for x in range(105,405,25):cv2.rectangle(frame,(x,9),(x+18,29),(240,240,240),-1)
+        vision=CharacterVision.__new__(CharacterVision);vision.reader=Mock()
+        vision.reader.recognize.return_value=[(None,'Lv.70 가나다라마바사아자차카타',.99)]
+        vision.read_name(frame,[0,0,600,40],includes_level=True)
+        self.assertGreater(vision.reader.recognize.call_args_list[0].args[0].shape[1],380)
+
     def test_ocr_compares_names_after_removing_level_and_preserves_raw(self):
         from unittest.mock import Mock,patch
         import numpy as np
@@ -99,7 +121,7 @@ class CharacterTests(unittest.TestCase):
         vision=CharacterVision.__new__(CharacterVision)
         vision.reader=Mock()
         vision.reader.recognize.side_effect=[[(None,'Lv.70 가나다라마바',.99)],[(None,'lv 70 가나다라마바',.98)]]
-        with patch('beatrice.character_vision.trim_name_line',side_effect=lambda crop:crop):
+        with patch('beatrice.character_vision.trim_name_line',side_effect=lambda crop,**kwargs:crop):
             read=vision.read_name(np.zeros((40,550,3),dtype=np.uint8),[0,0,550,40],includes_level=True)
         self.assertEqual(read['accepted']['text'],'가나다라마바')
         self.assertEqual(read['raw'][0]['text'],'Lv.70 가나다라마바')

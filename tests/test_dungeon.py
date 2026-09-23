@@ -9,6 +9,18 @@ from beatrice.storage import Store
 
 
 class DungeonTests(unittest.TestCase):
+    def test_mode_line_excludes_title_fragment_and_divider(self):
+        import numpy as np
+        from beatrice.dungeon import trim_difficulty_line
+        crop=np.zeros((44,260,3),dtype=np.uint8)
+        crop[:3,10:250]=255
+        crop[38,10:250]=255
+        for x in range(80,180,12):crop[15:33,x:x+8]=200
+        line=trim_difficulty_line(crop)
+        self.assertIsNotNone(line)
+        self.assertLessEqual(line.shape[0],20)
+        self.assertEqual(int(line.max()),200)
+
     def test_spacing_variants_agree_without_name_dictionary(self):
         result=validate_readings([
             dict(text='2막: 부유하는 악몽의진혼곡',confidence=.95),
@@ -37,6 +49,14 @@ class DungeonTests(unittest.TestCase):
         result=ocr.analyze(frame,gate_boxes=boxes)
         self.assertTrue(result['dungeonVisible'])
         self.assertEqual(result['difficulty']['text'],'싱글 모드')
+
+    def test_matching_mode_is_preserved_as_displayed(self):
+        from unittest.mock import Mock
+        ocr=DungeonOCR(reader=Mock())
+        result=ocr.verify_context(self.observation('고통의 마녀, 세르카','[매칭 모드]'))
+        self.assertTrue(result['dungeonVisible'])
+        self.assertEqual(result['difficulty']['text'],'매칭 모드')
+        self.assertEqual(result['dungeonName']['text'],'고통의 마녀, 세르카')
 
     def test_title_keeps_words_separated_by_spaces(self):
         import numpy as np
@@ -108,20 +128,61 @@ class DungeonTests(unittest.TestCase):
         self.assertEqual(validate_readings(readings,['고통의 마녀, 세르카'])['text'],'고통의 마녀, 세르카')
         self.assertIsNone(validate_readings(readings[:1],['고통의 마녀, 세르카']))
 
-    def test_three_frames_and_no_stale_values_after_failure_or_change(self):
+    def test_three_frames_then_keep_display_without_reusing_for_recording(self):
         tracker=DungeonTracker()
         self.assertIsNone(tracker.update(0,self.observation())['dungeonName'])
         tracker.update(.2,self.observation())
         self.assertEqual(tracker.update(.4,self.observation())['contextStatus'],'ocr_verified')
         failed=tracker.update(.6,self.observation(None))
-        self.assertIsNone(failed['dungeonName']);self.assertEqual(failed['difficulty'],'하드')
-        self.assertIsNone(tracker.update(.8,self.observation('종막 : 최후의 날'))['dungeonName'])
+        self.assertEqual(failed['dungeonName'],'고통의 마녀, 세르카');self.assertEqual(failed['difficulty'],'하드')
+        self.assertEqual(failed['contextStatus'],'ocr_held')
+        self.assertEqual(tracker.update(.8,self.observation('종막 : 최후의 날'))['dungeonName'],'고통의 마녀, 세르카')
 
     def test_long_gap_resets_and_out_of_order_rejected(self):
         tracker=DungeonTracker()
         for t in [0,.2,.4]:tracker.update(t,self.observation())
-        self.assertIsNone(tracker.update(2,self.observation())['dungeonName'])
+        self.assertEqual(tracker.update(2,self.observation())['dungeonName'],'고통의 마녀, 세르카')
         with self.assertRaises(ValueError):tracker.update(2,self.observation())
+
+    def test_spacing_variation_confirms_without_changing_context_identity(self):
+        tracker=DungeonTracker()
+        for t,name in [(0,'1막: 대지를 부수는 업화의 궤적'),(.2,'1막:대지를 부수는 업화의 궤적'),
+                       (.4,'1막: 대지를부수는 업화의 궤적'),(.6,'1막:대지를 부수는 업화의 궤적')]:
+            result=tracker.update(t,self.observation(name))
+        self.assertEqual(result['contextStatus'],'ocr_verified')
+        self.assertEqual(result['dungeonName'],'1막: 대지를 부수는 업화의 궤적')
+        self.assertEqual(tracker.update(.8,self.observation('2막: 대지를 부수는 업화의 궤적'))['contextStatus'],'ocr_held')
+
+    def test_replace_pair_only_after_ten_seconds_and_reset_on_character_change(self):
+        tracker=DungeonTracker(max_gap=2)
+        for t in (0,.5,1):tracker.update(t,self.observation('이전 던전','하드'))
+        for t in range(2,12):
+            result=tracker.update(t,self.observation('다음 던전','노말'))
+            self.assertEqual((result['dungeonName'],result['difficulty']),('이전 던전','하드'))
+            self.assertEqual(result['contextStatus'],'ocr_held')
+        result=tracker.update(12,self.observation('다음 던전','노말'))
+        self.assertEqual((result['dungeonName'],result['difficulty']),('다음 던전','노말'))
+        self.assertEqual(result['contextStatus'],'ocr_verified')
+        tracker.reset()
+        self.assertIsNone(tracker.update(13,{})['dungeonName'])
+
+    def test_missing_changed_candidate_old_value_and_capture_gap_reset_replacement_timer(self):
+        for interruption in ('missing','different','original','gap'):
+            with self.subTest(interruption=interruption):
+                tracker=DungeonTracker(max_gap=2)
+                for t in (0,.5,1):tracker.update(t,self.observation('기존'))
+                for t in range(2,10):tracker.update(t,self.observation('후보'))
+                if interruption!='gap':
+                    tracker.update(10,{} if interruption=='missing' else self.observation('다른 후보' if interruption=='different' else '기존'))
+                result=tracker.update(12,self.observation('후보'))
+                self.assertEqual(result['dungeonName'],'기존')
+                self.assertEqual(result['replacementElapsed'],0)
+
+    def test_held_event_context_does_not_become_verified(self):
+        from beatrice.dungeon import event_context
+        tracker=DungeonTracker()
+        for t in (0,.2,.4):tracker.update(t,self.observation())
+        self.assertEqual(event_context(tracker.update(.6,{}))['contextStatus'],'ocr_held')
 
     def test_context_stored_directly_and_preserved_on_pending_promotion(self):
         for deferred in [False,True]:

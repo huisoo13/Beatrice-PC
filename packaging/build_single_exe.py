@@ -35,6 +35,20 @@ for name in ('gates-yolo26n-first.pt','character-yolo26n-first.pt','easyocr','me
     if src.is_dir():shutil.copytree(src,dst,dirs_exist_ok=True)
     else:shutil.copy2(src,dst)
 shutil.copytree(ROOT/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',stage/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',dirs_exist_ok=True)
+panel_config=json.loads((ROOT/'config/dungeon-panel.json').read_text(encoding='utf-8'))
+ui_config=json.loads((ROOT/'config/ui-regions.json').read_text(encoding='utf-8'))
+active_config=ui_config if ui_config['mode']=='yolo' else panel_config
+if active_config['mode']=='yolo':
+    model_configs=([json.loads((ROOT/active_config[role]).read_text(encoding='utf-8')) for role in ('characterConfig','dungeonConfig')]
+                   if active_config.get('architecture')=='split' else [active_config])
+    for model_config in model_configs:
+        paths=[model_config['weights']]+([model_config['menuRecoveryWeights']] if model_config.get('menuRecoveryWeights') else [])
+        for name in paths:
+            weights=Path(name)
+            if weights.is_absolute() or '..' in weights.parts:raise ValueError('배포용 모델은 프로젝트 내부 상대 경로여야 합니다.')
+            if not (ROOT/weights).is_file():raise ValueError('배포할 모델 파일이 없습니다.')
+            (stage/weights).parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(ROOT/weights,stage/weights)
 shutil.copy2(ROOT/'app_launcher.py',stage/'app_launcher.py')
 shutil.copy2(ROOT/'build/7zip-sdk/DOC/installer.txt',stage/'7zip-SFX-license.txt')
 (stage/'package-manifest.json').write_text(json.dumps(dict(python='3.12.10 embedded amd64',wheels=wheel_manifest,windowsRuntimeTested=False),indent=2))

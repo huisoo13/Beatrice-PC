@@ -1,0 +1,19 @@
+{
+  "mode": "yolo",
+  "classes": [
+    "game_menu",
+    "current_name_line",
+    "switch_dialog",
+    "target_name_line",
+    "loading_indicator",
+    "dungeon_panel",
+    "gate_panel"
+  ],
+  "confidence": 0.7,
+  "imageSize": 1280,
+  "notes": "2026-09-22 역할별 모델 활성화. 캐릭터 UI가 보이면 던전 추론 생략. OCR 공유. 현재 해상도 기록 재생 검증 완료, 다른 해상도 검증은 후속 진행.",
+  "nmsIou": 0.4,
+  "architecture": "split",
+  "characterConfig": "config/character-regions.json",
+  "dungeonConfig": "config/dungeon-regions.json"
+}

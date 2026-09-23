@@ -34,6 +34,23 @@ def clean_text(text):
     return text if 1<=len(text)<=80 and any(c.isalnum() for c in text) else None
 
 
+def trim_difficulty_line(region):
+    """넓힌 모드 영역에서 제목 끝 획·구분선을 제외하고 글자 높이의 줄을 선택합니다."""
+    import cv2
+    import numpy as np
+    gray=cv2.cvtColor(region,cv2.COLOR_BGR2GRAY)
+    mask=gray>=110
+    rows=np.flatnonzero(mask.sum(axis=1)>=max(2,region.shape[1]*.01))
+    bands=[]
+    for y in rows:
+        if not bands or y-bands[-1][-1]>3:bands.append([int(y)])
+        else:bands[-1].append(int(y))
+    bands=[band for band in bands if band[-1]-band[0]+1>=max(4,region.shape[0]*.18)]
+    if not bands:return None
+    band=max(bands,key=lambda b:int(mask[b[0]:b[-1]+1].sum()))
+    return region[max(0,band[0]-1):min(region.shape[0],band[-1]+2)]
+
+
 def validate_readings(readings, allowed=None, threshold=.65):
     canonical={key(value):value for value in allowed} if allowed is not None else None
     votes={}
@@ -77,6 +94,17 @@ class DungeonOCR:
             return dict(kind='dungeon_observation',engine=self.engine,ocr={},dungeonName=None,
                         difficulty=None,dungeonVisible=False)
         result=self.analyze_panel(frame[:240,:800])
+        return self.verify_context(result)
+
+    def analyze_detected(self,frame,location,gate_boxes):
+        if location['status']!='detected' or not has_dungeon_hud(gate_boxes):
+            return dict(kind='dungeon_observation',engine=self.engine,ocr={},dungeonName=None,
+                        difficulty=None,dungeonVisible=False,panelDetection=location)
+        result=self.read_regions(frame,location['regions'])
+        result['panelDetection']=location
+        return self.verify_context(result)
+
+    def verify_context(self,result):
         # 진행 아이콘과 닮은 일반 HUD도 있으므로 난이도 표기까지 함께 확인합니다.
         difficulty=result.get('difficulty')
         difficulties={key(value):value for value in CONFIG['supportedDifficulties']}
@@ -90,17 +118,27 @@ class DungeonOCR:
 
     def analyze_panel(self,panel):
         """원본 좌상단 400×240 보존 패널. 리사이즈한 미리보기는 입력하지 않습니다."""
-        import cv2
         if panel.shape[0]!=240 or panel.shape[1]<400:
             raise ValueError('원본 좌상단 높이 240, 너비 400 이상 패널이 필요합니다.')
+        regions={field:list(CONFIG['regions'][field]) for field in FIELDS}
+        regions['dungeonName'][2]=min(panel.shape[1],800)
+        return self.read_regions(panel,regions)
+
+    def read_regions(self,panel,regions):
+        import cv2
         result=dict(kind='dungeon_observation',engine=self.engine,ocr={})
         for field in FIELDS:
-            l,t,r,b=CONFIG['regions'][field]
-            if field=='dungeonName':r=min(panel.shape[1],800)
+            l,t,r,b=regions[field]
             region=panel[t:b,l:r]
             if field=='dungeonName':
                 from .character_vision import trim_name_line
                 region=trim_name_line(region,max_gap=24)
+                if region is None:
+                    result[field]=None
+                    result['ocr'][field]=dict(region=[l,t,r,b],raw=[],status='no_text_pixels')
+                    continue
+            else:
+                region=trim_difficulty_line(region)
                 if region is None:
                     result[field]=None
                     result['ocr'][field]=dict(region=[l,t,r,b],raw=[],status='no_text_pixels')
@@ -124,8 +162,14 @@ class DungeonOCR:
 
 
 class DungeonTracker:
-    def __init__(self, confirmations=3, max_gap=.8):
-        self.required=confirmations;self.max_gap=max_gap;self.last=None
+    def __init__(self, confirmations=3, max_gap=.8, replacement_seconds=10):
+        if confirmations<2 or max_gap<=0 or replacement_seconds<=0:raise ValueError('던전 확인 설정 오류')
+        self.required=confirmations;self.max_gap=max_gap;self.replacement_seconds=replacement_seconds
+        self.reset()
+
+    def reset(self):
+        self.last=None;self.confirmed=None;self.replacement=None;self.replacement_since=None
+        self.absence_since=None;self.transition_until=None
         self.candidates={f:None for f in FIELDS};self.counts={f:0 for f in FIELDS}
 
     def update(self,seconds,observation):
@@ -133,18 +177,50 @@ class DungeonTracker:
             raise ValueError('관측 시각은 유한하고 증가해야 합니다.')
         if self.last is not None and seconds-self.last>self.max_gap:
             self.counts={f:0 for f in FIELDS}
+            self.replacement=None;self.replacement_since=None
         self.last=seconds
         result=dict(sourceSeconds=seconds,engine=observation.get('engine'),ocr=observation.get('ocr',{}),preview={})
+        result['diagnosticStatus']=observation.get('diagnosticStatus','text_unverified')
+        result['regionSource']=observation.get('regionSource')
         for field in FIELDS:
             value=observation.get(field)
             name=value.get('text') if value and math.isfinite(value.get('confidence',0)) and value.get('confidence',0)>=CONFIG['minimumConfidence'] else None
             name=clean_text(name) if name else None
             result['preview'][field]=name
-            self.counts[field]=self.counts[field]+1 if name is not None and name==self.candidates[field] else (1 if name is not None else 0)
-            self.candidates[field]=name
-            result[field]=name if self.counts[field]>=self.required else None
+            same=name is not None and self.candidates[field] is not None and key(name)==key(self.candidates[field])
+            self.counts[field]=self.counts[field]+1 if same else (1 if name is not None else 0)
+            if not same:self.candidates[field]=name
+            result[field]=self.candidates[field] if self.counts[field]>=self.required else None
         known=sum(result[f] is not None for f in FIELDS)
         result['contextStatus']='ocr_verified' if known==2 else ('ocr_partial' if known else 'ocr_pending')
+        preview=result['preview']
+        current=tuple(key(preview[f]) for f in FIELDS) if all(preview.values()) else None
+        result['transitionConfirmed']=False
+        if observation.get('transitionSignal') and current is None and self.confirmed is not None:
+            if self.absence_since is None:self.absence_since=seconds
+            if seconds-self.absence_since>=1:self.transition_until=seconds+15
+        else:self.absence_since=None
+        if self.transition_until is not None and seconds>self.transition_until:self.transition_until=None
+        if self.confirmed is None and known==2:
+            self.confirmed={f:result[f] for f in FIELDS}
+        if self.confirmed is not None:
+            confirmed=tuple(key(self.confirmed[f]) for f in FIELDS)
+            if current is None or current==confirmed:
+                self.replacement=None;self.replacement_since=None
+                if current==confirmed:self.transition_until=None
+            elif self.transition_until is not None and known==2:
+                self.confirmed=dict(preview);confirmed=current
+                self.replacement=None;self.replacement_since=None;self.transition_until=None
+                result['transitionConfirmed']=True
+            elif current!=self.replacement:
+                self.replacement=current;self.replacement_since=seconds
+            elif seconds-self.replacement_since>=self.replacement_seconds:
+                self.confirmed=dict(preview)
+                confirmed=current;self.replacement=None;self.replacement_since=None
+            result.update(self.confirmed)
+            # 표시용 보존 정보는 현재 관문 기록의 근거로 사용하지 않습니다.
+            result['contextStatus']='ocr_verified' if current==confirmed else 'ocr_held'
+            result['replacementElapsed']=seconds-self.replacement_since if self.replacement_since is not None else 0
         return result
 
 
@@ -156,5 +232,5 @@ def event_context(context):
     for field in FIELDS:
         values[field]=clean_text(values[field]) if values[field] else None
     count=sum(value is not None for value in values.values())
-    return dict(**values,contextStatus='ocr_verified' if count==2 else ('ocr_partial' if count else 'ocr_pending'),
+    return dict(**values,contextStatus='ocr_held' if context.get('contextStatus')=='ocr_held' else ('ocr_verified' if count==2 else ('ocr_partial' if count else 'ocr_pending')),
                 dungeonObservation=context)
