@@ -18,7 +18,6 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('weights',type=Path,nargs='?',help='명시하면 단일 통합 모델 검사');p.add_argument('--imgsz',type=int,default=1280)
     p.add_argument('--config',type=Path)
-    p.add_argument('--gate-weights',type=Path,default=ROOT/'models/gates-yolo26n-first.pt')
     p.add_argument('--confidence',type=float,default=.7);p.add_argument('--output',type=Path,default=ROOT/'outputs/ui-bootstrap-check')
     args=p.parse_args()
     for key,folder in [('YOLO_CONFIG_DIR','ultralytics-config'),('MPLCONFIGDIR','matplotlib')]:
@@ -31,23 +30,29 @@ def main():
     from beatrice.character_vision import CharacterVision
     from beatrice.character import CharacterTracker
     from beatrice.dungeon import DungeonOCR
-    from beatrice.dungeon_panel import predict_panel_gates
+    from beatrice.dungeon_observer import DungeonObserver
     config=json.loads(args.config.read_text(encoding='utf-8')) if args.config else load_config()
     config.update(imageSize=args.imgsz,confidence=args.confidence)
     if args.weights:config.update(architecture='integrated',weights=str(args.weights.resolve()))
-    detector=UIRegionDetector(config);ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader,legacy=False)
-    gate_model=YOLO(str(args.gate_weights))
+    detector=UIRegionDetector(config);ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader)
+    observer=DungeonObserver(ocr)
     manifest=json.loads((ROOT/'data/annotations/ui-bootstrap.json').read_text(encoding='utf-8'))
+    direct={}
+    for role in ('character','dungeon'):
+        for row in json.loads((ROOT/f'data/annotations/{role}-direct-0926.json').read_text('utf8'))['images']:
+            direct.setdefault(row['path'],[]).extend(row['boxes'])
     args.output.mkdir(parents=True,exist_ok=True)
     rows=[]
     for item in manifest['images']:
         source=(ROOT/'data/annotations'/item['path']).resolve();frame=cv2.imread(str(source))
         regions=detector.locate(frame)
         character=vision.analyze_detected(frame,regions)
-        location=dungeon_location(regions,frame.shape)
-        gates=predict_panel_gates(gate_model,frame,location['regions']['gates']) if location['status']=='detected' else []
-        dungeon=ocr.analyze_detected(frame,location,gates)
-        expected={b['class']:b['xyxy'] for b in item['boxes']}
+        dungeon,gates=observer.analyze(frame,regions,len(rows))
+        expected={b['class']:b['xyxy'] for b in direct.get(item['path'],item['boxes'])}
+        # 기존 7클래스 자료에서 음성이었던 화면에도 실제 완료 배너가 있습니다.
+        # 배너 클래스를 활성화한 구성에 한해 수동 확인한 추가 라벨을 검사합니다.
+        if 'quest_complete_banner' in regions and source.name=='negative-260910_213142.png':
+            expected['quest_complete_banner']=[1300,35,2150,290]
         matches={name:regions[name]['status']=='detected' and iou(coords,regions[name]['xyxy'])>=.5 for name,coords in expected.items()}
         extra=[name for name,region in regions.items() if region['status']!='missing' and name not in expected]
         row=dict(image=source.name,synthetic=item['synthetic'],matches=matches,extra=extra,

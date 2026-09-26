@@ -11,6 +11,10 @@
   "confidence": 0.7,
   "imageSize": 1280,
   "nmsIou": 0.4,
-  "modelSha256": "3a004f05420272f84a349f178dc11a530c114ab13cc790b1b7054a9803337b4b",
-  "trainingRun": "character-roles-v2"
+  "modelSha256": "a161e02078aaca4c50d40e4451b9c12b7dc48fc11fcda4646b938798b8146960",
+  "trainingRun": "character-direct-reinforced-0926",
+  "trainingManifest": "data/annotations/character-direct-reinforced-0926.json",
+  "classConfidence": {
+    "target_name_line": 0.65
+  }
 }

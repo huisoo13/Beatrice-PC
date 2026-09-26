@@ -16,10 +16,10 @@ def main():
     from beatrice.character_vision import CharacterVision
     from beatrice.character import CharacterTracker
     from beatrice.dungeon import DungeonOCR
-    from beatrice.dungeon_panel import predict_panel_gates
+    from beatrice.dungeon_observer import DungeonObserver
     config=json.loads(args.config.read_text(encoding='utf-8'))
-    detector=UIRegionDetector(config);ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader,legacy=False)
-    gates=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
+    detector=UIRegionDetector(config);ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader)
+    observer=DungeonObserver(ocr)
     samples=[('live-name-failure',n) for n in (4,5,6,7,8,69,70,71,72,73)]+[('live-failure',n) for n in (35,37,56,60,62)]+[('live-dungeon-failure',n) for n in (67,68,69,70,71,72,73)]
     tracker=CharacterTracker(max_gap=5);rows=[];clock=0
     detector.locate(cv2.imread(str(ROOT/'outputs/live-name-failure/frame-004.jpg')))
@@ -29,9 +29,8 @@ def main():
         if args.optimized:
             character=vision.analyze_detected(frame,regions,seconds=clock,confirmed_name=tracker.current if not tracker.blocked else None)
         else:character=vision.analyze_detected(frame,regions)
-        t2=time.perf_counter();location=dungeon_location(regions,frame.shape)
-        boxes=predict_panel_gates(gates,frame,location['regions']['gates']) if location['status']=='detected' else []
-        dungeon=ocr.analyze_detected(frame,location,boxes);end=time.perf_counter()
+        t2=time.perf_counter()
+        dungeon,boxes=observer.analyze(frame,regions,clock);end=time.perf_counter()
         state=tracker.update(clock,character)
         rows.append(dict(source=f'{directory}/{n}',yoloMs=(t1-start)*1000,characterMs=(t2-t1)*1000,dungeonMs=(end-t2)*1000,totalMs=(end-start)*1000,character=character.get('currentName'),identity=state,dungeon=dungeon.get('dungeonName')))
         clock+=max(.5,end-start)

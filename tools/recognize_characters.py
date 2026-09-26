@@ -17,16 +17,18 @@ def main():
     p.add_argument('source',type=Path)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--hz',type=float,default=2)
-    p.add_argument('--weights',type=Path)
+    p.add_argument('--config',type=Path)
     args=p.parse_args()
     if not 1.5 <= args.hz <= 10:
         p.error('현재 연속 관측 설정에 맞게 1.5~10Hz를 사용해주세요.')
-    vision=CharacterVision(args.weights)
+    from beatrice.ui_regions import UIRegionDetector,load_config
+    config=json.loads(args.config.read_text(encoding='utf-8')) if args.config else load_config()
+    detector=UIRegionDetector(config);vision=CharacterVision()
     tracker=CharacterTracker()
     rows=[]
     def analyze(frame,seconds):
         start=time.perf_counter()
-        observed=vision.analyze(frame)
+        observed=vision.analyze_detected(frame,detector.locate(frame),seconds=seconds)
         state=tracker.update(seconds,observed)
         row=dict(videoSeconds=seconds,observation=observed,state=state,analysisMs=(time.perf_counter()-start)*1000)
         rows.append(row)
@@ -59,7 +61,7 @@ def main():
         digest=hashlib.file_digest(f,'sha256').hexdigest()
     result=dict(schemaVersion=1,source=str(args.source.resolve()),sha256=digest,
         purpose='development_replay_not_independent_evaluation',eventStoragePerformed=False,
-        weights=str(vision.model.ckpt_path),observations=rows)
+        modelConfig=config,observations=rows)
     args.output.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(f'{len(rows)}개 관측 저장: {args.output}')
 

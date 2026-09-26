@@ -1,0 +1,1311 @@
+{
+  "classes": [
+    "game_menu",
+    "current_name_line",
+    "switch_dialog",
+    "target_name_line",
+    "loading_indicator"
+  ],
+  "annotationMethod": "reviewed direct element boxes; old gate predictions are offline annotation proposals",
+  "evaluationPurpose": "training_reconstruction_only_not_independent",
+  "images": [
+    {
+      "path": "../raw/ui-bootstrap/260916_172657.png",
+      "split": "train",
+      "sessionId": "260916",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260916_172657.jpg",
+      "synthetic": false,
+      "sha256": "1f0efe5e6d056f4012d06c3720e15b913931a0e7ffda84b26ee12b68643c95eb",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/260916_172713.png",
+      "split": "train",
+      "sessionId": "260916",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260916_172713.jpg",
+      "synthetic": false,
+      "sha256": "b16bb3b980af711192015545d81a501475f8433a536df5969415fad8cec1fe3d",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            775,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            780,
+            893,
+            1210,
+            932
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1681,
+            655,
+            1759,
+            688
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/260921_134229.png",
+      "split": "train",
+      "sessionId": "260921",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260921_134229.jpg",
+      "synthetic": false,
+      "sha256": "3e1ad4fd31263c0ccdc88ac0f7312975748632632f29f20020cc46d575249bfc",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/260921_134230.png",
+      "split": "train",
+      "sessionId": "260921",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260921_134230.jpg",
+      "synthetic": false,
+      "sha256": "8636265bc0fcfa9998a0405b2125d826bb3bd7b05e46ac2c1b93f42f51f91a43",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C1.png",
+      "split": "train",
+      "sessionId": "original-login",
+      "source": "data/raw/character-review/C1.jpg",
+      "synthetic": true,
+      "sha256": "050d36199062b5d28e10073f7febe16ef09724f5d84abe732f93ff9a97a2857b",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C2.png",
+      "split": "train",
+      "sessionId": "switch-success",
+      "source": "data/raw/character-review/C2.jpg",
+      "synthetic": true,
+      "sha256": "87fddda798c6343d5f91196b9e8eabec28d9824da50cdddbf9877b4fc818fa6c",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            775,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            780,
+            893,
+            1210,
+            932
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1682,
+            655,
+            1757,
+            688
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C3.png",
+      "split": "train",
+      "sessionId": "switch-success",
+      "source": "data/raw/character-review/C3.jpg",
+      "synthetic": true,
+      "sha256": "2784695105a809bde90569c9192928317934a5d095ac870c2cddb6f7fb9efb58",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C4.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C4.jpg",
+      "synthetic": true,
+      "sha256": "54800888af8bfabbe6a9902d1451f303308313aaa723082d34a44d45522641ad",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            973,
+            897,
+            1040,
+            926
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1669,
+            654,
+            1770,
+            689
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C5.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C5.jpg",
+      "synthetic": true,
+      "sha256": "bd7bd93abf4d074190d21d69c02a278025e15dbf9ef9b89471ed5caf4f0b7497",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C6.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C6.jpg",
+      "synthetic": true,
+      "sha256": "b790f27b0aac492fbb47cc6028bc15cf3578f8bea89f2e28ce8f3f934621f404",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            775,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            780,
+            893,
+            1210,
+            932
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1681,
+            655,
+            1759,
+            688
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1470,
+            586,
+            1970,
+            850
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/dungeon-single.png",
+      "split": "train",
+      "sessionId": "dungeon-single",
+      "source": "C:\\Users\\Huisoo\\AppData\\Local\\Temp\\codex-clipboard-da8e40b4-9941-45e2-a977-a98a56ff3f5c.png",
+      "synthetic": false,
+      "sha256": "1418b5f21bf93c227e4ba68bb44533b56d38a68198840a2545c463cda5c2f864",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213151.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213151.jpg",
+      "synthetic": false,
+      "sha256": "0c9732cdb1027a048eea1f51d23ae16557c52ee0d982505a51c385241c1199fa",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213142.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213142.jpg",
+      "synthetic": false,
+      "sha256": "40f10821373fefacaf9394654c7bec3d9c97b3144e4fb1bc8449c7e02e78653a",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260813_213601.png",
+      "split": "train",
+      "sessionId": "260813",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260813_213601.jpg",
+      "synthetic": false,
+      "sha256": "f7bc89ab9e915ddc0658671cae5e37a5b83205bceb3f9d458fd97574d31955ae",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260406_185131.png",
+      "split": "train",
+      "sessionId": "260406",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260406_185131.jpg",
+      "synthetic": false,
+      "sha256": "13a74206f6039bee794dfc479a3ccd26a5417faf2e0a116fda48b9d0ee3b192b",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-live-name/live-name-004.jpg",
+      "split": "train",
+      "sessionId": "live-name-20260922",
+      "synthetic": false,
+      "source": "outputs/live-name-failure/frame-004.jpg",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            811,
+            896,
+            1136,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-live-name/live-name-069.jpg",
+      "split": "train",
+      "sessionId": "live-name-20260922",
+      "synthetic": false,
+      "source": "outputs/live-name-failure/frame-069.jpg",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            780,
+            320,
+            2820,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            894,
+            896,
+            1052,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-002.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            733,
+            323,
+            2816,
+            1037
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-007.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            683,
+            315,
+            2819,
+            1061
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            780,
+            893,
+            1228,
+            933
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1463,
+            577,
+            1974,
+            848
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1682,
+            655,
+            1757,
+            688
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-009.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            701,
+            322,
+            2829,
+            1051
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-012.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            702,
+            321,
+            2829,
+            1050
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1042,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-077.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            657,
+            317,
+            2836,
+            1061
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-078.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            714,
+            316,
+            2831,
+            1052
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            973,
+            897,
+            1040,
+            926
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1465,
+            575,
+            1973,
+            847
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1680,
+            655,
+            1759,
+            688
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-080.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            668,
+            317,
+            2833,
+            1060
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/switch-fix-0925/frame-082.jpg",
+      "split": "train",
+      "sessionId": "switch-failure-0925",
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            667,
+            317,
+            2833,
+            1060
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            904,
+            896,
+            1041,
+            927
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2990,
+            1270,
+            3440,
+            1440
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113751.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113751.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            250,
+            235,
+            1810,
+            790
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            340,
+            672,
+            460,
+            696
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113722.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113722.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            331,
+            306,
+            2351,
+            1029
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            441,
+            877,
+            603,
+            909
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1007,
+            581,
+            1503,
+            837
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1214,
+            643,
+            1294,
+            672
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113715.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113715.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            331,
+            306,
+            2351,
+            1029
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            441,
+            877,
+            603,
+            909
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113933.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113933.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113925.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113925.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113915.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113915.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113907.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113907.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113835.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113835.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            430,
+            315,
+            1595,
+            727
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            494,
+            637,
+            586,
+            657
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            817,
+            464,
+            1103,
+            616
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            937,
+            501,
+            983,
+            521
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113831.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113831.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            430,
+            315,
+            1595,
+            727
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            494,
+            637,
+            586,
+            657
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113822.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113822.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            558,
+            408,
+            2076,
+            949
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            645,
+            833,
+            765,
+            859
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            1068,
+            606,
+            1440,
+            803
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            1222,
+            658,
+            1285,
+            681
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113817.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113817.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            558,
+            408,
+            2076,
+            949
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            645,
+            833,
+            765,
+            859
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113811.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113811.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_113755.jpg",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113755.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            250,
+            235,
+            1810,
+            790
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            340,
+            672,
+            460,
+            696
+          ]
+        },
+        {
+          "class": "switch_dialog",
+          "xyxy": [
+            771,
+            440,
+            1149,
+            640
+          ]
+        },
+        {
+          "class": "target_name_line",
+          "xyxy": [
+            930,
+            492,
+            990,
+            516
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_115411.jpg",
+      "split": "train",
+      "sessionId": "260926-loading",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_115411.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            331,
+            306,
+            2351,
+            1029
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            451,
+            877,
+            588,
+            909
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2070,
+            1266,
+            2508,
+            1411
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_115635.jpg",
+      "split": "train",
+      "sessionId": "260926-loading",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_115635.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            250,
+            235,
+            1810,
+            790
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            347,
+            672,
+            455,
+            696
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            1590,
+            974,
+            1920,
+            1080
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_115556.jpg",
+      "split": "train",
+      "sessionId": "260926-loading",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_115556.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            430,
+            315,
+            1595,
+            727
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            494,
+            637,
+            586,
+            657
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            1670,
+            860,
+            1920,
+            945
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/direct-regions-0926/Screenshot_260926_115452.jpg",
+      "split": "train",
+      "sessionId": "260926-loading",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_115452.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "game_menu",
+          "xyxy": [
+            558,
+            408,
+            2076,
+            949
+          ]
+        },
+        {
+          "class": "current_name_line",
+          "xyxy": [
+            654,
+            833,
+            759,
+            859
+          ]
+        },
+        {
+          "class": "loading_indicator",
+          "xyxy": [
+            2180,
+            1124,
+            2508,
+            1235
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -9,6 +9,30 @@ from beatrice.storage import Store
 
 
 class DungeonTests(unittest.TestCase):
+    def test_direct_text_failure_does_not_retry_other_panel_positions(self):
+        from unittest.mock import Mock
+        location=dict(status='detected',xyxy=[400,400,800,610],regions={
+            'dungeonName':[410,430,790,460],'difficulty':[450,465,700,490]})
+        ocr=DungeonOCR(reader=Mock())
+        ocr.read_regions=Mock(return_value=dict(dungeonName=None,difficulty=None,ocr={}))
+        result=ocr.analyze_detected(None,location,[],allow_without_gates=True)
+        self.assertFalse(result['dungeonVisible'])
+        ocr.read_regions.assert_called_once_with(None,location['regions'])
+
+    def test_gateless_header_splits_mode_without_requiring_space_after_bracket(self):
+        import numpy as np
+        from unittest.mock import Mock
+        ocr=DungeonOCR(reader=Mock())
+        for text in ('[하드]맹렬한 업화','하드] 맹렬한 업화','하드 맹렬한 업화'):
+            ocr.read_regions=Mock(return_value=dict(dungeonName=dict(text=text,confidence=.98),ocr={}))
+            result=ocr.analyze_gateless(np.zeros((1440,3440,3),dtype=np.uint8),[0,45,405,125])
+            self.assertEqual(result['dungeonName']['text'],'맹렬한 업화')
+            self.assertEqual(result['difficulty']['text'],'하드')
+            region=ocr.read_regions.call_args.args[1]['dungeonName']
+            self.assertLessEqual(region[3],125)  # 도전 과제/목표 영역을 읽지 않음
+        ocr.read_regions=Mock(return_value=dict(dungeonName=dict(text='도전 과제',confidence=.98),ocr={}))
+        self.assertFalse(ocr.analyze_gateless(np.zeros((1440,3440,3),dtype=np.uint8),[0,45,405,125])['dungeonVisible'])
+
     def test_mode_line_excludes_title_fragment_and_divider(self):
         import numpy as np
         from beatrice.dungeon import trim_difficulty_line
@@ -27,28 +51,6 @@ class DungeonTests(unittest.TestCase):
             dict(text='2막: 부유하는 악몽의 진혼곡',confidence=.97),
             dict(text='2막: 부유하는 악몽의 진혼곡',confidence=.96)])
         self.assertEqual(result['text'],'2막: 부유하는 악몽의 진혼곡')
-    def test_live_requires_gate_hud_and_difficulty_before_display(self):
-        import numpy as np
-        from unittest.mock import Mock
-        frame=np.zeros((1440,3440,3),dtype=np.uint8)
-        reader=Mock()
-        ocr=DungeonOCR(reader=reader)
-        result=ocr.analyze(frame,gate_boxes=[])
-        reader.recognize.assert_not_called()
-        self.assertIsNone(result['dungeonName'])
-        boxes=[dict(state='진행중',confidence=.99,xyxy=[60,130,100,180])]
-        ocr.analyze_panel=Mock(return_value=self.observation('일반 화면 텍스트','퀘스트 목록'))
-        result=ocr.analyze(frame,gate_boxes=boxes)
-        self.assertIsNone(result['dungeonName'])
-        self.assertIsNone(result['difficulty'])
-        ocr.analyze_panel.return_value=self.observation('이름이 긴 새로운 던전입니다','하드')
-        self.assertTrue(ocr.analyze(frame,gate_boxes=boxes)['dungeonVisible'])
-        self.assertEqual(ocr.analyze_panel.call_args.args[0].shape,(240,800,3))
-        ocr.analyze_panel.return_value=self.observation('2막 : 부유하는 악몽의 진혼곡','싱글 모드')
-        boxes.append(dict(state='진행중',confidence=.3,xyxy=[60,130,100,180]))
-        result=ocr.analyze(frame,gate_boxes=boxes)
-        self.assertTrue(result['dungeonVisible'])
-        self.assertEqual(result['difficulty']['text'],'싱글 모드')
 
     def test_matching_mode_is_preserved_as_displayed(self):
         from unittest.mock import Mock
@@ -74,7 +76,7 @@ class DungeonTests(unittest.TestCase):
         for x in range(30,650,15):panel[66:84,x:x+10]=255
         reader=Mock()
         reader.recognize.return_value=[(None,'긴 던전 이름',.99)]
-        result=DungeonOCR(reader=reader).analyze_panel(panel)
+        result=DungeonOCR(reader=reader).read_regions(panel,{'dungeonName':[25,63,800,87]})
         self.assertGreater(reader.recognize.call_args_list[0].args[0].shape[1],355)
         self.assertEqual(result['dungeonName']['text'],'긴 던전 이름')
 
@@ -112,12 +114,11 @@ class DungeonTests(unittest.TestCase):
         # 실제 모델 정확도 테스트가 아닌 출력 형식/연결 검증입니다.
         panel=np.full((240,400,3),200,dtype=np.uint8)
         ocr=DungeonOCR(reader=Reader(),engine='paddle')
-        observed=ocr.analyze_panel(panel)
+        observed=ocr.verify_context(ocr.read_regions(panel,{'dungeonName':[25,63,355,87],'difficulty':[50,90,320,120]}))
         self.assertEqual(observed['engine'],'paddle')
         self.assertEqual(observed['dungeonName']['text'],'어둠군단장 카멘')
         self.assertEqual(observed['difficulty']['text'],'하드')
         self.assertEqual(len(observed['ocr']['dungeonName']['raw']),3)
-        with self.assertRaises(ValueError):ocr.analyze_panel(panel[:100])
 
     def test_no_fuzzy_correction_even_high_confidence(self):
         readings=[dict(text='어둡군단장 카엔',confidence=.99)]*3

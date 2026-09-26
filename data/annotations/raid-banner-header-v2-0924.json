@@ -1,0 +1,1083 @@
+{
+  "classes": [
+    "dungeon_panel",
+    "gate_panel",
+    "quest_complete_banner",
+    "gateless_raid_panel"
+  ],
+  "annotationMethod": "assistant_visual_review_and_existing_approved_labels",
+  "evaluationPurpose": "training_reconstruction_only_not_independent",
+  "images": [
+    {
+      "path": "../raw/ui-bootstrap/260916_172657.png",
+      "split": "train",
+      "sessionId": "260916",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260916_172657.jpg",
+      "synthetic": false,
+      "sha256": "1f0efe5e6d056f4012d06c3720e15b913931a0e7ffda84b26ee12b68643c95eb",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/260916_172713.png",
+      "split": "train",
+      "sessionId": "260916",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260916_172713.jpg",
+      "synthetic": false,
+      "sha256": "b16bb3b980af711192015545d81a501475f8433a536df5969415fad8cec1fe3d",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/260921_134229.png",
+      "split": "train",
+      "sessionId": "260921",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260921_134229.jpg",
+      "synthetic": false,
+      "sha256": "3e1ad4fd31263c0ccdc88ac0f7312975748632632f29f20020cc46d575249bfc",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/260921_134230.png",
+      "split": "train",
+      "sessionId": "260921",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260921_134230.jpg",
+      "synthetic": false,
+      "sha256": "8636265bc0fcfa9998a0405b2125d826bb3bd7b05e46ac2c1b93f42f51f91a43",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C1.png",
+      "split": "train",
+      "sessionId": "original-login",
+      "source": "data/raw/character-review/C1.jpg",
+      "synthetic": true,
+      "sha256": "050d36199062b5d28e10073f7febe16ef09724f5d84abe732f93ff9a97a2857b",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C2.png",
+      "split": "train",
+      "sessionId": "switch-success",
+      "source": "data/raw/character-review/C2.jpg",
+      "synthetic": true,
+      "sha256": "87fddda798c6343d5f91196b9e8eabec28d9824da50cdddbf9877b4fc818fa6c",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C3.png",
+      "split": "train",
+      "sessionId": "switch-success",
+      "source": "data/raw/character-review/C3.jpg",
+      "synthetic": true,
+      "sha256": "2784695105a809bde90569c9192928317934a5d095ac870c2cddb6f7fb9efb58",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C4.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C4.jpg",
+      "synthetic": true,
+      "sha256": "54800888af8bfabbe6a9902d1451f303308313aaa723082d34a44d45522641ad",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C5.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C5.jpg",
+      "synthetic": true,
+      "sha256": "bd7bd93abf4d074190d21d69c02a278025e15dbf9ef9b89471ed5caf4f0b7497",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/reconstructed-C6.png",
+      "split": "train",
+      "sessionId": "cancel-then-switch",
+      "source": "data/raw/character-review/C6.jpg",
+      "synthetic": true,
+      "sha256": "b790f27b0aac492fbb47cc6028bc15cf3578f8bea89f2e28ce8f3f934621f404",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/dungeon-single.png",
+      "split": "train",
+      "sessionId": "dungeon-single",
+      "source": "C:\\Users\\Huisoo\\AppData\\Local\\Temp\\codex-clipboard-da8e40b4-9941-45e2-a977-a98a56ff3f5c.png",
+      "synthetic": false,
+      "sha256": "1418b5f21bf93c227e4ba68bb44533b56d38a68198840a2545c463cda5c2f864",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            352,
+            224
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213151.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213151.jpg",
+      "synthetic": false,
+      "sha256": "0c9732cdb1027a048eea1f51d23ae16557c52ee0d982505a51c385241c1199fa",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213142.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213142.jpg",
+      "synthetic": false,
+      "sha256": "40f10821373fefacaf9394654c7bec3d9c97b3144e4fb1bc8449c7e02e78653a",
+      "boxes": [
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260813_213601.png",
+      "split": "train",
+      "sessionId": "260813",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260813_213601.jpg",
+      "synthetic": false,
+      "sha256": "f7bc89ab9e915ddc0658671cae5e37a5b83205bceb3f9d458fd97574d31955ae",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260406_185131.png",
+      "split": "train",
+      "sessionId": "260406",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260406_185131.jpg",
+      "synthetic": false,
+      "sha256": "13a74206f6039bee794dfc479a3ccd26a5417faf2e0a116fda48b9d0ee3b192b",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-live-name/live-name-004.jpg",
+      "split": "train",
+      "sessionId": "live-name-20260922",
+      "synthetic": false,
+      "source": "outputs/live-name-failure/frame-004.jpg",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-live-name/live-name-069.jpg",
+      "split": "train",
+      "sessionId": "live-name-20260922",
+      "synthetic": false,
+      "source": "outputs/live-name-failure/frame-069.jpg",
+      "boxes": []
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1547.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "2255a4d44e2a925214f2c0dd6e83feaf130c5ccea825745793074572b28a0592",
+      "boxes": []
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1555.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "57dc4378e3616ceef78d3a10cf7a143982cff6feb1a569dd7d3dab7619045d25",
+      "boxes": []
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1571.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "4081f0bc5eb0cbb33966e9fdcbc94021977b645062d8d84b7cd1bc1b9bd30323",
+      "boxes": []
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1579.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "e0067d946a576d668fefe3b8725f466368bdbff58573d6c760cc30ed57ce18ec",
+      "boxes": []
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1587.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "8cb781844ece8224fbdf7de5f2a43365ae542d1b08f30ee78817f0b0df2fbdb2",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1590.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "1aeedeec374006eb09fe6faaf47d4745793878b658b3668c8a6516b77472aea6",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-matching-0923/matching-1593.jpg",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "ef2f4395441e05415892f4fd30e8b0efa60322c7624afc39724626b8a9ac3a3e",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-58.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "35a2f18522a920cf3ec37943b9f0b70d69e8f52d59b603d776a25283ca44009d",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-98.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "329a00c13f19925377c062d5b02ea56126ddea59e47be2939043ee6674d8b1b3",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-138.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "bc7385b20e67dcdfd855cb7d1f21d841dbf6e58f5826a93d50a05d0700a821a5",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-178.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "8508c36e65c7c8a6b8bf9ce064252c7fa268df39f39b48e8680720e5c8246197",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-218.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "ea552bf7bed36ae042721f063f503e68cf58c489840ddd492fa93709f961b925",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-225.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "1f4a7d6aa6ba0b8973c24ddfd34a912742cb83bc9db9433757a21288f1888d22",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-216.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "4c1d0f7957eef4b935ec28503bf54bf9320a0cd82c75e5c6898c62c8d20ea9d9",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-219.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "52f8070ff8ed47e91f8a5580d6d8f34ad825b71ad90dce237c89a8b22a4feb01",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-230.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "c970b21638cf7a944f8af6a0cb20b37869f52a1b55f820651f3f8d2ba606e7a9",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/dungeon-completion-0923/completion-235.jpg",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "3b92e19bda43ae7012cf340c1979dd71e78bef913a1821ab1115da280e5441e9",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-11.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-40.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-75.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-100.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-108.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-110.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-112.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-120.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-140.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-0.jpg",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-0.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-12.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-24.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-27.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-29.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-31.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-133.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-175.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-1.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-31.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-80.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-121.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-127.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/act1-68.jpg",
+      "sessionId": "live-dungeon-failure",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/act1-71.jpg",
+      "sessionId": "live-dungeon-failure",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "dungeon_panel",
+          "xyxy": [
+            0,
+            36,
+            360,
+            240
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            112,
+            320,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-40-variable-0.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-40-variable-1.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-75-variable-0.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-75-variable-1.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-108-variable-0.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-108-variable-1.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-110-variable-0.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/raid-banner-0924/gateless-110-variable-1.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "synthetic": true,
+      "boxes": [
+        {
+          "class": "gateless_raid_panel",
+          "xyxy": [
+            0,
+            45,
+            405,
+            125
+          ]
+        },
+        {
+          "class": "quest_complete_banner",
+          "xyxy": [
+            1300,
+            35,
+            2150,
+            290
+          ]
+        }
+      ]
+    }
+  ],
+  "notes": "Combat and completed gate HUD added. Same-session untrained frames are replay regression, not independent accuracy."
+}

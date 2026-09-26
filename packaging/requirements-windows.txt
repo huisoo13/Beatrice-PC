@@ -2,7 +2,6 @@ PySide6-Essentials==6.8.3
 ultralytics==8.4.152
 torch==2.8.0
 torchvision==0.23.0
-easyocr==1.7.2
 paddleocr==3.7.0
 paddlepaddle==3.3.1
 dxcam==0.3.0

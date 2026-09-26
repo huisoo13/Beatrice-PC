@@ -1,4 +1,4 @@
-"""전체 화면에서 던전 패널을 찾고 원본 픽셀의 상대 영역을 반환합니다."""
+"""Retired crop-model helpers, retained only to reproduce offline training labels."""
 import json
 import math
 from pathlib import Path
@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 def load_config():
-    return json.loads((ROOT/'config/dungeon-panel.json').read_text(encoding='utf-8'))
+    return json.loads((ROOT/'tools/legacy-gate-regions.json').read_text(encoding='utf-8'))
 
 
 def relative_box(panel,region,shape):
@@ -19,40 +19,6 @@ def relative_box(panel,region,shape):
             min(w,math.ceil(x1+(x2-x1)*r)),min(h,math.ceil(y1+(y2-y1)*b))]
 
 
-class DungeonPanelDetector:
-    def __init__(self,config=None,model=None):
-        self.config=config or load_config()
-        if model is None:
-            path=ROOT/self.config['weights']
-            if not path.is_file():
-                raise ValueError('던전 패널 모델이 없습니다. 학습·검증 후 yolo 모드를 활성화해주세요.')
-            from ultralytics import YOLO
-            model=YOLO(str(path))
-        if list(model.names.values())!=[self.config['className']]:
-            raise ValueError('던전 패널 모델 클래스가 다릅니다.')
-        self.model=model
-
-    def locate(self,frame):
-        result=self.model.predict(frame,imgsz=self.config['imageSize'],
-            conf=self.config['confidence'],iou=.5,device='cpu',verbose=False)[0]
-        candidates=[]
-        h,w=frame.shape[:2]
-        for box in result.boxes:
-            coords=box.xyxy[0].tolist();score=float(box.conf[0])
-            if len(coords)!=4 or not all(math.isfinite(v) for v in coords):continue
-            x1,y1,x2,y2=coords
-            if (int(box.cls[0])!=0 or not math.isfinite(score) or score<self.config['confidence']
-                or not (0<=x1<x2<=w and 0<=y1<y2<=h)):continue
-            candidates.append(dict(xyxy=coords,confidence=score))
-        # 위치가 모호하면 최고 점수 하나로 임의 선택하지 않습니다.
-        if len(candidates)!=1:
-            return dict(status='missing' if not candidates else 'ambiguous',regions={},candidates=candidates)
-        panel=candidates[0]
-        regions={name:relative_box(panel['xyxy'],value,frame.shape)
-                 for name,value in self.config['regions'].items()}
-        if any(r-l<2 or b-t<2 for l,t,r,b in regions.values()):
-            return dict(status='too_small',regions={},candidates=candidates)
-        return dict(status='detected',regions=regions,**panel)
 
 
 def gate_crop_box(region,shape):

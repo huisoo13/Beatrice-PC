@@ -11,6 +11,7 @@ site=runtime/'Lib/site-packages';site.mkdir(parents=True,exist_ok=True)
 wheel_manifest=[]
 for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
     if wheel.name.startswith(('torch-','torchvision-')) and not wheel.name.startswith(('torch-2.8.0-','torchvision-0.23.0-')):continue
+    if wheel.name.lower().startswith('easyocr-'):continue
     # contrib가 필요한 PaddleOCR와 다른 OpenCV 의존성은 동일 cv2 바이너리를 공유합니다.
     skip_cv=wheel.name.startswith(('opencv_python-','opencv_python_headless-'))
     with zipfile.ZipFile(wheel) as z:
@@ -30,18 +31,16 @@ for pattern in ('msvcp140*.dll','vcruntime140*.dll','concrt140.dll'):
 (runtime/'python312._pth').write_text('python312.zip\n.\nLib/site-packages\n..\nimport site\n')
 for folder in ('beatrice','config'):
     shutil.copytree(ROOT/folder,stage/folder,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
-for name in ('gates-yolo26n-first.pt','character-yolo26n-first.pt','easyocr','menu-layout'):
-    src=ROOT/'models'/name;dst=stage/'models'/name;dst.parent.mkdir(parents=True,exist_ok=True)
-    if src.is_dir():shutil.copytree(src,dst,dirs_exist_ok=True)
-    else:shutil.copy2(src,dst)
 shutil.copytree(ROOT/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',stage/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',dirs_exist_ok=True)
-panel_config=json.loads((ROOT/'config/dungeon-panel.json').read_text(encoding='utf-8'))
 ui_config=json.loads((ROOT/'config/ui-regions.json').read_text(encoding='utf-8'))
-active_config=ui_config if ui_config['mode']=='yolo' else panel_config
+active_config=ui_config
+if active_config['mode']!='yolo':raise ValueError('YOLO 설정만 배포할 수 있습니다.')
 if active_config['mode']=='yolo':
     model_configs=([json.loads((ROOT/active_config[role]).read_text(encoding='utf-8')) for role in ('characterConfig','dungeonConfig')]
                    if active_config.get('architecture')=='split' else [active_config])
     for model_config in model_configs:
+        if model_config.get('elementConfig'):
+            model_configs.append(json.loads((ROOT/model_config['elementConfig']).read_text(encoding='utf-8')))
         paths=[model_config['weights']]+([model_config['menuRecoveryWeights']] if model_config.get('menuRecoveryWeights') else [])
         for name in paths:
             weights=Path(name)

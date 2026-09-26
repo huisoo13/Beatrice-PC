@@ -1,5 +1,8 @@
 {
   "mode": "yolo",
+  "architecture": "split",
+  "characterConfig": "config/character-regions.json",
+  "dungeonConfig": "config/dungeon-regions.json",
   "classes": [
     "game_menu",
     "current_name_line",
@@ -7,13 +10,17 @@
     "target_name_line",
     "loading_indicator",
     "dungeon_panel",
-    "gate_panel"
+    "gate_panel",
+    "quest_complete_banner",
+    "gateless_raid_panel",
+    "dungeon_name",
+    "difficulty",
+    "gate_in_progress",
+    "gate_completed",
+    "gate_not_started",
+    "gateless_title"
   ],
   "confidence": 0.7,
   "imageSize": 1280,
-  "notes": "2026-09-22 역할별 모델 활성화. 캐릭터 UI가 보이면 던전 추론 생략. OCR 공유. 현재 해상도 기록 재생 검증 완료, 다른 해상도 검증은 후속 진행.",
-  "nmsIou": 0.4,
-  "architecture": "split",
-  "characterConfig": "config/character-regions.json",
-  "dungeonConfig": "config/dungeon-regions.json"
+  "notes": "2026-09-26 실제 YOLO 박스만 사용. 캐릭터 5종, 던전 부모 4종, 탐지 패널 전체에서 세부 요소 7종. 고정 화면 좌표와 패널 내부 비율 OCR 제거. 제공 해상도 재현 검증이며 모든 해상도를 보장하지 않음."
 }

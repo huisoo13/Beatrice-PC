@@ -11,7 +11,7 @@ FIELDS=('dungeonName','difficulty')
 
 
 def has_dungeon_hud(boxes):
-    """상단 관문 아이콘의 위치/상태/신뢰도가 일치할 때만 던전 OCR을 실행합니다."""
+    """탐지된 관문 아이콘의 상태·신뢰도·유효한 박스를 검사합니다."""
     boxes=[box for box in boxes if math.isfinite(box.get('confidence',0)) and box.get('confidence',0)>=.65]
     if not 1<=len(boxes)<=8:return False
     for box in boxes:
@@ -20,7 +20,7 @@ def has_dungeon_hud(boxes):
         if (box.get('state') not in ('진행중','완료','진행 전') or
             not math.isfinite(score) or score<.65 or len(coords)!=4):return False
         x1,y1,x2,y2=coords
-        if not (32<=x1<x2<=352 and 112<=y1<y2<=224):return False
+        if not all(math.isfinite(v) for v in coords) or not (0<=x1<x2 and 0<=y1<y2):return False
     return True
 
 
@@ -72,36 +72,31 @@ def validate_readings(readings, allowed=None, threshold=.65):
 class DungeonOCR:
     def __init__(self, reader=None, engine=None):
         self.engine=engine or CONFIG.get('engine','paddle')
-        if self.engine not in ('paddle','easyocr'):
-            raise ValueError('지원하지 않는 OCR 엔진')
+        if self.engine!='paddle':raise ValueError('PaddleOCR만 지원합니다.')
         if reader is None:
-            if self.engine=='paddle':
-                from .paddle_reader import PaddleKoreanReader
-                reader=PaddleKoreanReader()
-            else:
-                import torch
-                torch.set_num_threads(4)
-                import easyocr
-                reader=easyocr.Reader(['ko','en'],gpu=False,detector=False,
-                    model_storage_directory=str(ROOT/'models/easyocr'),
-                    user_network_directory=str(ROOT/'models/easyocr/user'),download_enabled=False,verbose=False)
+            from .paddle_reader import PaddleKoreanReader
+            reader=PaddleKoreanReader()
         self.reader=reader
 
-    def analyze(self,frame,gate_boxes=None):
-        if frame.shape[:2]!=(1440,3440):
-            raise ValueError('현재 던전 OCR은 3440x1440 전용입니다.')
-        if not has_dungeon_hud(gate_boxes or []):
-            return dict(kind='dungeon_observation',engine=self.engine,ocr={},dungeonName=None,
-                        difficulty=None,dungeonVisible=False)
-        result=self.analyze_panel(frame[:240,:800])
-        return self.verify_context(result)
 
-    def analyze_detected(self,frame,location,gate_boxes):
-        if location['status']!='detected' or not has_dungeon_hud(gate_boxes):
+    def analyze_detected(self,frame,location,gate_boxes,allow_without_gates=False):
+        if location['status']!='detected' or not (allow_without_gates or has_dungeon_hud(gate_boxes)):
             return dict(kind='dungeon_observation',engine=self.engine,ocr={},dungeonName=None,
                         difficulty=None,dungeonVisible=False,panelDetection=location)
         result=self.read_regions(frame,location['regions'])
         result['panelDetection']=location
+        return self.verify_context(result)
+
+    def analyze_gateless(self,frame,region):
+        """무관문 레이드 전용 패널의 [난이도] 제목 줄. 일반 UI에는 호출하지 않습니다."""
+        line=region  # Direct YOLO text-line box; no panel-relative crop.
+        result=self.read_regions(frame,{'dungeonName':line})
+        value=result.get('dungeonName')
+        match=re.fullmatch(r'\[?\s*(노말|하드|헬|익스트림)\s*(?:\]\s*|\s+)(.+)',value['text']) if value else None
+        if match:
+            result['difficulty']=dict(text=match[1],confidence=value['confidence'])
+            result['dungeonName']=dict(text=match[2],confidence=value['confidence'])
+        else:result.update(dungeonName=None,difficulty=None)
         return self.verify_context(result)
 
     def verify_context(self,result):
@@ -116,20 +111,20 @@ class DungeonOCR:
             result['difficulty']=None
         return result
 
-    def analyze_panel(self,panel):
-        """원본 좌상단 400×240 보존 패널. 리사이즈한 미리보기는 입력하지 않습니다."""
-        if panel.shape[0]!=240 or panel.shape[1]<400:
-            raise ValueError('원본 좌상단 높이 240, 너비 400 이상 패널이 필요합니다.')
-        regions={field:list(CONFIG['regions'][field]) for field in FIELDS}
-        regions['dungeonName'][2]=min(panel.shape[1],800)
-        return self.read_regions(panel,regions)
 
     def read_regions(self,panel,regions):
         import cv2
         result=dict(kind='dungeon_observation',engine=self.engine,ocr={})
         for field in FIELDS:
+            if field not in regions:continue
             l,t,r,b=regions[field]
-            region=panel[t:b,l:r]
+            # Text-box padding follows the detected glyph height, never a panel position.
+            padding=max(1,round((b-t)*.15))
+            region=panel[max(0,t-padding):min(panel.shape[0],b+padding),max(0,l-padding):min(panel.shape[1],r+padding)]
+            if not region.size:
+                result[field]=None
+                result['ocr'][field]=dict(region=[l,t,r,b],raw=[],status='empty_detection')
+                continue
             if field=='dungeonName':
                 from .character_vision import trim_name_line
                 region=trim_name_line(region,max_gap=24)
@@ -182,6 +177,8 @@ class DungeonTracker:
         result=dict(sourceSeconds=seconds,engine=observation.get('engine'),ocr=observation.get('ocr',{}),preview={})
         result['diagnosticStatus']=observation.get('diagnosticStatus','text_unverified')
         result['regionSource']=observation.get('regionSource')
+        for field in ('raidKind','currentRaidPanel','completionBanner','raidBounds'):
+            result[field]=observation.get(field)
         for field in FIELDS:
             value=observation.get(field)
             name=value.get('text') if value and math.isfinite(value.get('confidence',0)) and value.get('confidence',0)>=CONFIG['minimumConfidence'] else None

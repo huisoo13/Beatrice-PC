@@ -1,9 +1,4 @@
 {
-  "mode": "legacy",
-  "weights": "models/dungeon-panel.pt",
-  "className": "dungeon_panel",
-  "confidence": 0.7,
-  "imageSize": 1280,
   "regions": {
     "dungeonName": [
       0.02,

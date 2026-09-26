@@ -14,9 +14,12 @@ def main():
     p.add_argument('--weights',type=Path,help='지정하면 저장된 탐지 대신 원본 프레임에 YOLO부터 다시 실행')
     p.add_argument('--config',type=Path,help='실행할 모델 구성. 지정하면 원본 프레임에 YOLO부터 다시 실행')
     p.add_argument('--restore-recorded-identity',action='store_true',help='잘린 진단 구간 시작 시 기록된 확정 캐릭터를 초기 상태로 복원. 이름 OCR 검증이 아닙니다.')
-    p.add_argument('--gate-weights',type=Path,help='검증할 관문 상태 모델')
+    p.add_argument('--sequence-from',type=int,help='원본 진단의 시작 sequence (포함)')
+    p.add_argument('--sequence-to',type=int,help='원본 진단의 마지막 sequence (포함)')
     args=p.parse_args()
     os.environ.setdefault('YOLO_CONFIG_DIR',str(ROOT/'outputs/ultralytics-config'))
+    import torch
+    torch.set_num_threads(4)
     import cv2
     from ultralytics import YOLO
     from beatrice.character_vision import CharacterVision
@@ -26,12 +29,14 @@ def main():
     from beatrice.live import LiveCoordinator
     from beatrice.storage import Store
     from beatrice.character import valid_name
-    ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader,legacy=False)
-    model=YOLO(str(args.gate_weights or ROOT/'models/gates-yolo26n-first.pt'))
+    ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader)
     config=json.loads(args.config.read_text(encoding='utf-8')) if args.config else load_config()
     if args.weights:config.update(architecture='integrated',weights=str(args.weights.resolve()))
     detector=UIRegionDetector(config) if args.weights or args.config else None
     reports=sorted((json.loads(p.read_text(encoding='utf-8')) for p in args.directory.glob('frame-*.json')),key=lambda r:r['observedAt'])
+    reports=[r for r in reports if (args.sequence_from is None or r['sequence']>=args.sequence_from)
+             and (args.sequence_to is None or r['sequence']<=args.sequence_to)]
+    if not reports:raise ValueError('선택한 범위에 진단 프레임이 없습니다.')
     sessions={};results=[]
     for r in reports:
         if r['sessionId'] not in sessions:
@@ -40,7 +45,7 @@ def main():
             if args.restore_recorded_identity and initial.get('recordingAllowed'):
                 name=valid_name(dict(text=initial.get('currentName') or '',confidence=1))
                 if name:live.identity.current=name;live.identity.blocked=False
-            sessions[r['sessionId']]=(live,DungeonTracker(max_gap=5),DungeonObserver(ocr,model),store)
+            sessions[r['sessionId']]=(live,DungeonTracker(max_gap=5),DungeonObserver(ocr),store)
         live,dt,observer,store=sessions[r['sessionId']];ct=live.identity
         frame=cv2.imread(str(args.directory/r['frameFile']))
         regions=detector.locate(frame) if detector else r['character']['detections']

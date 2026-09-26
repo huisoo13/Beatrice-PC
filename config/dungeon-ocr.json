@@ -1,22 +1,4 @@
 {
-  "referenceResolution": [
-    3440,
-    1440
-  ],
-  "regions": {
-    "dungeonName": [
-      25,
-      63,
-      355,
-      87
-    ],
-    "difficulty": [
-      140,
-      98,
-      240,
-      120
-    ]
-  },
   "minimumConfidence": 0.65,
   "confirmations": 3,
   "supportedDungeonNames": [

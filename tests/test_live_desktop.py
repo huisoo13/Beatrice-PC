@@ -80,13 +80,5 @@ class LiveTests(unittest.TestCase):
             for i in range(10,13):live.update(now+timedelta(seconds=i),dict(currentName=dict(text='다른캐릭터',confidence=.99),normalMenu=True),[],{})
             self.assertEqual(len(store.state_records()),1)
             self.assertIsNone(store.state_records()[0]['characterName']);store.close()
-    def test_layout_anchors(self):
-        import numpy as np
-        from beatrice.layout import normalize
-        frame=np.zeros((720,1280,3),dtype=np.uint8)
-        frame[50,50]=255;frame[400,650]=255
-        left=normalize(frame);center=normalize(frame,centered=True)
-        self.assertTrue((left[100,100]==255).all())
-        self.assertTrue((center[800,1740]==255).all())
 
 if __name__=='__main__':unittest.main()

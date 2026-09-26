@@ -63,10 +63,32 @@ class StateSession:
                     characterName=self.character['name'] if self.character else None,dungeonName=dungeon['dungeonName'],difficulty=dungeon['difficulty'],
                     observedAt=iso(at),confirmedAt=iso(at),savedAt=iso(datetime.now(timezone.utc)),
                     completedAt=None if inferred or state!='완료' else iso(at),
-                    evidenceType='later_gate_completion' if inferred else 'direct',timeBasis='live_capture'))
+                    evidenceType='later_gate_completion' if inferred else 'direct',timeBasis='live_capture',
+                    completionScope='raid' if dungeon.get('raidKind')=='gateless' else 'gate'))
             changed=self.store.save_states(self.owner,group,rows)
         if self.character:self.tracker=trial
         else:self.pending_tracker=trial
         completions=[r for r in changed if r['state']=='완료']
         return dict(status=result['status'],stableStates=trial.stable,changedRecords=changed,
                     events=completions if self.character else [],pendingEvents=completions if not self.character else [])
+
+    def complete_banner(self,at,dungeon,gate):
+        """확정된 현재 배열의 대상만 완료로 갱신. 다른 미완료 관문의 상태는 유지합니다."""
+        tracker=self.tracker or self.pending_tracker
+        group=key(dungeon['dungeonName']);rows=self.store.state_records(self.owner,group)
+        gateless=dungeon.get('raidKind')=='gateless'
+        if not rows and gateless:
+            rows=[dict(gate=1,state='진행중',characterKey=self.character['key'] if self.character else None,
+                       characterName=self.character['name'] if self.character else None,
+                       dungeonName=dungeon['dungeonName'],difficulty=dungeon['difficulty'],completionScope='raid')]
+        if tracker is None or len(rows)!=tracker.expected or not 1<=gate<=len(rows):return []
+        for row in rows:
+            if row['gate']<=gate and row['state']!='완료':
+                direct=row['gate']==gate
+                row.update(state='완료',observedAt=iso(at),confirmedAt=iso(at),savedAt=iso(datetime.now(timezone.utc)),
+                    completedAt=iso(at) if direct else None,evidenceType='completion_banner' if direct else 'later_gate_completion',
+                    timeBasis='live_capture',completionScope='raid' if gateless else 'gate')
+        changed=self.store.save_states(self.owner,group,rows)
+        tracker.stable=tuple(r['state'] for r in rows)
+        tracker.clear_candidate()
+        return changed

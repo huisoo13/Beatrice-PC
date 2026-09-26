@@ -37,20 +37,36 @@ class CharacterTests(unittest.TestCase):
         self.assertFalse(result['recordingAllowed'])
         self.assertEqual(result['actions'],[dict(type='suspend')])
 
-    def test_loading_needs_both_icon_and_text_at_bottom_right(self):
+    def test_detected_loading_crop_needs_both_icon_and_text(self):
         from unittest.mock import Mock
         import numpy as np
         from beatrice.character_vision import CharacterVision
         vision=CharacterVision.__new__(CharacterVision)
         vision.reader=Mock()
         vision.reader.recognize.return_value=[(None,'잠시만 기다려주세요.',.99)]
-        frame=np.zeros((720,1280,3),dtype=np.uint8)
-        self.assertFalse(vision.read_loading(frame)['visible'])
+        frame=np.zeros((170,450,3),dtype=np.uint8)
+        self.assertFalse(vision.read_loading_crop(frame)['visible'])
         vision.reader.recognize.assert_not_called()
-        frame[660:685,1210:1230]=(255,220,0)
-        self.assertTrue(vision.read_loading(frame)['visible'])
+        frame[50:100,320:360]=(255,220,0)
+        frame[65:85,25:270]=255
+        self.assertTrue(vision.read_loading_crop(frame)['visible'])
         vision.reader.recognize.return_value=[(None,'다른 문구',.99)]
-        self.assertFalse(vision.read_loading(frame)['visible'])
+        self.assertFalse(vision.read_loading_crop(frame)['visible'])
+
+    def test_loading_text_not_clipped_by_detected_box_width(self):
+        from unittest.mock import Mock
+        import numpy as np
+        from beatrice.character_vision import CharacterVision
+        vision=CharacterVision(reader=Mock())
+        vision.reader.recognize.return_value=[(None,'잠시만 기다려주세요.',.99)]
+        for width in (350,450,650):
+            crop=np.zeros((170,width,3),dtype=np.uint8)
+            crop[50:110,width-70:width-30]=(255,220,0)
+            crop[70:88,5:width-100]=255
+            self.assertTrue(vision.read_loading_crop(crop)['visible'])
+            self.assertGreater(vision.reader.recognize.call_args.args[0].shape[1],width-110)
+        vision.reader.recognize.return_value=[(None,'시만 기다려주세요.',.99)]
+        self.assertFalse(vision.read_loading_crop(crop)['visible'])
 
     def test_map_loading_and_capture_loss_preserve_character(self):
         for signal in ('identityUncertain','loadingScreen'):
@@ -70,23 +86,6 @@ class CharacterTests(unittest.TestCase):
             self.assertEqual(result['currentName'],'새캐릭터')
             self.assertTrue(result['recordingAllowed'])
 
-    def test_switch_title_detected_even_without_name_or_menu_detection(self):
-        from unittest.mock import Mock,patch
-        import numpy as np
-        from beatrice.character_vision import CharacterVision
-        vision=CharacterVision.__new__(CharacterVision)
-        vision.model=Mock()
-        vision.model.names={0:'current_name',1:'target_name',2:'switch_dialog'}
-        vision.model.predict.return_value=[Mock(boxes=[])]
-        vision.menu_template=np.zeros((425,880),dtype=np.uint8)
-        vision.reader=Mock()
-        vision.reader.recognize.return_value=[(None,'다른 캐릭터 바로 접속',.99)]
-        frame=np.zeros((1440,3440,3),dtype=np.uint8)
-        with patch('cv2.matchTemplate',return_value=np.array([[0.]])),patch(
-            'beatrice.character_vision.trim_name_line',return_value=np.zeros((30,200,3),dtype=np.uint8)):
-            result=vision.analyze(frame)
-        self.assertTrue(result['switchDialog'])
-        self.assertFalse(result['normalMenu'])
 
     def test_level_prefix_removed_without_changing_name(self):
         from beatrice.character_vision import name_from_line
@@ -147,14 +146,6 @@ class CharacterTests(unittest.TestCase):
         for length in (1,13,16):
             self.assertIsNone(valid_name(dict(text='가'*length,confidence=.99)))
 
-    def test_short_detections_do_not_limit_name_line_width(self):
-        from beatrice.character_vision import name_line_box
-        current=name_line_box('current_name',[974,897,1044,925])
-        target=name_line_box('target_name',[1680,655,1760,688])
-        self.assertLess(current[0],900)  # 레벨과 길어진 이름의 왼쪽까지 포함
-        for box in (current,target):
-            self.assertGreaterEqual(box[2]-box[0],12*28)
-        self.assertEqual(name_line_box('current_name',[974,897,1330,925])[2],1330)
 
     def test_unseen_name_preview_then_confirm(self):
         name='처음보는캐릭터123'
@@ -165,27 +156,6 @@ class CharacterTests(unittest.TestCase):
         self.assertEqual(result['currentName'],name)
         self.assertTrue(result['recordingAllowed'])
 
-    def test_menu_reads_full_name_line_without_yolo_detection(self):
-        from unittest.mock import Mock,patch
-        import numpy as np
-        from beatrice.character_vision import CharacterVision
-        vision=CharacterVision.__new__(CharacterVision)
-        vision.model=Mock()
-        vision.model.names={0:'current_name',1:'target_name',2:'switch_dialog'}
-        vision.model.predict.return_value=[Mock(boxes=[])]
-        vision.menu_template=np.zeros((425,880),dtype=np.uint8)
-        vision.read_name=Mock(return_value=dict(accepted=dict(text='처음보는캐릭터123',confidence=.99)))
-        frame=np.zeros((1440,3440,3),dtype=np.uint8)
-        with patch('cv2.matchTemplate',return_value=np.array([[.99]])):
-            result=vision.analyze(frame)
-        self.assertEqual(result['currentName']['text'],'처음보는캐릭터123')
-        self.assertEqual(vision.read_name.call_args.args[1],[760,897,1310,925])
-        self.assertTrue(vision.read_name.call_args.kwargs['includes_level'])
-        vision.read_name.reset_mock()
-        with patch('cv2.matchTemplate',return_value=np.array([[.2]])):
-            result=vision.analyze(frame)
-        self.assertIsNone(result['currentName'])
-        vision.read_name.assert_not_called()
 
     def setUp(self):
         self.tracker=CharacterTracker();self.t=-.5

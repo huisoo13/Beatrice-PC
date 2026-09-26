@@ -74,6 +74,8 @@ def main():
     train.add_argument('--device',default='cpu');train.add_argument('--name',default='dungeon-panel')
     train.add_argument('--imgsz',type=int,default=1280);train.add_argument('--freeze',type=int,default=0)
     train.add_argument('--lr',type=float,default=.001)
+    train.add_argument('--nominal-batch-size',type=int,default=64,help='Gradient accumulation target; use a smaller value for small direct-element datasets.')
+    train.add_argument('--shuffle',action='store_true',help='Use square batches with shuffled samples instead of rectangular aspect sorting.')
     args=parser.parse_args()
     if args.command=='prepare':
         classes=json.loads(args.classes_config.read_text(encoding='utf-8'))['classes'] if args.classes_config else None
@@ -89,7 +91,7 @@ def main():
         batch=2,device=args.device,workers=0,project=str(ROOT/'outputs/training'),name=args.name,
         exist_ok=False,seed=42,fliplr=0,flipud=0,mosaic=0,mixup=0,degrees=0,
         translate=.08,scale=.15,plots=False,amp=False,freeze=args.freeze,optimizer='AdamW',lr0=args.lr,
-        patience=0,val=False,hsv_h=0,hsv_s=.1,hsv_v=.1,rect=True)
+        patience=0,val=False,hsv_h=0,hsv_s=.1,hsv_v=.1,rect=not args.shuffle,nbs=args.nominal_batch_size)
 
 
 if __name__=='__main__':main()

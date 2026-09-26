@@ -3,12 +3,15 @@
   "weights": "models/dungeon-regions.pt",
   "classes": [
     "dungeon_panel",
-    "gate_panel"
+    "gate_panel",
+    "quest_complete_banner",
+    "gateless_raid_panel"
   ],
   "confidence": 0.7,
   "imageSize": 1280,
   "nmsIou": 0.4,
-  "modelSha256": "166ef501e2721608f81a2eefcef32ababfb605d25c7a0558656c648e728f67e0",
-  "trainingRun": "dungeon-completion-v2-0923",
-  "trainingManifest": "data/annotations/dungeon-completion-v2-0923.json"
+  "elementConfig": "config/dungeon-elements.json",
+  "trainingRun": "dungeon-parents-0926",
+  "trainingManifest": "data/annotations/dungeon-parents-0926.json",
+  "modelSha256": "b40c12a41bde13ad216864f614330ada8b81dcb8af6b1df57a6b101ad04c8b97"
 }

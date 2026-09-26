@@ -21,7 +21,7 @@ def main():
     import numpy as np
     from ultralytics import YOLO
     from beatrice.ui_regions import UIRegionDetector,load_config,dungeon_location
-    from beatrice.dungeon_panel import predict_panel_gates
+    from beatrice.dungeon_observer import DungeonObserver
     from beatrice.character_vision import CharacterVision
     from beatrice.dungeon import DungeonOCR
     frame=cv2.imdecode(np.fromfile(args.image,dtype=np.uint8),cv2.IMREAD_COLOR)
@@ -29,12 +29,10 @@ def main():
     config=json.loads(args.config.read_text(encoding='utf-8')) if args.config else load_config()
     if args.weights:config.update(architecture='integrated',weights=str(args.weights.resolve()))
     regions=UIRegionDetector(config).locate(frame)
-    dungeon=DungeonOCR();vision=CharacterVision(reader=dungeon.reader,legacy=False)
-    location=dungeon_location(regions,frame.shape)
-    gates=predict_panel_gates(YOLO(str(ROOT/'models/gates-yolo26n-first.pt')),frame,location['regions']['gates']) if location['status']=='detected' else []
+    dungeon=DungeonOCR();vision=CharacterVision(reader=dungeon.reader)
+    observation,gates=DungeonObserver(dungeon).analyze(frame,regions,0)
     report=dict(source=str(args.image.resolve()),regions=regions,character=vision.analyze_detected(frame,regions),
-                dungeon=dungeon.analyze_detected(frame,location,gates),gates=gates,
-                note='단일 이미지 관측입니다. 캐릭터 확정/전환 및 이벤트 저장 검증이 아닙니다.')
+                dungeon=observation,gates=gates,note='Single-frame observation, not a state transition test.')
     args.output.mkdir(parents=True,exist_ok=True)
     (args.output/'observation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     preview=frame.copy()

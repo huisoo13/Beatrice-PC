@@ -1,0 +1,22 @@
+{
+  "mode": "yolo",
+  "weights": "models/dungeon-elements.pt",
+  "classes": [
+    "gate_panel",
+    "dungeon_name",
+    "difficulty",
+    "gate_in_progress",
+    "gate_completed",
+    "gate_not_started",
+    "gateless_title"
+  ],
+  "confidence": 0.7,
+  "imageSize": 512,
+  "nmsIou": 0.4,
+  "trainingRun": "dungeon-elements-0926",
+  "trainingManifest": "data/annotations/dungeon-elements-0926.json",
+  "classConfidence": {
+    "gateless_title": 0.65
+  },
+  "modelSha256": "4233b0b2ad76561a459fb803d34b8dcc8e52b3a7e2fc8089dd7fb6d11c2239d1"
+}

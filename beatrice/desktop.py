@@ -8,7 +8,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 from PySide6.QtCore import QThread,Signal,QTimer,QLockFile
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,
-    QPushButton,QLabel,QComboBox,QDoubleSpinBox,QTableWidget,QTableWidgetItem,QHeaderView)
+    QPushButton,QLabel,QComboBox,QTableWidget,QTableWidgetItem,QHeaderView)
 from .storage import Store
 from .windows_capture import windows
 
@@ -17,8 +17,8 @@ DATA=Path(os.environ.get('BEATRICE_DATA_DIR',str(Path.home()/'BeatricePC')))
 
 class Worker(QThread):
     status=Signal(str); observation=Signal(dict)
-    def __init__(self,hwnd,scale):
-        super().__init__();self.hwnd=hwnd;self.scale=scale;self.stop_event=threading.Event()
+    def __init__(self,hwnd):
+        super().__init__();self.hwnd=hwnd;self.stop_event=threading.Event()
     def run(self):
         store=None;capture=None
         try:
@@ -26,22 +26,15 @@ class Worker(QThread):
             from .character_vision import CharacterVision
             from .dungeon import DungeonOCR,DungeonTracker
             from .live import LiveCoordinator
-            from .layout import normalize
             from .windows_capture import WindowCapture
-            from .dungeon_panel import load_config,DungeonPanelDetector,predict_panel_gates
             from .ui_regions import load_config as load_ui_config,UIRegionDetector
             from .recognition_diagnostic import RecognitionDiagnostic
             from .dungeon_observer import DungeonObserver
-            from ultralytics import YOLO
-            panel_config=load_config()
             ui_config=load_ui_config()
-            if ui_config['mode'] not in ('legacy','yolo'):raise ValueError('통합 UI mode 설정 오류')
-            ui_detector=UIRegionDetector(ui_config) if ui_config['mode']=='yolo' else None
-            dungeon=DungeonOCR();character=CharacterVision(reader=dungeon.reader,legacy=ui_detector is None);tracker=DungeonTracker(max_gap=5)
-            model=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
-            dungeon_observer=DungeonObserver(dungeon,model)
-            if panel_config['mode'] not in ('legacy','yolo'):raise ValueError('던전 패널 mode 설정 오류')
-            panel_detector=DungeonPanelDetector(panel_config) if ui_detector is None and panel_config['mode']=='yolo' else None
+            if ui_config['mode']!='yolo':raise ValueError('YOLO 탐지만 지원합니다.')
+            ui_detector=UIRegionDetector(ui_config)
+            dungeon=DungeonOCR();character=CharacterVision(reader=dungeon.reader);tracker=DungeonTracker(max_gap=5)
+            dungeon_observer=DungeonObserver(dungeon)
             store=Store(DATA/'records.sqlite3');coordinator=LiveCoordinator(store)
             capture=WindowCapture(self.hwnd)
             diagnostic=RecognitionDiagnostic(DATA/'recognition-diagnostics')
@@ -57,49 +50,36 @@ class Worker(QThread):
                     state.update(milliseconds=0,size='캡처 대기')
                     self.observation.emit(state)
                     self.status.emit(reason);self.stop_event.wait(.5);continue
-                regions=ui_detector.locate(frame) if ui_detector is not None else None
+                regions=ui_detector.locate(frame)
                 detected_at=time.monotonic()
-                if regions is not None:
-                    identity=character.analyze_detected(frame,regions,seconds=started,
-                        confirmed_name=coordinator.identity.current if not coordinator.identity.blocked else None)
-                else:
-                    centered=normalize(frame,self.scale,True);left=normalize(frame,self.scale)
-                    identity=character.analyze(centered,loading_frame=frame,ui_scale=self.scale)
+                identity=character.analyze_detected(frame,regions,seconds=started,
+                    confirmed_name=coordinator.identity.current if not coordinator.identity.blocked else None)
                 character_at=time.monotonic()
                 write_diagnostic=started-last_diagnostic>=2
                 if write_diagnostic:
                     (DATA/'character-diagnostic.json').write_text(json.dumps(dict(
-                        observedAt=at.isoformat(),frameSize=list(frame.shape[:2]),uiScale=self.scale,
+                        observedAt=at.isoformat(),frameSize=list(frame.shape[:2]),
                         observation=identity),ensure_ascii=False,indent=2),encoding='utf-8')
                     last_diagnostic=started
-                if regions is not None:
-                    blocked=any(regions.get(k,{}).get('status')!='missing' for k in ('game_menu','switch_dialog')) or identity.get('switchLoading',False)
-                    dungeon_observation,boxes=dungeon_observer.analyze(frame,regions,started,blocked=blocked)
-                elif panel_detector is not None:
-                    location=panel_detector.locate(frame)
-                    boxes=predict_panel_gates(model,frame,location['regions']['gates']) if location['status']=='detected' else []
-                    dungeon_observation=dungeon.analyze_detected(frame,location,boxes)
-                else:
-                    boxes=predict_panel_gates(model,left,[32,112,352,224])
-                    dungeon_observation=dungeon.analyze(left,gate_boxes=boxes)
+                blocked=any(regions.get(k,{}).get('status')!='missing' for k in ('game_menu','switch_dialog')) or identity.get('switchLoading',False)
+                dungeon_observation,boxes=dungeon_observer.analyze(frame,regions,started,blocked=blocked)
                 context=tracker.update(at.timestamp(),dungeon_observation)
                 dungeon_at=time.monotonic()
                 if write_diagnostic:
                     (DATA/'dungeon-diagnostic.json').write_text(json.dumps(dict(
-                        mode='ui_yolo' if ui_detector is not None else panel_config['mode'],observedAt=at.isoformat(),observation=dungeon_observation),
+                        mode='ui_yolo',observedAt=at.isoformat(),observation=dungeon_observation),
                         ensure_ascii=False,indent=2),encoding='utf-8')
                 state=coordinator.update(at,identity,boxes,context)
                 if any(action['type']=='suspend' for action in state['identity']['actions']):
                     tracker.reset()
                     dungeon_observer.reset()
                     state['dungeon']=tracker.update(at.timestamp(),{})
-                state['recognitionMode']='UI 자동 탐지' if ui_detector is not None else ('던전 패널 자동 탐지' if panel_detector is not None else '기준 좌표')
-                if ui_config.get('architecture')=='split' and ui_detector is not None:state['recognitionMode']='캐릭터·던전 분리 탐지'
+                state['recognitionMode']='캐릭터·던전 분리 탐지' if ui_config.get('architecture')=='split' else 'UI 자동 탐지'
                 state['milliseconds']=round((time.monotonic()-started)*1000)
                 state['timingsMs']=dict(detection=round((detected_at-started)*1000),character=round((character_at-detected_at)*1000),dungeon=round((dungeon_at-character_at)*1000))
                 state['size']=f'{frame.shape[1]} × {frame.shape[0]}'
                 try:
-                    diagnostic.record(frame,dict(observedAt=at.isoformat(),uiScale=self.scale,
+                    diagnostic.record(frame,dict(observedAt=at.isoformat(),
                         modelConfig=ui_config,character=identity,dungeon=dungeon_observation,
                         gates=boxes,state=state),now=started)
                 except OSError as exc:
@@ -122,9 +102,8 @@ class Window(QMainWindow):
         root=QWidget();self.setCentralWidget(root);layout=QVBoxLayout(root)
         row=QHBoxLayout();self.targets=QComboBox();self.targets.setMinimumWidth(330)
         refresh=QPushButton('게임 창 새로고침');refresh.clicked.connect(self.refresh)
-        self.scale=QDoubleSpinBox();self.scale.setRange(.5,2);self.scale.setSingleStep(.05);self.scale.setValue(1)
         row.addWidget(QLabel('대상'));row.addWidget(self.targets,1);row.addWidget(refresh)
-        row.addWidget(QLabel('UI 배율 보정'));row.addWidget(self.scale);layout.addLayout(row)
+        layout.addLayout(row)
         controls=QHBoxLayout();self.start_button=QPushButton('시작');self.stop_button=QPushButton('정지');self.delete_button=QPushButton('기록 전체 삭제')
         for button in (self.start_button,self.stop_button,self.delete_button):button.setMinimumHeight(42);controls.addWidget(button)
         layout.addLayout(controls);self.stop_button.setEnabled(False)
@@ -138,7 +117,7 @@ class Window(QMainWindow):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers);layout.addWidget(self.table,1)
         note=QLabel('동일 캐릭터·던전·관문은 전체 삭제 전까지 하나의 상태 기록을 유지합니다. 완료는 변경하지 않습니다.\n'
             '전체 관문 검증 후 최초 저장·상태 변경 시 갱신합니다. 후속 관문 완료는 앞선 관문 완료를 보완합니다.\n'
-            '해상도는 높이 기준으로 보정합니다. UI 배율/배치가 다르면 인식 확인이 필요합니다.');note.setWordWrap(True);layout.addWidget(note)
+            '화면에서 패널을 자동으로 찾습니다. 다른 해상도·UI 배율·배치에서는 추가 검증이 필요합니다.');note.setWordWrap(True);layout.addWidget(note)
         layout.addWidget(QLabel('저장 위치: '+str(DATA)))
         self.refresh();self.reload();self.timer=QTimer(self);self.timer.timeout.connect(self.reload);self.timer.start(1000)
     def refresh(self):
@@ -148,15 +127,15 @@ class Window(QMainWindow):
     def start(self):
         if self.worker is not None:return
         if self.targets.currentData() is None:self.status_label.setText('게임을 실행한 뒤 게임 창 새로고침을 눌러주세요.');return
-        self.worker=Worker(self.targets.currentData(),self.scale.value())
+        self.worker=Worker(self.targets.currentData())
         self.worker.status.connect(self.status_label.setText);self.worker.observation.connect(self.update_observation);self.worker.finished.connect(self.stopped)
-        self.start_button.setEnabled(False);self.delete_button.setEnabled(False);self.stop_button.setEnabled(True);self.targets.setEnabled(False);self.scale.setEnabled(False)
+        self.start_button.setEnabled(False);self.delete_button.setEnabled(False);self.stop_button.setEnabled(True);self.targets.setEnabled(False)
         self.worker.start()
     def stop(self):
         if self.worker is not None:self.worker.stop_event.set();self.status_label.setText('현재 분석을 마치고 정지하는 중…');self.stop_button.setEnabled(False)
     def stopped(self):
         self.worker.deleteLater();self.worker=None
-        self.start_button.setEnabled(True);self.delete_button.setEnabled(True);self.stop_button.setEnabled(False);self.targets.setEnabled(True);self.scale.setEnabled(True)
+        self.start_button.setEnabled(True);self.delete_button.setEnabled(True);self.stop_button.setEnabled(False);self.targets.setEnabled(True)
         if self.status_label.text().startswith('현재 분석'):self.status_label.setText('정지됨 · 기록은 PC에 보존됩니다.')
         if self.closing:self.close()
     def update_observation(self,value):
@@ -174,8 +153,9 @@ class Window(QMainWindow):
         records.sort(key=lambda e:(e.get('characterName') or '',e.get('dungeonName') or '',e['gate']));self.table.setRowCount(len(records))
         for row,event in enumerate(records):
             when=datetime.fromisoformat(event['observedAt']).astimezone().strftime('%Y-%m-%d %H:%M:%S')
-            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측'}
-            values=[when,event.get('characterName') or '캐릭터 확인 대기',event.get('dungeonName') or '확인 대기',event.get('difficulty') or '확인 대기',str(event['gate'])+'관문',{'진행중':'진행 중'}.get(event['state'],event['state']),evidence.get(event.get('evidenceType'),'직접 관측')]
+            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측','completion_banner':'완료 배너'}
+            unit='레이드 전체' if event.get('completionScope')=='raid' else str(event['gate'])+'관문'
+            values=[when,event.get('characterName') or '캐릭터 확인 대기',event.get('dungeonName') or '확인 대기',event.get('difficulty') or '확인 대기',unit,{'진행중':'진행 중'}.get(event['state'],event['state']),evidence.get(event.get('evidenceType'),'직접 관측')]
             for col,value in enumerate(values):self.table.setItem(row,col,QTableWidgetItem(value))
     def delete(self):
         if self.worker is not None:return

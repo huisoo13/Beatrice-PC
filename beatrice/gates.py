@@ -60,7 +60,7 @@ class GateTracker:
             # 가까이 겹친 박스가 누락 슬롯 대신 들어오는 경우를 거부합니다.
             valid = all(ordered[i]['xyxy'][2] <= ordered[i+1]['xyxy'][0] for i in range(len(ordered)-1))
             reference = self.slots or getattr(self, 'candidate_slots', None)
-            if reference is not None:
+            if reference is not None and not self.snapshot_mode:
                 valid = valid and all(math.dist(a,b) <= self.distance for a,b in zip(points, reference))
             if valid and self.stable is not None and not self.snapshot_mode:
                 valid = all(not (old == '완료' and b['state'] != '완료') for old,b in zip(self.stable,ordered))

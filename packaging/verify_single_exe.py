@@ -10,8 +10,9 @@ with exe.open('rb') as f:
  assert b'RunProgram="runtime\\\\pythonw.exe app_launcher.py"' in header
 with py7zr.SevenZipFile(archive) as z:
  names=set(z.getnames())
- required=['app_launcher.py','runtime/pythonw.exe','runtime/python312.dll','runtime/python312._pth','beatrice/desktop.py','models/gates-yolo26n-first.pt','models/character-yolo26n-first.pt','models/easyocr/korean_g2.pth','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','runtime/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll']
+ required=['app_launcher.py','runtime/pythonw.exe','runtime/python312.dll','runtime/python312._pth','beatrice/desktop.py','models/character-regions.pt','models/dungeon-regions.pt','models/dungeon-elements.pt','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','runtime/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll']
  for path in required:assert path in names,path
+ assert not any('easyocr' in path.lower() for path in names)
  assert not any('torch-2.14' in path for path in names)
  print('필수 파일 및 구성 확인:',len(names),'files',flush=True)
 with py7zr.SevenZipFile(archive) as z:
