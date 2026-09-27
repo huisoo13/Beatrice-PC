@@ -60,8 +60,8 @@ class LiveCoordinator:
                 else:
                     self.session.prepare_pending_run(run,len(boxes),'live_capture',is_test=True)
                     self.session.pending_tracker.max_gap=5
-            prior=self.session.store.state_records(self.session.owner,pair[0])
-            progress=[r['gate'] for r in prior if r['state']=='진행중']
+            tracker=self.session.tracker or self.session.pending_tracker
+            progress=[i+1 for i,state in enumerate(tracker.stable or ()) if state=='진행중']
             if gateless:banner_target=(self.session.token,pair,1)
             elif self.last_array_at is not None and at.timestamp()-self.last_array_at<=10 and len(progress)==1:
                 banner_target=(self.session.token,pair,progress[0])
@@ -82,8 +82,8 @@ class LiveCoordinator:
             held=self.banner.target
             if held and held[:2]==(self.session.token,frame_pair):banner_target=held
         elif eligible and banner_target is None and self.last_array_at is not None and at.timestamp()-self.last_array_at<=10:
-            prior=self.session.store.state_records(self.session.owner,frame_pair[0])
-            progress=[r['gate'] for r in prior if r['state']=='진행중']
+            tracker=self.session.tracker or self.session.pending_tracker
+            progress=[i+1 for i,state in enumerate(tracker.stable or ()) if state=='진행중'] if tracker else []
             if len(progress)==1:banner_target=(self.session.token,frame_pair,progress[0])
         preview=dungeon.get('preview',{})
         raw_pair=tuple(key(preview[f]) for f in ('dungeonName','difficulty')) if all(preview.get(f) for f in ('dungeonName','difficulty')) else frame_pair
@@ -106,7 +106,6 @@ class LiveCoordinator:
             if dungeon.get('contextStatus')=='ocr_held':status='이전 던전명 유지 · '+status
         elif result.get('events'):status='관문 완료 저장됨'
         elif result.get('pendingEvents'):status='관문 완료 임시 저장 · 캐릭터 확인 대기'
-        elif result.get('changedRecords'):status='전체 관문 상태 갱신됨'
         elif self.count<3:status='현재 관문 감지 중 · 던전 정보 확인 중'
         elif result.get('status') in ('uncertain','waiting'):status='현재 관문 감지 중 · 관문 배열 재확인 중'
         elif result.get('status')=='candidate':status='현재 관문 감지 중 · 상태 변경 확인 중'

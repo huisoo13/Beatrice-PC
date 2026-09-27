@@ -140,13 +140,15 @@ class DrivePanel(QWidget):
                 self.label.setText('분석을 정지한 후 다시 불러와주세요.')
                 return
             rows = result['records']
+            completed_count=sum(row['state']=='완료' for row in rows)
             created = result['metadata'].get('createdTime', '')
             try:
                 created = datetime.fromisoformat(created.replace('Z', '+00:00')).astimezone().strftime('%Y-%m-%d %H:%M:%S')
             except ValueError:
                 created = '시각 확인 불가'
             message = (f"계정: {self.login.session['account']['email']}\n저장 시각: {created}\n"
-                       f"Drive 기록: {len(rows)}건 / 현재 PC 기록: {len(self.store.state_records())}건\n\n"
+                       f"Drive 완료 기록: {completed_count}건 / 현재 PC 기록: {len(self.store.state_records())}건\n"
+                       f"진행 전·진행 중 기록 {len(rows)-completed_count}건은 불러오지 않습니다.\n\n"
                        '현재 PC 기록을 로컬 백업한 후 Drive 기록으로 교체합니다. 계속할까요?')
             answer = QMessageBox.question(self, 'Drive 기록 불러오기', message,
                                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -155,7 +157,7 @@ class DrivePanel(QWidget):
                 self.label.setText('불러오기를 취소했습니다. PC 기록은 유지됩니다.')
                 return
             backup = restore_records(self.store, rows, self.data / 'drive-backups')
-            self.label.setText(f'Drive 기록 {len(rows)}건 복원 완료 · 이전 기록 백업: {backup}')
+            self.label.setText(f'Drive 완료 기록 {completed_count}건 복원 완료 · 이전 기록 백업: {backup}')
         except Exception:
             if action == 'upload':
                 delay = self.auto.failed(time.monotonic())

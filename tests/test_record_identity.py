@@ -67,10 +67,10 @@ class StoredIdentityTests(unittest.TestCase):
         self.addCleanup(lambda: self.store.close())
 
     def save(self, **kwargs):
-        self.store.save_states('name:테스트', '던전', [row(**kwargs)])
+        self.store.save_states('name:테스트', '던전', [row(**dict(dict(state='완료'),**kwargs))])
         return self.store.state_records()[0]
 
-    def test_status_and_difficulty_updates_preserve_id_and_advance_time(self):
+    def test_completion_freezes_identity_time_and_difficulty(self):
         first = self.save()
         repeated = self.save()
         self.assertEqual(first['updatedAt'], repeated['updatedAt'])
@@ -78,9 +78,9 @@ class StoredIdentityTests(unittest.TestCase):
         completed = self.save(state='완료', difficulty='노말')
         self.assertEqual(first['recordID'], completed['recordID'])
         self.assertEqual(first['recordID'], changed['recordID'])
-        self.assertLess(first['updatedAt'], changed['updatedAt'])
-        self.assertLess(changed['updatedAt'], completed['updatedAt'])
-        self.assertEqual(changed['difficulty'], '노말')
+        self.assertEqual(first,changed)
+        self.assertEqual(first,completed)
+        self.assertEqual(changed['difficulty'], '하드')
         self.assertEqual(len(self.store.state_records()), 1)
         self.assertEqual(self.save(state='진행중', difficulty='노말'), completed)
         self.assertEqual(self.save(state='완료', difficulty='하드'), completed)
@@ -95,7 +95,7 @@ class StoredIdentityTests(unittest.TestCase):
         self.assertEqual(export_records(self.store)[0], rows)
 
     def test_legacy_local_metadata_uses_saved_time_without_queueing(self):
-        legacy = dict(row(), savedAt='2026-09-26T15:00:00+09:00')
+        legacy = dict(row(state='완료'), savedAt='2026-09-26T15:00:00+09:00')
         with self.store.db:
             self.store.db.execute('INSERT INTO gate_states VALUES (?,?,?,?)',
                 ('name:테스트', '던전', 1, json.dumps(legacy)))

@@ -52,8 +52,8 @@ def validate_records(records):
     for row in validated:
         groups[(row['characterName'], key(row['dungeonName']))].add(row['gate'])
     for gates in groups.values():
-        if gates != {0} and gates != set(range(1, len(gates) + 1)):
-            raise ValueError('던전의 전체 관문을 1부터 순서대로 포함해야 합니다.')
+        if 0 in gates and gates != {0}:
+            raise ValueError('관문 없는 레이드와 관문 기록을 함께 포함할 수 없습니다.')
     return sorted(validated, key=lambda r: (r['characterName'], key(r['dungeonName']), r['gate']))
 
 
@@ -61,7 +61,7 @@ def export_records(store):
     records = []
     omitted = 0
     for row in store.state_records():
-        if (not row.get('characterName') or not row.get('dungeonName') or not row.get('difficulty')
+        if (row.get('state')!='완료' or not row.get('characterName') or not row.get('dungeonName') or not row.get('difficulty')
                 or row.get('isTest') or row.get('timeBasis') == 'synthetic_test'):
             omitted += 1
             continue
@@ -119,7 +119,7 @@ def restore_records(store, records, backup_directory):
         store.db.backup(destination)
     grouped = defaultdict(list)
     for row in records:
-        grouped[(row['characterName'], key(row['dungeonName']))].append(row)
+        if row['state']=='완료':grouped[(row['characterName'], key(row['dungeonName']))].append(row)
     at = now.isoformat()
     with store.db:
         for table in ('gate_states', 'outbox', 'pending_events', 'events', 'pending_segments', 'sessions'):
@@ -129,7 +129,7 @@ def restore_records(store, records, backup_directory):
             owner = 'name:' + character
             for row in rows:
                 value = dict(row, gate=row['gate'] or 1, characterKey=owner,
-                             expectedGates=len(rows), recordType='gate_state',
+                             expectedGates=0, recordType='gate_state',
                              observedAt=at, confirmedAt=at, savedAt=at, completedAt=None,
                              evidenceType='drive_import', timeBasis='drive_import',
                              completionScope='raid' if row['gate'] == 0 else 'gate')

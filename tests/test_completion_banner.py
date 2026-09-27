@@ -27,13 +27,13 @@ class CompletionBannerTests(unittest.TestCase):
     def test_banner_completes_current_gate_without_icons_and_preserves_other_states(self):
         self.feed(count=3)
         self.feed(states=(),banner=True,count=2)
-        self.assertEqual(self.states(),['완료','진행 전'])
+        self.assertEqual(self.states(),['완료'])
         self.assertEqual(self.store.state_records()[0]['evidenceType'],'completion_banner')
 
     def test_long_banner_cannot_complete_next_gate_after_icon_advance(self):
         self.feed(count=3)
         self.feed(states=('완료','진행중'),banner=True,count=8)
-        self.assertEqual(self.states(),['완료','진행중'])
+        self.assertEqual(self.states(),['완료'])
         count=self.store.db.total_changes
         self.feed(states=('완료','진행중'),banner=True,count=5)
         self.assertEqual(self.store.db.total_changes,count)
@@ -47,7 +47,7 @@ class CompletionBannerTests(unittest.TestCase):
 
     def test_gateless_uses_banner_and_raid_scope_not_missing_gate_heuristic(self):
         self.feed(states=(),kind='gateless',count=3)
-        self.assertEqual(self.states(),['진행중'])
+        self.assertEqual(self.states(),[])
         self.feed(states=(),kind='gateless',banner=True,count=2)
         self.assertEqual(self.states(),['완료'])
         self.assertEqual(self.store.state_records()[0]['completionScope'],'raid')
@@ -65,7 +65,7 @@ class CompletionBannerTests(unittest.TestCase):
         self.feed(count=3)
         self.feed(banner=True)
         self.feed(count=3)
-        self.assertEqual(self.states(),['진행중','진행 전'])
+        self.assertEqual(self.states(),[])
 
     def test_missing_frame_restarts_confirmation_without_retargeting(self):
         banner=CompletionBanner()
@@ -80,29 +80,29 @@ class CompletionBannerTests(unittest.TestCase):
     def test_ambiguous_current_gate_does_not_guess(self):
         self.feed(states=('진행중','진행중'),count=3)
         self.feed(states=(),banner=True,count=3)
-        self.assertEqual(self.states(),['진행중','진행중'])
+        self.assertEqual(self.states(),[])
 
     def test_old_array_cannot_supply_a_gate_number(self):
         self.feed(count=3)
         self.at+=timedelta(seconds=11)
         self.feed(states=(),banner=True,count=3)
-        self.assertEqual(self.states(),['진행중','진행 전'])
+        self.assertEqual(self.states(),[])
 
     def test_banner_failure_rolls_back_and_can_retry(self):
         self.feed(count=3)
-        self.store.db.execute("CREATE TEMP TRIGGER reject_banner BEFORE UPDATE ON gate_states BEGIN SELECT RAISE(ABORT,'failure'); END")
+        self.store.db.execute("CREATE TEMP TRIGGER reject_banner BEFORE INSERT ON gate_states BEGIN SELECT RAISE(ABORT,'failure'); END")
         self.feed(states=(),banner=True)
         with self.assertRaises(sqlite3.IntegrityError):self.feed(states=(),banner=True)
-        self.assertEqual(self.states(),['진행중','진행 전'])
+        self.assertEqual(self.states(),[])
         self.assertFalse(self.live.banner.consumed)
         self.store.db.execute('DROP TRIGGER reject_banner')
         self.feed(states=(),banner=True)
-        self.assertEqual(self.states(),['완료','진행 전'])
+        self.assertEqual(self.states(),['완료'])
 
     def test_gateless_cannot_replace_known_multigate_raid(self):
         self.feed(count=3)
         self.feed(states=(),kind='gateless',banner=True,count=4)
-        self.assertEqual(self.states(),['진행중','진행 전'])
+        self.assertEqual(self.states(),[])
 
     def test_banner_arriving_after_icons_advance_does_not_complete_next_gate(self):
         self.feed(count=3)

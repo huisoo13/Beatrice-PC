@@ -167,8 +167,8 @@ class Window(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2,QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers);layout.addWidget(self.table,1)
-        note=QLabel('동일 캐릭터·던전·관문은 전체 삭제 전까지 하나의 상태 기록을 유지합니다. 완료는 변경하지 않습니다.\n'
-            '전체 관문 검증 후 최초 저장·상태 변경 시 갱신합니다. 후속 관문 완료는 앞선 관문 완료를 보완합니다.\n'
+        note=QLabel('완료된 관문만 저장·표시하며 동일 캐릭터·던전·관문은 전체 삭제 전까지 한 번만 기록합니다.\n'
+            '진행 전·진행 중 상태는 분석 중에만 유지합니다. 후속 관문 완료는 앞선 관문 완료를 보완합니다.\n'
             '화면에서 패널을 자동으로 찾습니다. 다른 해상도·UI 배율·배치에서는 추가 검증이 필요합니다.');note.setWordWrap(True);layout.addWidget(note)
         layout.addWidget(QLabel('저장 위치: '+str(DATA)))
         self.drive=DrivePanel(ROOT,DATA,self.google_login,self.store,

@@ -51,16 +51,15 @@ class DataTests(unittest.TestCase):
             self.assertEqual(old.state_records()[0]['state'], '완료')
         finally:
             old.close()
-        self.assertEqual(self.store.state_records()[0]['state'], '진행 전')
-        self.assertEqual(self.store.state_records()[0]['characterKey'], 'name:테스트')
+        self.assertEqual(self.store.state_records(), [])
         self.restore([row(state='진행 전')])
-        self.assertEqual(len(self.store.state_records()), 1)
+        self.assertEqual(len(self.store.state_records()), 0)
 
     def test_failed_insert_rolls_back_deletions(self):
         self.restore([row()])
         self.store.db.execute("CREATE TRIGGER fail_import BEFORE INSERT ON gate_states BEGIN SELECT RAISE(ABORT, 'test'); END")
         with self.assertRaises(sqlite3.IntegrityError):
-            self.restore([row(state='진행 전')])
+            self.restore([row(difficulty='노말')])
         self.assertEqual(self.store.state_records()[0]['state'], '완료')
 
     def test_failed_backup_does_not_change_records(self):
@@ -73,7 +72,7 @@ class DataTests(unittest.TestCase):
 
     def test_invalid_import_leaves_records_intact(self):
         self.restore([row()])
-        invalid = [[row(gate=True)], [row(gate=2)], [row(), row(difficulty='노말')],
+        invalid = [[row(gate=True)], [row(), row(difficulty='노말')],
                    [row(state='알수없음')], [row(extra=1)], [row(characterName='')],
                    [row(gate=0), row()], [row(gate=9)], {'records': [row()]}]
         for records in invalid:
@@ -84,7 +83,14 @@ class DataTests(unittest.TestCase):
     def test_mixed_difficulty_per_gate_and_complete_array(self):
         rows = [row(), row(gate=2, difficulty='노말', state='진행중')]
         self.restore(rows)
-        self.assertEqual(export_records(self.store)[0], validate_records(rows))
+        self.assertEqual(export_records(self.store)[0], validate_records([rows[0]]))
+
+    def test_sparse_completion_import_does_not_invent_total_gate_count(self):
+        self.restore([row(state='진행 전'),row(gate=2),row(gate=3,state='진행중')])
+        records=self.store.state_records()
+        self.assertEqual([r['gate'] for r in records],[2])
+        self.assertEqual(records[0]['expectedGates'],0)
+        self.assertEqual(export_records(self.store)[0],validate_records([row(gate=2)]))
 
     def test_pending_and_test_records_are_not_exported(self):
         self.restore([row()])

@@ -55,7 +55,7 @@ class CompletionQueueTests(unittest.TestCase):
     def test_new_completion_during_upload_remains_pending(self):
         self.save([record(), record(2, '진행 전')])
         rows, _, revision = export_snapshot(self.store)
-        self.assertEqual(rows[1]['state'], '진행 전')
+        self.assertEqual([r['gate'] for r in rows], [1])
         self.save([record(), record(2)])
         self.store.acknowledge_drive('account', *revision)
         pending = self.store.drive_pending('account')
@@ -118,7 +118,7 @@ class CompletionQueueTests(unittest.TestCase):
             return export_records(store)
         with patch('beatrice.drive_data.export_records', side_effect=concurrent_export):
             rows, _, revision = export_snapshot(self.store)
-        self.assertEqual(rows[1]['state'], '진행 전')
+        self.assertEqual([r['gate'] for r in rows], [1])
         self.assertEqual(revision[1], 1)
         self.assertEqual(self.store.drive_revision()[1], 2)
 

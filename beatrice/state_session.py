@@ -1,4 +1,4 @@
-"""누적 이벤트 대신 관문별 현재 상태 하나를 보관합니다."""
+"""전체 관문 상태는 메모리에서 추적하고 완료만 영속 저장합니다."""
 import copy
 import uuid
 from datetime import datetime,timezone
@@ -29,10 +29,11 @@ class StateSession:
                 for group in groups:
                     rows=[dict(r,characterKey=character_key,characterName=character_name) for r in pending if key(r['dungeonName'])==group]
                     known=self.store.state_records(character_key,group)
-                    if max((r.get('expectedGates',r['gate']) for r in known),default=0)>len(rows):
+                    expected=max(r.get('expectedGates') or r['gate'] for r in rows)
+                    if max((r.get('expectedGates',r['gate']) for r in known),default=0)>expected:
                         # 이름 확정 전에 잡힌 짧은 배열은 기존 전체 기록을 대체하지 않습니다.
                         continue
-                    self.store.save_states(character_key,group,rows,transactional=False)
+                    self.store.save_completions(character_key,group,rows,expected,transactional=False)
                     self.store.db.execute('DELETE FROM gate_states WHERE owner=? AND dungeon_key=?',(previous_owner,group))
         except Exception:
             self.owner=previous_owner;raise
@@ -75,13 +76,17 @@ class StateSession:
     def complete_banner(self,at,dungeon,gate):
         """확정된 현재 배열의 대상만 완료로 갱신. 다른 미완료 관문의 상태는 유지합니다."""
         tracker=self.tracker or self.pending_tracker
-        group=key(dungeon['dungeonName']);rows=self.store.state_records(self.owner,group)
+        group=key(dungeon['dungeonName'])
         gateless=dungeon.get('raidKind')=='gateless'
-        if not rows and gateless:
-            rows=[dict(gate=1,state='진행중',characterKey=self.character['key'] if self.character else None,
+        if tracker is None:return []
+        states=tracker.stable or (('진행중',) if gateless else ())
+        if len(states)!=tracker.expected or not 1<=gate<=len(states):return []
+        rows=[dict(gate=i+1,state=state,characterKey=self.character['key'] if self.character else None,
                        characterName=self.character['name'] if self.character else None,
-                       dungeonName=dungeon['dungeonName'],difficulty=dungeon['difficulty'],completionScope='raid')]
-        if tracker is None or len(rows)!=tracker.expected or not 1<=gate<=len(rows):return []
+                       dungeonName=dungeon['dungeonName'],difficulty=dungeon['difficulty'],
+                       completionScope='raid' if gateless else 'gate') for i,state in enumerate(states)]
+        saved={r['gate']:r for r in self.store.state_records(self.owner,group)}
+        rows=[dict(saved.get(r['gate'],r)) for r in rows]
         for row in rows:
             if row['gate']<=gate and row['state']!='완료':
                 direct=row['gate']==gate

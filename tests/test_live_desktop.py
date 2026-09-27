@@ -17,8 +17,8 @@ class LiveTests(unittest.TestCase):
             state=live.update(now+timedelta(seconds=i),dict(currentName=dict(text='테스트',confidence=.99)),boxes,context)
             if i>=5:self.assertEqual(live.context[1],2)
             if 6<=i<=10:self.assertIn('관문 수 불일치',state['recordingStatus'])
-        self.assertEqual(len(store.state_records()),2)
-        self.assertEqual([r['state'] for r in store.state_records()],['완료','진행 전'])
+        self.assertEqual(len(store.state_records()),1)
+        self.assertEqual([r['state'] for r in store.state_records()],['완료'])
 
     def test_display_explains_held_context_without_claiming_current_detection(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
@@ -45,7 +45,7 @@ class LiveTests(unittest.TestCase):
                 context=dict(dungeonName='기존 던전',difficulty='하드',contextStatus='ocr_verified' if i<6 else 'ocr_held')
                 boxes=[dict(xyxy=[40,130,60,160],state='진행중' if i<6 else '완료',confidence=.99)]
                 live.update(now+timedelta(seconds=i),dict(currentName=dict(text='테베체',confidence=.99)),boxes,context)
-            self.assertEqual(len(store.state_records()),1);self.assertEqual(store.state_records()[0]['state'],'진행중')
+            self.assertEqual(store.state_records(),[])
             store.close()
     def test_pending_promotion_and_delete(self):
         with tempfile.TemporaryDirectory() as temp:
