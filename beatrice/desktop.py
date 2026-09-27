@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBo
 from .storage import Store
 from .windows_capture import find_clients,client_alive,client_active
 from .process_watch import ProcessWatch
+from .google_login_ui import GoogleLogin
+from .drive_ui import DrivePanel
 
 ROOT=Path(__file__).resolve().parents[1]
 DATA=Path(os.environ.get('BEATRICE_DATA_DIR',str(Path.home()/'BeatricePC')))
@@ -144,6 +146,7 @@ class Window(QMainWindow):
         self.process_pids,self.watch_error=worker.process_snapshot or (frozenset(c.pid for c in clients),'')
         self.setWindowTitle('Beatrice PC · 실시간 관문 기록 테스트');self.resize(1000,620)
         root=QWidget();self.setCentralWidget(root);layout=QVBoxLayout(root)
+        self.google_login=GoogleLogin(ROOT,DATA,self);layout.addWidget(self.google_login)
         row=QHBoxLayout();self.targets=QComboBox();self.targets.setMinimumWidth(330)
         refresh=QPushButton('새로고침');refresh.setToolTip('앱을 초기화하고 스플래시부터 다시 시작합니다. 저장된 기록은 유지됩니다.')
         refresh.clicked.connect(self.restart_requested.emit)
@@ -168,6 +171,10 @@ class Window(QMainWindow):
             '전체 관문 검증 후 최초 저장·상태 변경 시 갱신합니다. 후속 관문 완료는 앞선 관문 완료를 보완합니다.\n'
             '화면에서 패널을 자동으로 찾습니다. 다른 해상도·UI 배율·배치에서는 추가 검증이 필요합니다.');note.setWordWrap(True);layout.addWidget(note)
         layout.addWidget(QLabel('저장 위치: '+str(DATA)))
+        self.drive=DrivePanel(ROOT,DATA,self.google_login,self.store,
+            lambda: not self.analyzing and self.settled_generation==self.generation,
+            self.drive_changed,self)
+        layout.insertWidget(1,self.drive)
         self.worker.status.connect(self.worker_status);self.worker.observation.connect(self.update_observation)
         self.worker.failed.connect(self.worker_failed);self.worker.finished.connect(self.stopped)
         self.worker.settled.connect(self.command_settled)
@@ -177,10 +184,12 @@ class Window(QMainWindow):
     def set_status(self,text,color):
         self.status_label.setText(text);self.status_dot.setStyleSheet(f'color: {color}; font-size: 22px;')
     def update_status(self):
-        self.start_button.setEnabled(bool(self.client) and not self.analyzing and not self.error)
+        busy=self.drive.busy
+        self.refresh_button.setEnabled(not busy)
+        self.start_button.setEnabled(bool(self.client) and not self.analyzing and not self.error and not busy)
         self.stop_button.setEnabled(self.analyzing)
-        self.delete_button.setEnabled(not self.analyzing and self.settled_generation==self.generation)
-        self.targets.setEnabled(not self.analyzing)
+        self.delete_button.setEnabled(not self.analyzing and self.settled_generation==self.generation and not busy)
+        self.targets.setEnabled(not self.analyzing and not busy)
         if self.error:self.set_status(self.error,'#dc2626')
         elif self.client is None:
             if self.process_pids:self.set_status('클라이언트 시작 중 · 게임 창 생성 대기','#ca8a04')
@@ -220,7 +229,7 @@ class Window(QMainWindow):
         if self.process_pids and (self.client is None or not client_alive(self.client)):self.refresh()
         else:self.update_status()
     def start(self):
-        if self.analyzing or self.error:return
+        if self.analyzing or self.error or self.drive.busy:return
         self.refresh()
         if self.client is None:return
         self.analyzing=True;self.generation+=1;self.detail.setText('첫 캡처 프레임 대기 중')
@@ -254,14 +263,21 @@ class Window(QMainWindow):
         records.sort(key=lambda e:(e.get('characterName') or '',e.get('dungeonName') or '',e['gate']));self.table.setRowCount(len(records))
         for row,event in enumerate(records):
             when=datetime.fromisoformat(event['observedAt']).astimezone().strftime('%Y-%m-%d %H:%M:%S')
-            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측','completion_banner':'완료 배너'}
+            if event.get('evidenceType')=='drive_import':when+=' (불러옴)'
+            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측','completion_banner':'완료 배너','drive_import':'Google Drive'}
             unit='레이드 전체' if event.get('completionScope')=='raid' else str(event['gate'])+'관문'
             values=[when,event.get('characterName') or '캐릭터 확인 대기',event.get('dungeonName') or '확인 대기',event.get('difficulty') or '확인 대기',unit,{'진행중':'진행 중'}.get(event['state'],event['state']),evidence.get(event.get('evidenceType'),'직접 관측')]
             for col,value in enumerate(values):self.table.setItem(row,col,QTableWidgetItem(value))
     def delete(self):
-        if self.analyzing or self.settled_generation!=self.generation:return
+        if self.analyzing or self.settled_generation!=self.generation or self.drive.busy:return
         self.store.clear_all();self.reload();self.character.setText('현재 캐릭터: 확인 대기');self.detail.setText('완료·임시 기록과 중복 방지 이력을 모두 삭제했습니다.')
+    def drive_changed(self):
+        self.reload();self.update_status()
     def closeEvent(self,event):
+        if self.drive.busy:
+            self.drive.label.setText('Drive 작업을 마친 후 앱을 종료해주세요.');event.ignore();return
+        self.drive.shutdown()
+        self.google_login.shutdown()
         if self.worker.isRunning():
             self.closing=True;self.timer.stop();self.worker.stop_event.set();event.ignore()
         else:self.timer.stop();self.store.close();event.accept()
@@ -288,9 +304,12 @@ class Startup(QWidget):
         self.window.show();self.hide()
     def restart(self):
         if self.restarting or self.closing:return
+        if self.window is not None and self.window.drive.busy:return
         self.restarting=True
         self.label.setText('현재 작업을 종료하고 앱을 초기화하는 중…');self.show()
         if self.window is not None:
+            self.window.drive.shutdown()
+            self.window.google_login.shutdown()
             self.window.timer.stop();self.window.stop();self.window.hide()
         self.worker.stop_event.set()
         if not self.worker.isRunning():self.finish_restart()

@@ -3,6 +3,7 @@ import json
 from contextlib import nullcontext
 import sqlite3
 from pathlib import Path
+from .record_identity import record_id, existing_time, stamp_local
 
 
 class Store:
@@ -41,6 +42,11 @@ class Store:
         CREATE TABLE IF NOT EXISTS gate_states (
             owner TEXT NOT NULL, dungeon_key TEXT NOT NULL, gate INTEGER NOT NULL CHECK(gate>0),
             payload TEXT NOT NULL, PRIMARY KEY(owner,dungeon_key,gate));
+        CREATE TABLE IF NOT EXISTS drive_changes (
+            id INTEGER PRIMARY KEY CHECK(id=1), epoch TEXT NOT NULL, revision INTEGER NOT NULL);
+        INSERT OR IGNORE INTO drive_changes VALUES(1,lower(hex(randomblob(16))),0);
+        CREATE TABLE IF NOT EXISTS drive_uploads (
+            account TEXT PRIMARY KEY, epoch TEXT NOT NULL, revision INTEGER NOT NULL);
         ''')
         if version<3:
             from .dungeon import key
@@ -52,6 +58,15 @@ class Store:
                     self.db.execute('INSERT OR IGNORE INTO gate_states VALUES (?,?,?,?)',
                         (event['characterKey'],key(event['dungeonName']),event['gate'],json.dumps(event,ensure_ascii=False)))
                 self.db.execute('PRAGMA user_version=3')
+        # Add metadata without changing record contents or scheduling an upload.
+        with self.db:
+            for owner,dungeon,gate,payload in self.db.execute('SELECT owner,dungeon_key,gate,payload FROM gate_states').fetchall():
+                row=json.loads(payload)
+                if row.get('characterName') and row.get('dungeonName') and ('recordID' not in row or 'updatedAt' not in row):
+                    row['recordID']=record_id(row['characterName'],row['dungeonName'],0 if row.get('completionScope')=='raid' else gate)
+                    row['updatedAt']=existing_time(row)
+                    self.db.execute('UPDATE gate_states SET payload=? WHERE owner=? AND dungeon_key=? AND gate=?',
+                        (json.dumps(row,ensure_ascii=False),owner,dungeon,gate))
 
     def load(self, character_key, session_id, settings, transactional=True):
         encoded = json.dumps(settings, sort_keys=True, ensure_ascii=False)
@@ -128,18 +143,50 @@ class Store:
                 raise ValueError('기존 전체 관문보다 적은 배열입니다.')
             for record in records:
                 previous=old.get(record['gate'])
-                if previous and (previous['state']=='완료' or previous['state']==record['state']):continue
+                if previous and previous['state']=='완료':continue
+                if previous and all(previous.get(f)==record.get(f) for f in
+                        ('state','difficulty','characterName','dungeonName','completionScope')):continue
                 row=dict(record,expectedGates=len(records),recordType='gate_state')
+                row=stamp_local(row,previous)
                 self.db.execute('INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload',
                     (owner,dungeon_key,row['gate'],json.dumps(row,ensure_ascii=False)))
                 changed.append(row)
+            if any(r['state']=='완료' and r.get('characterName') and r.get('dungeonName')
+                   and r.get('difficulty') and not r.get('isTest')
+                   and r.get('timeBasis')!='synthetic_test' for r in changed):
+                # Persist the upload obligation in the same transaction as completion.
+                self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
         return changed
+
+    def drive_revision(self):
+        return self.db.execute('SELECT epoch,revision FROM drive_changes WHERE id=1').fetchone()
+
+    def drive_pending(self,account):
+        row=self.db.execute('''SELECT c.epoch,c.revision FROM drive_changes c
+            LEFT JOIN drive_uploads u ON u.account=? AND u.epoch=c.epoch
+            WHERE c.id=1 AND c.revision>COALESCE(u.revision,0)''',(account,)).fetchone()
+        return tuple(row) if row else None
+
+    def acknowledge_drive(self,account,epoch,revision):
+        with self.db:
+            if self.drive_revision()[0]!=epoch:return
+            self.db.execute('''INSERT INTO drive_uploads VALUES(?,?,?)
+                ON CONFLICT(account) DO UPDATE SET epoch=excluded.epoch,
+                revision=CASE WHEN drive_uploads.epoch=excluded.epoch
+                    THEN MAX(drive_uploads.revision,excluded.revision) ELSE excluded.revision END''',
+                (account,epoch,revision))
+
+    def reset_drive_queue(self):
+        """Part of the caller's clear/restore transaction; don't publish old pending data."""
+        self.db.execute('UPDATE drive_changes SET epoch=lower(hex(randomblob(16))),revision=0 WHERE id=1')
+        self.db.execute('DELETE FROM drive_uploads')
 
     def clear_all(self):
         """분석 작업자가 정지한 뒤 호출합니다. 모델/설정은 보존합니다."""
         with self.db:
             for table in ("gate_states", "outbox", "pending_events", "events", "pending_segments", "sessions"):
                 self.db.execute(f"DELETE FROM {table}")
+            self.reset_drive_queue()
 
     def close(self):
         self.db.close()
