@@ -14,6 +14,7 @@ from .windows_capture import find_clients,client_alive,client_active
 from .process_watch import ProcessWatch
 from .google_login_ui import GoogleLogin
 from .drive_ui import DrivePanel
+from .public_content_ui import PublicContentPanel
 
 ROOT=Path(__file__).resolve().parents[1]
 DATA=Path(os.environ.get('BEATRICE_DATA_DIR',str(Path.home()/'BeatricePC')))
@@ -175,6 +176,8 @@ class Window(QMainWindow):
             lambda: not self.analyzing and self.settled_generation==self.generation,
             self.drive_changed,self)
         layout.insertWidget(1,self.drive)
+        self.public_content=PublicContentPanel(ROOT,DATA,self)
+        layout.insertWidget(2,self.public_content)
         self.worker.status.connect(self.worker_status);self.worker.observation.connect(self.update_observation)
         self.worker.failed.connect(self.worker_failed);self.worker.finished.connect(self.stopped)
         self.worker.settled.connect(self.command_settled)
@@ -277,6 +280,7 @@ class Window(QMainWindow):
         if self.drive.busy:
             self.drive.label.setText('Drive 작업을 마친 후 앱을 종료해주세요.');event.ignore();return
         self.drive.shutdown()
+        self.public_content.shutdown()
         self.google_login.shutdown()
         if self.worker.isRunning():
             self.closing=True;self.timer.stop();self.worker.stop_event.set();event.ignore()
@@ -309,6 +313,7 @@ class Startup(QWidget):
         self.label.setText('현재 작업을 종료하고 앱을 초기화하는 중…');self.show()
         if self.window is not None:
             self.window.drive.shutdown()
+            self.window.public_content.shutdown()
             self.window.google_login.shutdown()
             self.window.timer.stop();self.window.stop();self.window.hide()
         self.worker.stop_event.set()
