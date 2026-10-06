@@ -41,7 +41,7 @@ def main():
     torch.set_num_threads(4)
     raw=ROOT/'data/raw/direct-regions-0926';raw.mkdir(parents=True,exist_ok=True)
     out=ROOT/'outputs/direct-regions-0926';out.mkdir(parents=True,exist_ok=True)
-    gate=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
+    gate=YOLO(str(ROOT/'outputs/retired-models-0929/gates-yolo26n-first.pt'))
     char=json.loads((ROOT/'data/annotations/character-loading-0925.json').read_text('utf8'))
     dungeon=json.loads((ROOT/'data/annotations/raid-banner-header-v2-0924.json').read_text('utf8'));dungeon['classes']=DC
     for row in char['images']:

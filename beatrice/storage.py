@@ -7,7 +7,8 @@ from .record_identity import record_id, existing_time, stamp_local
 
 
 class Store:
-    def __init__(self, path):
+    def __init__(self, path, catalog=None):
+        self.catalog = catalog
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path)
         self.db.execute('PRAGMA foreign_keys=ON')
@@ -138,9 +139,26 @@ class Store:
     def state_records(self,owner=None,dungeon_key=None):
         sql='SELECT payload FROM gate_states';conditions=[];values=[]
         if owner is not None:conditions.append('owner=?');values.append(owner)
-        if dungeon_key is not None:conditions.append('dungeon_key=?');values.append(dungeon_key)
+        if dungeon_key is not None and self.catalog is None:conditions.append('dungeon_key=?');values.append(dungeon_key)
         if conditions:sql+=' WHERE '+' AND '.join(conditions)
-        return [json.loads(row[0]) for row in self.db.execute(sql+' ORDER BY owner,dungeon_key,gate',values)]
+        rows = [json.loads(row[0]) for row in self.db.execute(sql+' ORDER BY owner,dungeon_key,gate',values)]
+        if dungeon_key is not None and self.catalog is not None:
+            from .dungeon import key
+            matcher = self.catalog()
+            candidates = matcher.dungeon_candidates(dungeon_key)
+            names = {dungeon_key}
+            if len(candidates) == 1:names.add(key(candidates[0]))
+            def belongs(row):
+                aliases = {key(row['dungeonName']),
+                           key(row.get('ocrOriginal', {}).get('dungeonName') or row['dungeonName'])}
+                # A later catalog download must not create a second completion
+                # beside a previously saved OCR-only record. Do not rewrite it.
+                match = matcher.match(row['dungeonName'], row['difficulty'], row['gate'],
+                                      row.get('completionScope') == 'raid')
+                if match['status'] == 'matched':aliases.add(key(match['dungeonName']))
+                return bool(names.intersection(aliases))
+            rows = [r for r in rows if belongs(r)]
+        return rows
 
     def save_states(self,owner,dungeon_key,records,transactional=True):
         """검증된 전체 배열에서 완료만 저장합니다. 진행 상태는 호출자 메모리에 남습니다."""
@@ -158,19 +176,25 @@ class Store:
             any(type(g) is not int or not 1<=g<=expected_gates for g in gates) or
             any(r['state']!='완료' for r in records)):raise ValueError('완료 관문 배열 오류')
         changed=[]
+        matcher = self.catalog() if self.catalog is not None else None
         with self.db if transactional else nullcontext():
             old={r['gate']:r for r in self.state_records(owner,dungeon_key)}
             if max((r.get('expectedGates',r['gate']) for r in old.values()),default=0)>expected_gates:
                 raise ValueError('기존 전체 관문보다 적은 배열입니다.')
             for record in records:
+                from .dungeon import key
+                record = matcher.record(record) if matcher is not None else record
+                storage_key = key(record['dungeonName']) if matcher is not None else dungeon_key
                 previous=old.get(record['gate'])
+                if previous is None and storage_key != dungeon_key:
+                    previous=next((r for r in self.state_records(owner,storage_key) if r['gate']==record['gate']),None)
                 if previous and previous['state']=='완료':continue
                 if previous and all(previous.get(f)==record.get(f) for f in
                         ('state','difficulty','characterName','dungeonName','completionScope')):continue
                 row=dict(record,expectedGates=expected_gates,recordType='gate_state')
                 row=stamp_local(row,previous)
                 self.db.execute('INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload',
-                    (owner,dungeon_key,row['gate'],json.dumps(row,ensure_ascii=False)))
+                    (owner,storage_key,row['gate'],json.dumps(row,ensure_ascii=False)))
                 changed.append(row)
             if any(r['state']=='완료' and r.get('characterName') and r.get('dungeonName')
                    and r.get('difficulty') and not r.get('isTest')

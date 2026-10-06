@@ -19,7 +19,7 @@ class CompletionBannerTests(unittest.TestCase):
             self.at+=timedelta(seconds=1)
             boxes=[dict(state=s,confidence=.99,xyxy=[40+i*60,130,80+i*60,180]) for i,s in enumerate(states)]
             result=self.live.update(self.at,{},boxes,dict(dungeonName=name,difficulty='하드',
-                contextStatus=status,raidBounds=[500,400,900,480],raidKind=kind,currentRaidPanel=fresh,completionBanner=banner))
+                contextStatus=status,raidBounds=[500,400,900,480],raidKind=kind,currentRaidPanel=fresh,completionOverlay=dict(status='verified',kind='dungeon_clear' if kind=='gateless' else 'gate_breakthrough',gate=None if kind=='gateless' else 1) if banner else {}))
         return result
 
     def states(self):return [r['state'] for r in self.store.state_records()]
@@ -28,7 +28,7 @@ class CompletionBannerTests(unittest.TestCase):
         self.feed(count=3)
         self.feed(states=(),banner=True,count=2)
         self.assertEqual(self.states(),['완료'])
-        self.assertEqual(self.store.state_records()[0]['evidenceType'],'completion_banner')
+        self.assertEqual(self.store.state_records()[0]['evidenceType'],'gate_breakthrough')
 
     def test_long_banner_cannot_complete_next_gate_after_icon_advance(self):
         self.feed(count=3)
@@ -51,15 +51,19 @@ class CompletionBannerTests(unittest.TestCase):
         self.feed(states=(),kind='gateless',banner=True,count=2)
         self.assertEqual(self.states(),['완료'])
         self.assertEqual(self.store.state_records()[0]['completionScope'],'raid')
-        self.assertEqual(self.store.state_records()[0]['evidenceType'],'completion_banner')
+        self.assertEqual(self.store.state_records()[0]['evidenceType'],'dungeon_clear')
 
-    def test_held_title_and_normal_quest_banner_cannot_complete_raid(self):
+    def test_cutscene_can_use_confirmed_context(self):
         self.feed(count=3)
-        before=self.store.state_records()
-        self.feed(states=(),banner=True,fresh=False,status='ocr_held',count=4)
-        self.assertEqual(self.store.state_records(),before)
-        self.feed(states=(),banner=True,fresh=True,count=3)
-        self.assertEqual(self.store.state_records(),before)  # 같은 배너를 뒤늦게 다른 화면에 배정하지 않음
+        self.feed(states=(),banner=True,fresh=False,status='ocr_held',count=2)
+        self.assertEqual(self.states(),['완료'])
+
+    def test_old_quest_banner_is_not_a_completion_signal(self):
+        self.feed(count=3)
+        for _ in range(3):
+            self.at+=timedelta(seconds=1)
+            self.live.update(self.at,{},[],dict(completionBanner=True))
+        self.assertEqual(self.states(),[])
 
     def test_single_frame_banner_does_not_save(self):
         self.feed(count=3)
@@ -77,16 +81,51 @@ class CompletionBannerTests(unittest.TestCase):
         banner.update(4,False,True,'second')
         self.assertIsNone(banner.update(5,True,True,'second'))
 
-    def test_ambiguous_current_gate_does_not_guess(self):
+    def test_explicit_gate_number_does_not_guess_from_progress(self):
         self.feed(states=('진행중','진행중'),count=3)
+        self.feed(states=(),banner=True,count=3)
+        self.assertEqual(self.states(),['완료'])
+
+    def test_expired_context_cannot_supply_a_target(self):
+        self.feed(count=3)
+        self.at+=timedelta(seconds=121)
         self.feed(states=(),banner=True,count=3)
         self.assertEqual(self.states(),[])
 
-    def test_old_array_cannot_supply_a_gate_number(self):
+    def test_different_preview_invalidates_context_before_display_changes(self):
         self.feed(count=3)
-        self.at+=timedelta(seconds=11)
-        self.feed(states=(),banner=True,count=3)
+        for _ in range(3):
+            self.at+=timedelta(seconds=1)
+            self.live.update(self.at,{},[],dict(dungeonName='던전',difficulty='하드',contextStatus='ocr_held',
+                preview=dict(dungeonName='다른 던전',difficulty='하드'),
+                completionOverlay=dict(status='verified',kind='dungeon_clear',gate=None)))
         self.assertEqual(self.states(),[])
+
+    def test_clear_completes_last_gate_and_backfills(self):
+        self.feed(states=('진행중','진행 전','진행 전'),count=3)
+        for _ in range(2):
+            self.at+=timedelta(seconds=1)
+            self.live.update(self.at,{},[],dict(completionOverlay=dict(status='verified',kind='dungeon_clear',gate=None)))
+        self.assertEqual(self.states(),['완료']*3)
+
+    def test_gate_number_outside_confirmed_array_is_rejected(self):
+        self.feed(count=3)
+        for _ in range(3):
+            self.at+=timedelta(seconds=1)
+            self.live.update(self.at,{},[],dict(completionOverlay=dict(status='verified',kind='gate_breakthrough',gate=3)))
+        self.assertEqual(self.states(),[])
+
+    def test_overlay_completion_waits_for_character_and_promotes_once(self):
+        self.live.identity.current=None;self.live.identity.blocked=True
+        self.feed(count=3);self.feed(states=(),banner=True,count=2)
+        rows=self.store.state_records()
+        self.assertEqual(len(rows),1);self.assertIsNone(rows[0]['characterName'])
+        for _ in range(3):
+            self.at+=timedelta(seconds=1)
+            self.live.update(self.at,dict(normalMenu=True,currentName=dict(text='새캐릭터',confidence=.99)),[],{})
+        rows=self.store.state_records()
+        self.assertEqual(len(rows),1);self.assertEqual(rows[0]['characterName'],'새캐릭터')
+        self.assertEqual(rows[0]['evidenceType'],'gate_breakthrough')
 
     def test_banner_failure_rolls_back_and_can_retry(self):
         self.feed(count=3)

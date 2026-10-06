@@ -38,10 +38,11 @@ if active_config['mode']!='yolo':raise ValueError('YOLO 설정만 배포할 수 
 if active_config['mode']=='yolo':
     model_configs=([json.loads((ROOT/active_config[role]).read_text(encoding='utf-8')) for role in ('characterConfig','dungeonConfig')]
                    if active_config.get('architecture')=='split' else [active_config])
+    model_configs.append(json.loads((ROOT/'config/completion-overlay.json').read_text(encoding='utf-8')))
     for model_config in model_configs:
         if model_config.get('elementConfig'):
             model_configs.append(json.loads((ROOT/model_config['elementConfig']).read_text(encoding='utf-8')))
-        paths=[model_config['weights']]+([model_config['menuRecoveryWeights']] if model_config.get('menuRecoveryWeights') else [])
+        paths=[model_config['weights']]
         for name in paths:
             weights=Path(name)
             if weights.is_absolute() or '..' in weights.parts:raise ValueError('배포용 모델은 프로젝트 내부 상대 경로여야 합니다.')

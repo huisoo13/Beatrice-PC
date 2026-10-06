@@ -1,0 +1,13 @@
+{
+  "mode": "yolo",
+  "weights": "models/completion-overlay.pt",
+  "classes": [
+    "completion_overlay",
+    "completion_text"
+  ],
+  "confidence": 0.7,
+  "imageSize": 960,
+  "trainingRun": "completion-overlay-variable-0929",
+  "trainingManifest": "data/annotations/completion-overlay-0929.json",
+  "modelSha256": "e631db13a0653fe8b58dafc4f0ca667e919e31eeae70c031c753d4262367808b"
+}

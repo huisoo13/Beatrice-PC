@@ -47,13 +47,12 @@ def merge_text_duplicates(items):
 
 
 class UIRegionDetector:
-    def __init__(self,config=None,model=None,recovery_model=None):
+    def __init__(self,config=None,model=None):
         self.config=config or load_config()
         if self.config.get('architecture')=='split' and model is None:
             self.character_detector=UIRegionDetector(json.loads((ROOT/self.config['characterConfig']).read_text(encoding='utf-8')))
             self.dungeon_detector=UIRegionDetector(json.loads((ROOT/self.config['dungeonConfig']).read_text(encoding='utf-8')))
             return
-        load_recovery=model is None
         if model is None:
             path=ROOT/self.config['weights']
             if not path.is_file():raise ValueError('통합 UI 모델을 현재 해상도 데이터로 학습한 뒤 yolo 모드를 켜주세요.')
@@ -62,30 +61,50 @@ class UIRegionDetector:
         if [model.names[i] for i in range(len(model.names))]!=self.config['classes']:
             raise ValueError('통합 UI 모델 클래스와 설정이 다릅니다.')
         self.model=model
-        if recovery_model is None and load_recovery and self.config.get('menuRecoveryWeights'):
-            recovery_path=ROOT/self.config['menuRecoveryWeights']
-            if not recovery_path.is_file():raise ValueError('메뉴 보완 모델 파일이 없습니다.')
-            recovery_model=YOLO(str(recovery_path))
-        if recovery_model is not None and [recovery_model.names[i] for i in range(len(recovery_model.names))]!=self.config['classes']:
-            raise ValueError('메뉴 보완 모델 클래스와 설정이 다릅니다.')
-        self.recovery_model=recovery_model
         if self.config.get('elementConfig'):
             self.element_detector=UIRegionDetector(json.loads((ROOT/self.config['elementConfig']).read_text(encoding='utf-8')))
 
     def locate(self,frame):
         if hasattr(self,'character_detector'):
             character=self.character_detector.locate(frame)
-            visible=any(character.get(k,{}).get('status')!='missing' for k in ('game_menu','switch_dialog'))
+            visible=any(character.get(k,{}).get('status','missing')!='missing' for k in
+                        ('game_menu','switch_dialog','server_table','loading_progress'))
+            card=get_box(character,'selected_character_card')
+            name=get_box(character,'selected_character_name')
+            visible=visible or bool(card and (get_box(character,'game_start_button') or
+                                             (name and contained(name,card))))
             dungeon=({k:dict(status='missing',candidates=[],reason='character_ui_visible') for k in self.dungeon_detector.config['classes']}
                      if visible else self.dungeon_detector.locate(frame))
             return dict(character,**dungeon)
         regions=self._locate(frame,self.model)
-        if regions.get('game_menu',{}).get('status')=='missing' and self.recovery_model is not None:
-            recovered=self._locate(frame,self.recovery_model)
-            if recovered['game_menu']['status']=='detected':
-                for kind in ('game_menu','current_name_line','switch_dialog','target_name_line','loading_indicator'):
-                    if regions[kind]['status']=='missing' and recovered[kind]['status']!='missing':
-                        regions[kind]=dict(recovered[kind],source='menu_recovery_yolo')
+        menu=get_box(regions,'game_menu')
+        if menu is not None and get_box(regions,'current_name_line') is None and regions.get('switch_dialog',{}).get('status')=='missing':
+            l,t,r,b=menu
+            found=self._locate(frame[t:b,l:r],self.model)['current_name_line']
+            candidates=[dict(item,xyxy=[item['xyxy'][0]+l,item['xyxy'][1]+t,item['xyxy'][2]+l,item['xyxy'][3]+t]) for item in found['candidates']]
+            regions['current_name_line']=dict(status=found['status'],candidates=candidates,
+                                             **(candidates[0] if len(candidates)==1 else {}))
+        card=get_box(regions,'selected_character_card')
+        if card is not None and 'selected_character_name' in self.config['classes']:
+            l,t,r,b=card
+            # 같은 YOLO 모델을 실제 탐지 카드 전체에 적용합니다. 상대 OCR crop 없음.
+            found=self._locate(frame[t:b,l:r],self.model)['selected_character_name']
+            for padding in (.05,):
+                if found['status']!='missing':break
+                # 탐지 테두리의 작은 오차만 보완합니다. 이름 위치/크기를 비율로 지정하지 않습니다.
+                l,t,r,b=card
+                margin=max(1,round((b-t)*padding));h,w=frame.shape[:2]
+                l,t,r,b=max(0,l-margin),max(0,t-margin),min(w,r+margin),min(h,b+margin)
+                found=self._locate(frame[t:b,l:r],self.model)['selected_character_name']
+            candidates=[dict(item,xyxy=[item['xyxy'][0]+l,item['xyxy'][1]+t,item['xyxy'][2]+l,item['xyxy'][3]+t]) for item in found['candidates']]
+            candidates=[item for item in candidates if contained(item['xyxy'],card)]
+            original=get_box(regions,'selected_character_name')
+            # A failed crop retry must not erase a valid full-frame name.
+            if not candidates and original and contained(original,card):
+                entry=regions['selected_character_name']
+                candidates=entry.get('candidates',[]) or [dict(xyxy=original,confidence=entry.get('confidence',0))]
+            regions['selected_character_name']=dict(status='detected' if len(candidates)==1 else ('ambiguous' if candidates else 'missing'),candidates=candidates,
+                                                    **(candidates[0] if len(candidates)==1 else {}))
         if hasattr(self,'element_detector'):
             kinds=self.element_detector.config['classes']
             elements={kind:dict(status='missing',candidates=[]) for kind in kinds}
@@ -115,7 +134,7 @@ class UIRegionDetector:
             x1,y1,x2,y2=coords
             if not (0<=x1<x2<=w and 0<=y1<y2<=h):continue
             groups[self.config['classes'][kind]].append(dict(xyxy=[math.floor(x1),math.floor(y1),math.ceil(x2),math.ceil(y2)],confidence=score))
-        text_kinds={'current_name_line','target_name_line','dungeon_name','difficulty','gateless_title'}
+        text_kinds={'current_name_line','target_name_line','selected_character_name','dungeon_name','difficulty','gateless_title'}
         groups={kind:merge_text_duplicates(items) if kind in text_kinds else suppress_duplicates(items,self.config.get('nmsIou',.4)) for kind,items in groups.items()}
         return {kind:dict(status='detected' if len(items)==1 else ('missing' if not items else 'ambiguous'),
                          candidates=items,**(items[0] if len(items)==1 else {})) for kind,items in groups.items()}

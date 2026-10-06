@@ -6,6 +6,29 @@ from beatrice.storage import Store
 from beatrice.live import LiveCoordinator
 
 class LiveTests(unittest.TestCase):
+    def test_switch_target_records_without_reopening_menu(self):
+        store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
+        now=datetime(2026,9,30,tzinfo=timezone.utc)
+        def feed(i,char=None,context=None,boxes=None):
+            return live.update(now+timedelta(seconds=i),char or {},boxes or [],context or {})
+        for i in range(3):feed(i,dict(currentName=dict(text='후이수',confidence=.99)))
+        feed(3,dict(switchDialog=True,targetName=dict(text='테베체',confidence=.99)))
+        feed(4,dict(switchLoading=True))
+        context=dict(dungeonName='새 던전',difficulty='하드',contextStatus='ocr_held')
+        boxes=[dict(xyxy=[0,0,20,30],state='완료',confidence=.99)]
+        for i in range(5,8):
+            self.assertFalse(feed(i,context=context,boxes=boxes)['identity']['recordingAllowed'])
+        # 마을 화면: 던전/관문 정보 없이 로딩 종료만으로 이름 확정.
+        for i in range(8,11):result=feed(i,dict(loadingAbsent=True))
+        self.assertEqual(result['identity']['currentName'],'테베체')
+        self.assertTrue(result['identity']['recordingAllowed'])
+        context['contextStatus']='ocr_verified'
+        for i in range(11,18):result=feed(i,context=context,boxes=boxes)
+        self.assertEqual(result['identity']['currentName'],'테베체')
+        records=store.state_records()
+        self.assertEqual(len(records),1)
+        self.assertEqual(records[0]['characterName'],'테베체')
+
     def test_missing_gate_does_not_replace_known_gate_count(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
         now=datetime(2026,9,23,tzinfo=timezone.utc)
@@ -26,7 +49,8 @@ class LiveTests(unittest.TestCase):
         state=live.update(datetime(2026,9,23,tzinfo=timezone.utc),{},[],context)
         self.assertIn('이전 던전명 유지',state['recordingStatus'])
         self.assertIn('관문 영역 재탐지',state['recordingStatus'])
-        self.assertEqual(state['result'],{})
+        self.assertFalse(state['result'].get('changedRecords'))
+        self.assertEqual(state['result']['completionDecision']['reason'],'missing')
 
     def test_starting_with_completed_gate_creates_one_state_record(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)

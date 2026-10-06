@@ -9,9 +9,13 @@
     "switch_dialog",
     "target_name_line",
     "loading_indicator",
+    "server_table",
+    "selected_character_card",
+    "selected_character_name",
+    "game_start_button",
+    "loading_progress",
     "dungeon_panel",
     "gate_panel",
-    "quest_complete_banner",
     "gateless_raid_panel",
     "dungeon_name",
     "difficulty",
@@ -22,5 +26,5 @@
   ],
   "confidence": 0.7,
   "imageSize": 1280,
-  "notes": "2026-09-26 실제 YOLO 박스만 사용. 캐릭터 5종, 던전 부모 4종, 탐지 패널 전체에서 세부 요소 7종. 고정 화면 좌표와 패널 내부 비율 OCR 제거. 제공 해상도 재현 검증이며 모든 해상도를 보장하지 않음."
+  "notes": "2026-10-01 캐릭터 10종, 던전 부모 2종, 세부 요소 7종. 완료 표시는 별도 completion-overlay 모델과 공유 PaddleOCR 사용. loading_indicator는 로딩 전 회전 안내, loading_progress는 실제 로딩 막대의 이동하는 발광 표식. 고정 화면 좌표나 패널 비율 OCR 없음."
 }

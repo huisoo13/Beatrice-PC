@@ -20,7 +20,7 @@ class UIRegionTests(unittest.TestCase):
 
     def test_element_yolo_receives_only_detected_parent_and_returns_original_coordinates(self):
         detector=UIRegionDetector.__new__(UIRegionDetector)
-        detector.model=object();detector.recovery_model=None
+        detector.model=object()
         detector.element_detector=Mock();detector.element_detector.config={'classes':['dungeon_name']}
         detector.element_detector.locate.return_value={'dungeon_name':dict(status='detected',candidates=[dict(xyxy=[10,20,250,50],confidence=.99)])}
         frame=np.zeros((1080,1920,3),dtype=np.uint8)
@@ -163,22 +163,5 @@ class UIRegionTests(unittest.TestCase):
         out=self.vision.analyze_detected(self.frame,self.regions)
         self.assertIsNone(out['currentName'])
         self.vision.read_name.assert_not_called()
-
-    def test_menu_recovery_does_not_replace_dungeon_results(self):
-        def model(boxes):
-            value=Mock();value.names=dict(enumerate(load_config()['classes']))
-            value.predict.return_value=[Mock(boxes=[Mock(cls=[kind],conf=[.99],xyxy=np.array([coords])) for kind,coords in boxes])]
-            return value
-        primary=model([(5,[10,40,360,240])])
-        recovery=model([(0,[780,320,2820,1050]),(1,[780,893,1210,932]),(5,[20,50,370,250])])
-        detector=UIRegionDetector(model=primary,recovery_model=recovery)
-        result=detector.locate(self.frame)
-        self.assertEqual(result['game_menu']['source'],'menu_recovery_yolo')
-        self.assertEqual(result['dungeon_panel']['xyxy'],[10,40,360,240])
-        primary.predict.return_value=[Mock(boxes=[Mock(cls=[0],conf=[.99],xyxy=np.array([[780,320,2820,1050]]))])]
-        recovery.predict.reset_mock()
-        detector.locate(self.frame)
-        recovery.predict.assert_not_called()
-
 
 if __name__=='__main__':unittest.main()

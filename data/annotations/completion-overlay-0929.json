@@ -1,0 +1,620 @@
+{
+  "classes": [
+    "completion_overlay",
+    "completion_text"
+  ],
+  "images": [
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00000.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": []
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00570.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00585.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00600.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00615.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00630.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample001-frame00645.png",
+      "split": "train",
+      "sessionId": "video-1",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            790,
+            345,
+            1135,
+            632
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1081,
+            623
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame00000.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": []
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame01035.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            805,
+            375,
+            1120,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            824,
+            471,
+            1098,
+            534
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame01050.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            805,
+            375,
+            1120,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            824,
+            471,
+            1098,
+            534
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame01065.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            805,
+            375,
+            1120,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            824,
+            471,
+            1098,
+            534
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame01080.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            805,
+            375,
+            1120,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            824,
+            471,
+            1098,
+            534
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample002-frame01095.png",
+      "split": "train",
+      "sessionId": "video-2",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            805,
+            375,
+            1120,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            824,
+            471,
+            1098,
+            534
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00000.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": []
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00690.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            815,
+            340,
+            1105,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            849,
+            575,
+            1075,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00705.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            815,
+            340,
+            1105,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            849,
+            575,
+            1075,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00720.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            815,
+            340,
+            1105,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            849,
+            575,
+            1075,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00735.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            815,
+            340,
+            1105,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            849,
+            575,
+            1075,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample003-frame00750.png",
+      "split": "train",
+      "sessionId": "video-3",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            815,
+            340,
+            1105,
+            638
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            849,
+            575,
+            1075,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample004-frame00000.png",
+      "split": "train",
+      "sessionId": "video-4",
+      "boxes": []
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample004-frame01125.png",
+      "split": "train",
+      "sessionId": "video-4",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            812,
+            310,
+            1118,
+            636
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1082,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample004-frame01140.png",
+      "split": "train",
+      "sessionId": "video-4",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            812,
+            310,
+            1118,
+            636
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1082,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample004-frame01155.png",
+      "split": "train",
+      "sessionId": "video-4",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            812,
+            310,
+            1118,
+            636
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1082,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/completion-videos-0929/sample004-frame01170.png",
+      "split": "train",
+      "sessionId": "video-4",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            812,
+            310,
+            1118,
+            636
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            839,
+            574,
+            1082,
+            624
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/gate-breakthrough-0929/20260929-150944-gate1-breakthrough.jpg",
+      "split": "val",
+      "sessionId": "20260929-150944-gate1-breakthrough.jpg",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            1470,
+            361,
+            1965,
+            889
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            1525,
+            781,
+            1923,
+            873
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/gate-breakthrough-0929/20260929-dungeon-clear.jpg",
+      "split": "val",
+      "sessionId": "20260929-dungeon-clear.jpg",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            1470,
+            361,
+            1965,
+            889
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            1505,
+            781,
+            1937,
+            873
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/gate-breakthrough-0929/20260929-gateless-dungeon-clear.jpg",
+      "split": "train",
+      "sessionId": "20260929-gateless-dungeon-clear.jpg",
+      "boxes": [
+        {
+          "class": "completion_overlay",
+          "xyxy": [
+            1466,
+            279,
+            1982,
+            761
+          ]
+        },
+        {
+          "class": "completion_text",
+          "xyxy": [
+            1508,
+            568,
+            1937,
+            662
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../outputs/gate-breakthrough-20260929-151043/frame-000.jpg",
+      "split": "val",
+      "sessionId": "outputs/gate-breakthrough-20260929-151043",
+      "boxes": []
+    },
+    {
+      "path": "../../outputs/gateless-review-20260929-155522/frame-000.jpg",
+      "split": "train",
+      "sessionId": "outputs/gateless-review-20260929-155522",
+      "boxes": []
+    }
+  ],
+  "notes": "Small supplied sample set; video replay is reconstruction, not general accuracy."
+}

@@ -16,6 +16,7 @@ dist/
 .venv-ml/
 data/yolo-first/
 data/datasets/
+data/processed/
 
 # Local Google OAuth credentials
 client_secret_*.json

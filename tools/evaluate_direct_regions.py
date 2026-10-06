@@ -62,7 +62,6 @@ def main():
                     wanted=[{'gate_in_progress':'진행중','gate_completed':'완료','gate_not_started':'진행 전'}[b['class']] for b in sorted(labels,key=lambda b:b['xyxy'][0]) if b['class'].startswith('gate_') and b['class']!='gate_panel']
                     if [b['state'] for b in gates]!=wanted:errors.append('gate_array_mismatch')
                 if not raid and result.get('dungeonVisible'):errors.append('false_raid')
-                if ('quest_complete_banner' in expected)!=bool(result.get('completionBanner')):errors.append('banner_mismatch')
                 if row.get('sessionId')=='260926-resolution' and raid:
                     from beatrice.dungeon import key
                     if key((result.get('dungeonName') or {}).get('text',''))!=key('4막 : 파멸의 성채'):errors.append('wrong_dungeon_name')

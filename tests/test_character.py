@@ -14,6 +14,68 @@ def observation(name=None,dialog=False,target=None,confidence=.95):
 
 
 class CharacterTests(unittest.TestCase):
+    def test_loading_absence_requires_valid_visible_frame_and_missing_regions(self):
+        import numpy as np
+        from unittest.mock import Mock
+        from beatrice.character_vision import CharacterVision
+        vision=CharacterVision(reader=Mock())
+        regions={k:dict(status='missing') for k in ('game_menu','switch_dialog','loading_indicator')}
+        frame=np.full((100,200,3),100,dtype=np.uint8)
+        self.assertTrue(vision.analyze_detected(frame,regions)['loadingAbsent'])
+        self.assertFalse(vision.analyze_detected(np.zeros_like(frame),regions)['loadingAbsent'])
+        for key in regions:
+            uncertain=dict(regions,**{key:dict(status='ambiguous')})
+            self.assertFalse(vision.analyze_detected(frame,uncertain)['loadingAbsent'])
+        self.assertFalse(vision.analyze_detected(frame,{})['loadingAbsent'])
+
+    def test_loading_dropout_and_capture_loss_reset_completion_streak(self):
+        self.feed(dialog=True,target='테베체');self.feed(loading=True)
+        for t,obs in ((1,dict(loadingAbsent=True)),(1.5,{}),
+                      (2,dict(loadingAbsent=True)),(2.5,dict(switchLoading=True)),
+                      (3,dict(loadingAbsent=True)),(3.5,dict(loadingAbsent=True))):
+            self.assertFalse(self.tracker.update(t,obs)['recordingAllowed'])
+        self.assertTrue(self.tracker.update(4,dict(loadingAbsent=True))['recordingAllowed'])
+
+    def test_target_promoted_only_after_positive_recovery(self):
+        self.feed('후이수',count=3)
+        self.feed(dialog=True,target='테베체')
+        # OCR 한 프레임 누락은 확인창에서 읽은 이름을 잃지 않습니다.
+        self.feed(dialog=True)
+        result=self.feed(loading=True)
+        self.assertEqual(result['status'],'switching')
+        self.assertEqual(result['pendingName'],'테베체')
+        self.assertFalse(self.feed(count=3)['recordingAllowed'])
+        for i in range(3):
+            self.t+=.5
+            result=self.tracker.update(self.t,dict(loadingAbsent=True))
+            self.assertEqual(result['recordingAllowed'],i==2)
+        self.assertEqual(result['currentName'],'테베체')
+        self.assertEqual(result['actions'],[dict(type='confirmed',name='테베체')])
+
+    def test_recovery_does_not_use_target_on_cancel_or_loading(self):
+        for signal in ('switchLoading','normalMenu','currentRegionVisible'):
+            tracker=CharacterTracker()
+            tracker.update(0,observation(dialog=True,target='테베체'))
+            tracker.update(.1,dict(switchLoading=True))
+            for t in (.2,.3,.4,.5):
+                result=tracker.update(t,dict(loadingAbsent=True,**{signal:True}))
+            self.assertFalse(result['recordingAllowed'])
+        self.feed('후이수',count=3)
+        self.feed(dialog=True,target='테베체')
+        for i in range(3):
+            self.t+=.5
+            result=self.tracker.update(self.t,dict(loadingAbsent=True))
+        self.assertEqual(result['currentName'],'후이수')
+
+    def test_recovery_gap_and_timeout_do_not_confirm(self):
+        self.feed(dialog=True,target='테베체');self.feed(loading=True)
+        for t in (1,1.5,3,3.5):
+            result=self.tracker.update(t,dict(loadingAbsent=True))
+            self.assertFalse(result['recordingAllowed'])
+        result=self.tracker.update(125,dict(loadingAbsent=True))
+        self.assertIsNone(result['pendingName'])
+        self.assertFalse(result['recordingAllowed'])
+
     def test_loading_without_recent_dialog_does_not_suspend(self):
         self.feed('후이수',count=3)
         self.assertTrue(self.feed(loading=True)['recordingAllowed'])

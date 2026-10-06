@@ -26,7 +26,7 @@ def main():
                 boxes=[dict(b,xyxy=[round(b['xyxy'][0]*scale)+dx,round(b['xyxy'][1]*scale)+dy,round(b['xyxy'][2]*scale)+dx,round(b['xyxy'][3]*scale)+dy]) for b in row['boxes']]
                 doc['images'].append(dict(row,path='../raw/direct-reinforcement-0926/'+dest.name,boxes=boxes,synthetic=True,transform=dict(scale=scale,offset=[dx,dy]),sourceParent=row['path']))
         if role=='dungeon':
-            model=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
+            model=YOLO(str(ROOT/'outputs/retired-models-0929/gates-yolo26n-first.pt'))
             reference=copy.deepcopy(original[33])
             classes={'진행중':'gate_in_progress','완료':'gate_completed','진행 전':'gate_not_started'}
             tiles=[]

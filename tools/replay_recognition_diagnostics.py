@@ -13,6 +13,7 @@ def main():
     p.add_argument('directory',type=Path);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--weights',type=Path,help='지정하면 저장된 탐지 대신 원본 프레임에 YOLO부터 다시 실행')
     p.add_argument('--config',type=Path,help='실행할 모델 구성. 지정하면 원본 프레임에 YOLO부터 다시 실행')
+    p.add_argument('--completion-weights',type=Path,help='완료 표시 후보 모델 검증 시 지정')
     p.add_argument('--restore-recorded-identity',action='store_true',help='잘린 진단 구간 시작 시 기록된 확정 캐릭터를 초기 상태로 복원. 이름 OCR 검증이 아닙니다.')
     p.add_argument('--sequence-from',type=int,help='원본 진단의 시작 sequence (포함)')
     p.add_argument('--sequence-to',type=int,help='원본 진단의 마지막 sequence (포함)')
@@ -29,7 +30,11 @@ def main():
     from beatrice.live import LiveCoordinator
     from beatrice.storage import Store
     from beatrice.character import valid_name
+    from beatrice.completion_overlay import CompletionOverlayDetector
     ocr=DungeonOCR();vision=CharacterVision(reader=ocr.reader)
+    completion_config=json.loads((ROOT/'config/completion-overlay.json').read_text(encoding='utf-8'))
+    if args.completion_weights:completion_config['weights']=str(args.completion_weights.resolve())
+    completion=CompletionOverlayDetector(ocr.reader,completion_config)
     config=json.loads(args.config.read_text(encoding='utf-8')) if args.config else load_config()
     if args.weights:config.update(architecture='integrated',weights=str(args.weights.resolve()))
     detector=UIRegionDetector(config) if args.weights or args.config else None
@@ -53,6 +58,8 @@ def main():
         identity=vision.analyze_detected(frame,regions,seconds=seconds,confirmed_name=ct.current if not ct.blocked else None)
         blocked=any(regions.get(k,{}).get('status')!='missing' for k in ('game_menu','switch_dialog')) or identity.get('switchLoading',False)
         dungeon,gates=observer.analyze(frame,regions,seconds,blocked=blocked)
+        if not blocked and live.completion_context is not None:
+            dungeon['completionOverlay']=completion.analyze(frame)
         context=dt.update(seconds,dungeon)
         state=live.update(datetime.fromisoformat(r['observedAt']),identity,gates,context)
         if any(a['type']=='suspend' for a in state['identity']['actions']):

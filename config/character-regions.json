@@ -6,15 +6,25 @@
     "current_name_line",
     "switch_dialog",
     "target_name_line",
-    "loading_indicator"
+    "loading_indicator",
+    "server_table",
+    "selected_character_card",
+    "selected_character_name",
+    "game_start_button",
+    "loading_progress"
   ],
   "confidence": 0.7,
-  "imageSize": 1280,
+  "imageSize": 960,
   "nmsIou": 0.4,
-  "trainingRun": "character-variable-switch-clean-0928",
-  "trainingManifest": "data/annotations/character-variable-switch-0928.json",
+  "trainingRun": "character-dim-1006",
+  "trainingManifest": "data/annotations/login-dim-1006.json",
   "classConfidence": {
-    "target_name_line": 0.5
+    "target_name_line": 0.5,
+    "selected_character_card": 0.25,
+    "selected_character_name": 0.35,
+    "game_start_button": 0.2,
+    "loading_progress": 0.6,
+    "current_name_line": 0.6
   },
-  "modelSha256": "1ad3a2824775b0f0296f05e2b62b8132594686b1f81ef15d3262e6a8e1605d50"
+  "modelSha256": "4c41ad0a17f3a3fa1e1d15e35679da8fe289b5cc7a177ed2752266279de4ac8c"
 }

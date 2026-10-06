@@ -1,6 +1,7 @@
 """전체 화면 → YOLO 영역 → PaddleOCR 이름. 입력 출처와 시간 처리는 분리됩니다."""
 import re
 import unicodedata
+import numpy as np
 from .character import valid_name
 
 def name_from_line(text, includes_level=False):
@@ -56,7 +57,16 @@ class CharacterVision:
         if crop.size==0:
             return None
         # 레벨과 이름 사이 공백도 같은 줄로 묶어야 이름만 남고 Lv가 사라지지 않습니다.
-        crop=trim_name_line(crop,max_gap=max(12,crop.shape[0]) if includes_level else None)
+        max_gap=max(12,crop.shape[0]) if includes_level else None
+        trimmed=trim_name_line(crop,max_gap=max_gap)
+        if trimmed is None:
+            # Modal overlays dim the already detected name. Normalize luminance
+            # locally, without choosing another screen region or guessing text.
+            peak=float(np.percentile(np.max(crop,axis=2),98))
+            if 24<=peak<120:
+                brighter=np.clip(crop.astype(np.float32)*(200/peak),0,255).astype(np.uint8)
+                trimmed=trim_name_line(brighter,max_gap=max_gap)
+        crop=trimmed
         if crop is None:
             return dict(accepted=None,raw=[],status='no_text_pixels')
         gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY)
@@ -128,6 +138,9 @@ class CharacterVision:
         # 복수 팝업 후보가 있으면 일반 메뉴 복귀/취소로 단정하지 않습니다.
         popup_clear=regions.get('switch_dialog',{}).get('status')=='missing'
         out=dict(normalMenu=bool(menu and popup_clear and not loading['visible']),
+                 loadingAbsent=bool(regions.get('loading_indicator',{}).get('status')=='missing'
+                                    and popup_clear and regions.get('game_menu',{}).get('status')=='missing'
+                                    and np.mean(np.max(frame,axis=2)>24)>.01),
                  switchDialog=bool(dialog),switchLoading=loading['visible'],currentName=None,targetName=None,
                  currentRegionVisible=bool(current and menu and contained(current,menu)),
                  detections=regions,ocr=dict(loading=loading))
@@ -157,4 +170,24 @@ class CharacterVision:
             out['ocr']['targetName']=read
             if read:out['targetName']=read['accepted']
         out['diagnosticStatus']=out['ocr'].get('menuName',out['ocr'].get('currentName',{})).get('status','name_region_not_found')
+        from .initial_login import observe_login
+        out.update(observe_login(frame,regions,self))
+        out['loadingAbsent']=bool(out['loadingAbsent'] and regions.get('loading_progress',{}).get('status','missing')=='missing')
+        # A fading/animated progress marker can disappear while the loading
+        # picture remains. Missing detection alone is not a scene transition.
+        import cv2
+        scene=cv2.resize(frame,(64,64),interpolation=cv2.INTER_AREA).astype(np.int16)
+        reference=getattr(self,'_loading_scene',None)
+        if out['loginLoading']:
+            self._loading_scene=scene
+            reference=scene
+        elif out['normalMenu']:
+            self._loading_scene=None
+            reference=None
+        changed_fraction=(float(np.mean(np.max(np.abs(scene-reference),axis=2)>35))
+                          if reference is not None else None)
+        out['loadingSceneChangedFraction']=changed_fraction
+        if changed_fraction is not None and changed_fraction<.35:
+            out['loadingAbsent']=False
+        out['loginLoadingAbsent']=bool(out['loginLoadingAbsent'] and out['loadingAbsent'])
         return out

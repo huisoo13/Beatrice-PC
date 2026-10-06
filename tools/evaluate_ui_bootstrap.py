@@ -53,6 +53,7 @@ def main():
         # 배너 클래스를 활성화한 구성에 한해 수동 확인한 추가 라벨을 검사합니다.
         if 'quest_complete_banner' in regions and source.name=='negative-260910_213142.png':
             expected['quest_complete_banner']=[1300,35,2150,290]
+        expected={name:coords for name,coords in expected.items() if name in regions}
         matches={name:regions[name]['status']=='detected' and iou(coords,regions[name]['xyxy'])>=.5 for name,coords in expected.items()}
         extra=[name for name,region in regions.items() if region['status']!='missing' and name not in expected]
         row=dict(image=source.name,synthetic=item['synthetic'],matches=matches,extra=extra,

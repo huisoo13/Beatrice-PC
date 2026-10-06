@@ -33,7 +33,7 @@ def main():
         observer.reset();obs,gates=observer.analyze(frame,regions,i)
         detected=[k for k,v in regions.items() if v['status']=='detected']
         actual='gateless' if 'gateless_raid_panel' in detected else 'gated' if 'dungeon_panel' in detected else None
-        good=actual==kind and ('quest_complete_banner' in detected)==banner
+        good=actual==kind
         if kind is not None:good=good and bool(obs.get('dungeonVisible') and obs.get('dungeonName'))
         row=dict(path=path,expectedKind=kind,expectedBanner=banner,passed=bool(good),regions=regions,observation=obs,gates=gates)
         rows.append(row)
@@ -52,7 +52,7 @@ def main():
             frame[145:355,5:400]=25
             for y in (155,205,315):cv2.putText(frame,'Alternate objective',(15,y+20),cv2.FONT_HERSHEY_SIMPLEX,.65,(200,200,200),2)
         observer.reset();regions=detector.locate(frame);obs,gates=observer.analyze(frame,regions,0)
-        good=obs.get('raidKind')=='gateless' and obs.get('dungeonVisible') and obs.get('completionBanner')
+        good=obs.get('raidKind')=='gateless' and obs.get('dungeonVisible')
         variable.append(dict(variant=variant,passed=bool(good),observation=obs,regions=regions))
     args.output.with_suffix('.variable.json').write_text(json.dumps(variable,ensure_ascii=False,indent=2),encoding='utf-8')
     print('VARIABLE',sum(r['passed'] for r in variable),'/',len(variable),flush=True)

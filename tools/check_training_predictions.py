@@ -13,7 +13,7 @@ def iou(a,b):
 
 
 m=json.loads((ROOT/'data/yolo-first/manifest.json').read_text())
-model=YOLO(str(ROOT/'models/gates-yolo26n-first.pt'))
+model=YOLO(str(ROOT/'outputs/retired-models-0929/gates-yolo26n-first.pt'))
 rows=[]
 for item in m['images']:
     im=Image.open(ROOT/item['source']).convert('RGB').crop(ROI)

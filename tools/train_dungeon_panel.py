@@ -76,6 +76,10 @@ def main():
     train.add_argument('--lr',type=float,default=.001)
     train.add_argument('--nominal-batch-size',type=int,default=64,help='Gradient accumulation target; use a smaller value for small direct-element datasets.')
     train.add_argument('--shuffle',action='store_true',help='Use square batches with shuffled samples instead of rectangular aspect sorting.')
+    train.add_argument('--translate',type=float,default=.08)
+    train.add_argument('--scale',type=float,default=.15)
+    train.add_argument('--warmup-bias-lr',type=float,default=.1)
+    train.add_argument('--warmup-epochs',type=float,default=3)
     args=parser.parse_args()
     if args.command=='prepare':
         classes=json.loads(args.classes_config.read_text(encoding='utf-8'))['classes'] if args.classes_config else None
@@ -90,7 +94,8 @@ def main():
     YOLO(str(args.weights)).train(data=str(args.dataset.resolve()),epochs=args.epochs,imgsz=args.imgsz,
         batch=2,device=args.device,workers=0,project=str(ROOT/'outputs/training'),name=args.name,
         exist_ok=False,seed=42,fliplr=0,flipud=0,mosaic=0,mixup=0,degrees=0,
-        translate=.08,scale=.15,plots=False,amp=False,freeze=args.freeze,optimizer='AdamW',lr0=args.lr,
+        translate=args.translate,scale=args.scale,plots=False,amp=False,freeze=args.freeze,optimizer='AdamW',lr0=args.lr,
+        warmup_bias_lr=args.warmup_bias_lr,warmup_epochs=args.warmup_epochs,
         patience=0,val=False,hsv_h=0,hsv_s=.1,hsv_v=.1,rect=not args.shuffle,nbs=args.nominal_batch_size)
 
 

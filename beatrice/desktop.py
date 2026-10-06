@@ -6,7 +6,7 @@ import threading
 import traceback
 from datetime import datetime,timezone
 from pathlib import Path
-from PySide6.QtCore import QThread,Signal,QTimer,QLockFile
+from PySide6.QtCore import QThread,Signal,QTimer,QLockFile,Qt
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,
     QPushButton,QLabel,QComboBox,QTableWidget,QTableWidgetItem,QHeaderView)
 from .storage import Store
@@ -15,6 +15,8 @@ from .process_watch import ProcessWatch
 from .google_login_ui import GoogleLogin
 from .drive_ui import DrivePanel
 from .public_content_ui import PublicContentPanel
+from .content_match import FileContentMatcher
+from .record_detail_ui import RecordDetailDialog
 
 ROOT=Path(__file__).resolve().parents[1]
 DATA=Path(os.environ.get('BEATRICE_DATA_DIR',str(Path.home()/'BeatricePC')))
@@ -45,12 +47,16 @@ class Worker(QThread):
             from .ui_regions import load_config as load_ui_config,UIRegionDetector
             from .recognition_diagnostic import RecognitionDiagnostic
             from .dungeon_observer import DungeonObserver
+            from .completion_overlay import CompletionOverlayDetector
+            from .completion_diagnostic import CompletionDiagnostic
             ui_config=load_ui_config()
             if ui_config['mode']!='yolo':raise ValueError('YOLO 탐지만 지원합니다.')
             ui_detector=UIRegionDetector(ui_config)
             dungeon=DungeonOCR();character=CharacterVision(reader=dungeon.reader);tracker=DungeonTracker(max_gap=5)
             dungeon_observer=DungeonObserver(dungeon)
-            store=Store(DATA/'records.sqlite3');coordinator=LiveCoordinator(store)
+            completion=CompletionOverlayDetector(dungeon.reader,json.loads((ROOT/'config/completion-overlay.json').read_text(encoding='utf-8')))
+            completion_diagnostic=CompletionDiagnostic(DATA/'completion-diagnostics')
+            store=Store(DATA/'records.sqlite3',catalog=FileContentMatcher(ROOT,DATA));coordinator=LiveCoordinator(store)
             diagnostic=RecognitionDiagnostic(DATA/'recognition-diagnostics')
             last_diagnostic=0
             self.progress.emit('2 / 2 · LOSTARK 클라이언트를 탐색하는 중…')
@@ -100,7 +106,11 @@ class Worker(QThread):
                         observation=identity),ensure_ascii=False,indent=2),encoding='utf-8')
                     last_diagnostic=started
                 blocked=any(regions.get(k,{}).get('status')!='missing' for k in ('game_menu','switch_dialog')) or identity.get('switchLoading',False)
+                blocked=blocked or any(identity.get(k) for k in ('serverSelection','characterSelection','loginLoading','selectionUncertain'))
                 dungeon_observation,boxes=dungeon_observer.analyze(frame,regions,started,blocked=blocked)
+                if self.requested()!=(generation,client) or not client_alive(client):continue
+                if not blocked and coordinator.completion_context is not None:
+                    dungeon_observation['completionOverlay']=completion.analyze(frame)
                 if self.requested()!=(generation,client) or not client_alive(client):continue
                 context=tracker.update(at.timestamp(),dungeon_observation)
                 dungeon_at=time.monotonic()
@@ -108,7 +118,19 @@ class Worker(QThread):
                     (DATA/'dungeon-diagnostic.json').write_text(json.dumps(dict(
                         mode='ui_yolo',observedAt=at.isoformat(),observation=dungeon_observation),
                         ensure_ascii=False,indent=2),encoding='utf-8')
-                state=coordinator.update(at,identity,boxes,context)
+                try:
+                    state=coordinator.update(at,identity,boxes,context)
+                except Exception as error:
+                    # Preserve the triggering frame even if the DB transaction fails.
+                    try:
+                        completion_diagnostic.record(frame,dict(observedAt=at.isoformat(),
+                            modelConfig=ui_config,completionModelConfig=completion.config,
+                            character=identity,dungeon=dungeon_observation,gates=boxes,
+                            error=str(error),state=dict(result=dict(completionDecision=dict(
+                                reason='coordinator_error',observation=context.get('completionOverlay',{}))))))
+                    except OSError:
+                        pass  # The original failure is logged by the outer handler.
+                    raise
                 if any(action['type']=='suspend' for action in state['identity']['actions']):
                     tracker.reset()
                     dungeon_observer.reset()
@@ -119,9 +141,11 @@ class Worker(QThread):
                 state['size']=f'{frame.shape[1]} × {frame.shape[0]}'
                 state['generation']=generation
                 try:
-                    diagnostic.record(frame,dict(observedAt=at.isoformat(),
-                        modelConfig=ui_config,character=identity,dungeon=dungeon_observation,
-                        gates=boxes,state=state),now=started)
+                    report=dict(observedAt=at.isoformat(),
+                        modelConfig=ui_config,completionModelConfig=completion.config,character=identity,dungeon=dungeon_observation,
+                        gates=boxes,state=state)
+                    completion_diagnostic.record(frame,report)
+                    diagnostic.record(frame,report,now=started)
                 except OSError as exc:
                     # 진단 저장 실패가 인식 및 기록 루프를 중단하지 않게 합니다.
                     self.status.emit(generation,f'진단 저장 실패: {exc}')
@@ -168,6 +192,8 @@ class Window(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(2,QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers);layout.addWidget(self.table,1)
+        self.record_dialog=None
+        self.table.cellClicked.connect(self.show_record_detail)
         note=QLabel('완료된 관문만 저장·표시하며 동일 캐릭터·던전·관문은 전체 삭제 전까지 한 번만 기록합니다.\n'
             '진행 전·진행 중 상태는 분석 중에만 유지합니다. 후속 관문 완료는 앞선 관문 완료를 보완합니다.\n'
             '화면에서 패널을 자동으로 찾습니다. 다른 해상도·UI 배율·배치에서는 추가 검증이 필요합니다.');note.setWordWrap(True);layout.addWidget(note)
@@ -254,6 +280,12 @@ class Window(QMainWindow):
         identity=value['identity'];name=identity['currentName'] if identity['recordingAllowed'] else '캐릭터 확인 대기'
         if not identity['recordingAllowed'] and identity.get('previewName'):
             name=identity['previewName']+' (확인 중)'
+        if identity.get('status')=='switching' and identity.get('pendingName'):
+            name=identity['pendingName']+' · 변경 중'
+        if identity.get('status')=='initial_login_loading':
+            name=(identity.get('pendingName') or '캐릭터')+' · 접속 중'
+        elif identity.get('status')=='initial_login_selection':
+            name=(identity.get('pendingName') or identity.get('previewName') or '캐릭터')+' · 선택 중'
         self.character.setText('현재 캐릭터: '+(name or '확인 대기'))
         dungeon=value['dungeon']
         def display(field,waiting):
@@ -267,10 +299,20 @@ class Window(QMainWindow):
         for row,event in enumerate(records):
             when=datetime.fromisoformat(event['observedAt']).astimezone().strftime('%Y-%m-%d %H:%M:%S')
             if event.get('evidenceType')=='drive_import':when+=' (불러옴)'
-            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측','completion_banner':'완료 배너','drive_import':'Google Drive'}
-            unit='레이드 전체' if event.get('completionScope')=='raid' else str(event['gate'])+'관문'
+            evidence={'later_gate_completion':'후속 관문으로 보완','legacy_completion':'기존 완료 기록','direct':'직접 관측','completion_banner':'완료 배너','gate_breakthrough':'관문 돌파 표시','dungeon_clear':'던전 클리어 표시','drive_import':'Google Drive'}
+            unit=event.get('gateName') or ('레이드 전체' if event.get('completionScope')=='raid' else str(event['gate'])+'관문')
             values=[when,event.get('characterName') or '캐릭터 확인 대기',event.get('dungeonName') or '확인 대기',event.get('difficulty') or '확인 대기',unit,{'진행중':'진행 중'}.get(event['state'],event['state']),evidence.get(event.get('evidenceType'),'직접 관측')]
             for col,value in enumerate(values):self.table.setItem(row,col,QTableWidgetItem(value))
+            self.table.item(row,0).setData(Qt.ItemDataRole.UserRole,event)
+    def show_record_detail(self,row,column):
+        item=self.table.item(row,0)
+        if item is None:return
+        record=item.data(Qt.ItemDataRole.UserRole)
+        if not record:return
+        if self.record_dialog is not None:
+            self.record_dialog.close();self.record_dialog.deleteLater()
+        self.record_dialog=RecordDetailDialog(record,self.public_content.cached,self)
+        self.record_dialog.show()
     def delete(self):
         if self.analyzing or self.settled_generation!=self.generation or self.drive.busy:return
         self.store.clear_all();self.reload();self.character.setText('현재 캐릭터: 확인 대기');self.detail.setText('완료·임시 기록과 중복 방지 이력을 모두 삭제했습니다.')

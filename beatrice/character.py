@@ -1,4 +1,4 @@
-"""이름 관측을 안정화합니다. 변경 대상만으로 접속 완료를 추정하지 않습니다."""
+"""현재 이름과 변경 대상을 추적하고 전환 이후의 화면 관측으로 확정합니다."""
 import math
 import unicodedata
 
@@ -29,6 +29,15 @@ class CharacterTracker:
         self.dialog_open=False
         self.switch_deadline=None
         self.menu_returned_at=None
+        self.recovery_count=0
+        self.target_expires=None
+        self.login_candidate=None
+        self.login_count=0
+        self.login_target=None
+        self.login_loading=False
+        self.login_recovery=0
+        self.login_seen_at=None
+        self.login_card=None
 
     def update(self, seconds, observation):
         if not math.isfinite(seconds) or (self.last_time is not None and seconds <= self.last_time):
@@ -36,13 +45,62 @@ class CharacterTracker:
         if self.last_time is not None and seconds-self.last_time > self.max_gap:
             self.candidate=None
             self.count=0
+            self.recovery_count=0
+            self.login_count=0;self.login_recovery=0
         self.last_time=seconds
         actions=[]
+        # 메뉴 재관측은 최초 접속 흐름을 놓쳤을 때도 항상 사용할 수 있습니다.
+        if observation.get('normalMenu') and valid_name(observation.get('currentName')):
+            self.login_target=None;self.login_loading=False;self.login_recovery=0
+        if self.login_seen_at is not None and seconds-self.login_seen_at>180:
+            self.login_target=None;self.login_loading=False;self.login_recovery=0
+        if observation.get('serverSelection') or observation.get('characterSelection'):
+            if not self.blocked:actions.append(dict(type='suspend'))
+            self.blocked=True;self.current=None;self.switching=False;self.target=None
+            self.switch_deadline=None;self.login_loading=False;self.login_recovery=0
+            selected=valid_name(observation.get('selectedName')) if observation.get('characterSelection') else None
+            card=observation.get('selectedCard')
+            if card and self.login_card:
+                a=card;b=self.login_card
+                overlap=max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1]))
+                smaller=min((a[2]-a[0])*(a[3]-a[1]),(b[2]-b[0])*(b[3]-b[1]))
+                # Compare detected cards, never predetermined screen positions.
+                if smaller<=0 or overlap/smaller<.5:
+                    self.login_candidate=None;self.login_count=0;self.login_target=None
+            if card:self.login_card=list(card)
+            if observation.get('serverSelection'):
+                self.login_candidate=None;self.login_count=0;self.login_target=None
+                self.login_card=None
+            elif selected:
+                if selected==self.login_candidate:self.login_count+=1
+                else:self.login_count=1;self.login_target=None
+                self.login_candidate=selected
+                if self.login_count>=self.confirmations:self.login_target=selected
+            else:
+                # 비밀번호 창에 가려진 카드의 OCR 실패는 확정해 둔 대상을 지우지 않습니다.
+                self.login_count=0
+            self.login_seen_at=seconds
+        elif observation.get('loginLoading') and self.login_target:
+            self.login_loading=bool(self.login_target)
+            self.login_recovery=0
+            self.login_seen_at=seconds
+        elif self.login_loading:
+            self.login_recovery=self.login_recovery+1 if observation.get('loginLoadingAbsent') and not observation.get('selectionUncertain') else 0
+            if self.login_recovery>=self.confirmations:
+                self.current=self.login_target;self.blocked=False
+                actions.append(dict(type='confirmed',name=self.current))
+                self.login_target=None;self.login_loading=False;self.login_recovery=0
+        if observation.get('serverSelection') or observation.get('characterSelection') or self.login_loading or self.login_target:
+            self.last_time=seconds
+            return dict(currentName=self.current,pendingName=self.login_target,previewName=self.login_candidate,
+                        recordingAllowed=not self.blocked,status='initial_login_loading' if self.login_loading else 'initial_login_selection',actions=actions)
         name=valid_name(observation.get('currentName'))
         target=valid_name(observation.get('targetName'))
         dialog=bool(observation.get('switchDialog'))
         loading=bool(observation.get('switchLoading'))
         eligible=False
+        if self.switching and self.target_expires is not None and seconds>self.target_expires:
+            self.target=None;self.target_expires=None
         if self.switch_deadline is not None and seconds>self.switch_deadline:
             self.switch_deadline=None
             if not self.switching:self.target=None
@@ -61,13 +119,16 @@ class CharacterTracker:
                 self.blocked=True
                 self.switching=True
                 self.switch_deadline=None
+                self.target_expires=seconds+120
             # 로딩 중 남아 있는 기존 초상화로 다시 확정하지 않습니다.
             self.candidate=None
             self.count=0
         elif dialog:
             if not self.switching:
+                if not self.dialog_open:self.target=None
                 self.switch_deadline=seconds+max(3,self.max_gap*2)
-                self.target=target
+                # 읽기 실패는 직전 대상을 지우지 않습니다. 다른 이름이 읽히면 교체합니다.
+                if target is not None:self.target=target
             self.candidate=None
             self.count=0
         elif name is None:
@@ -96,10 +157,22 @@ class CharacterTracker:
             else:
                 self.candidate=None
                 self.count=0
+        # 정상 캡처에서 로딩 영역이 연속으로 사라지면 보관한 대상을 확정합니다.
+        # 누락된 캡처/불확실한 탐지에는 loadingAbsent를 공급하지 않습니다.
+        recover=bool(self.switching and self.target and self.target_expires is not None
+                     and seconds<=self.target_expires and observation.get('loadingAbsent')
+                     and not dialog and not loading and not observation.get('normalMenu')
+                     and not observation.get('currentRegionVisible') and name is None)
+        self.recovery_count=self.recovery_count+1 if recover else 0
+        if self.recovery_count>=self.confirmations:
+            self.current=self.target
+            self.target=None;self.blocked=False;self.switching=False;self.saw_absence=False
+            self.candidate=None;self.count=0;self.recovery_count=0;self.target_expires=None
+            actions.append(dict(type='confirmed',name=self.current))
         self.dialog_open=dialog
         return dict(currentName=self.current,pendingName=self.target,previewName=name if not dialog and not loading and eligible else None,
                     recordingAllowed=not self.blocked,
-                    status='awaiting_current_confirmation' if self.blocked else 'confirmed',actions=actions)
+                    status='switching' if self.switching and self.target else 'awaiting_current_confirmation' if self.blocked else 'confirmed',actions=actions)
 
 
 class CharacterRecordingBridge:

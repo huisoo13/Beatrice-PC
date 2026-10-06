@@ -91,7 +91,7 @@ class StateSession:
             if row['gate']<=gate and row['state']!='완료':
                 direct=row['gate']==gate
                 row.update(state='완료',observedAt=iso(at),confirmedAt=iso(at),savedAt=iso(datetime.now(timezone.utc)),
-                    completedAt=iso(at) if direct else None,evidenceType='completion_banner' if direct else 'later_gate_completion',
+                    completedAt=iso(at) if direct else None,evidenceType=(dungeon.get('completionOverlay') or {}).get('kind','completion_banner') if direct else 'later_gate_completion',
                     timeBasis='live_capture',completionScope='raid' if gateless else 'gate')
         changed=self.store.save_states(self.owner,group,rows)
         tracker.stable=tuple(r['state'] for r in rows)
