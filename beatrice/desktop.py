@@ -10,7 +10,7 @@ from PySide6.QtCore import QThread,Signal,QTimer,QLockFile,Qt
 from PySide6.QtWidgets import (QApplication,QMainWindow,QWidget,QVBoxLayout,QHBoxLayout,
     QPushButton,QLabel,QComboBox,QTableWidget,QTableWidgetItem,QHeaderView)
 from .storage import Store
-from .windows_capture import find_clients,client_alive,client_active
+from .game_window import find_clients,client_alive,client_active
 from .process_watch import ProcessWatch
 from .google_login_ui import GoogleLogin
 from .drive_ui import DrivePanel
@@ -30,12 +30,25 @@ class Worker(QThread):
         super().__init__();self.stop_event=threading.Event()
         self.command_lock=threading.Lock();self.command=(0,None)
         self.process_snapshot=None
+        self.capture_pause=None
     def process_state(self,pids,error):
         self.process_snapshot=(pids,error);self.process_changed.emit(self.process_snapshot)
     def select(self,generation,client):
         with self.command_lock:self.command=(generation,client)
     def requested(self):
         with self.command_lock:return self.command
+    def capture_wait(self,capture,reason,generation,character,tracker,dungeon_observer,coordinator):
+        if capture.wait_kind=='transient':
+            self.stop_event.wait(.01)
+            return
+        if self.capture_pause is None:
+            character.reset_name_cache();dungeon_observer.reset()
+            tracker.last=None;tracker.counts={f:0 for f in tracker.counts}
+            tracker.replacement=None;tracker.replacement_since=None
+            coordinator.capture_interrupted()
+        if self.capture_pause!=reason:self.status.emit(generation,reason)
+        self.capture_pause=reason
+        self.stop_event.wait(.1)
     def run(self):
         store=None;capture=None;watch=None
         try:
@@ -43,7 +56,7 @@ class Worker(QThread):
             from .character_vision import CharacterVision
             from .dungeon import DungeonOCR,DungeonTracker
             from .live import LiveCoordinator
-            from .windows_capture import WindowCapture
+            from .obs_capture import ObsCapture
             from .ui_regions import load_config as load_ui_config,UIRegionDetector
             from .recognition_diagnostic import RecognitionDiagnostic
             from .dungeon_observer import DungeonObserver
@@ -70,10 +83,11 @@ class Worker(QThread):
                 requested,client=self.requested()
                 if requested!=generation:
                     if capture is not None:capture.close()
-                    capture=None;generation=requested
+                    capture=None;generation=requested;self.capture_pause=None
                     character.reset_name_cache();tracker.reset();dungeon_observer.reset()
                     coordinator=LiveCoordinator(store)
-                    if client is not None:capture=WindowCapture(client.hwnd)
+                    if client is not None:
+                        capture=ObsCapture(client,DATA)
                     self.settled.emit(generation)
                 if client is None:
                     self.stop_event.wait(.1);continue
@@ -85,15 +99,11 @@ class Worker(QThread):
                 except RuntimeError:
                     if not client_alive(client):continue
                     raise
-                at=datetime.now(timezone.utc)
+                at=capture.observed_at if frame is not None else datetime.now(timezone.utc)
                 if frame is None:
-                    character.reset_name_cache()
-                    dungeon_observer.reset()
-                    context=tracker.update(at.timestamp(),{})
-                    state=coordinator.update(at,{},[],context)
-                    state.update(milliseconds=0,size='캡처 대기',generation=generation)
-                    self.observation.emit(state)
-                    self.status.emit(generation,reason);self.stop_event.wait(.5);continue
+                    self.capture_wait(capture,reason,generation,character,tracker,dungeon_observer,coordinator)
+                    continue
+                self.capture_pause=None
                 regions=ui_detector.locate(frame)
                 detected_at=time.monotonic()
                 identity=character.analyze_detected(frame,regions,seconds=started,
@@ -136,12 +146,14 @@ class Worker(QThread):
                     dungeon_observer.reset()
                     state['dungeon']=tracker.update(at.timestamp(),{})
                 state['recognitionMode']='캐릭터·던전 분리 탐지' if ui_config.get('architecture')=='split' else 'UI 자동 탐지'
+                state['recognitionMode']='내장 OBS · '+state['recognitionMode']
                 state['milliseconds']=round((time.monotonic()-started)*1000)
                 state['timingsMs']=dict(detection=round((detected_at-started)*1000),character=round((character_at-detected_at)*1000),dungeon=round((dungeon_at-character_at)*1000))
                 state['size']=f'{frame.shape[1]} × {frame.shape[0]}'
                 state['generation']=generation
                 try:
                     report=dict(observedAt=at.isoformat(),
+                        capture=capture.frame_info,
                         modelConfig=ui_config,completionModelConfig=completion.config,character=identity,dungeon=dungeon_observation,
                         gates=boxes,state=state)
                     completion_diagnostic.record(frame,report)
@@ -223,9 +235,9 @@ class Window(QMainWindow):
         elif self.client is None:
             if self.process_pids:self.set_status('클라이언트 시작 중 · 게임 창 생성 대기','#ca8a04')
             else:self.set_status('클라이언트 실행 대기','#dc2626')
-        elif not client_active(self.client):self.set_status('게임 화면 활성화 대기','#ca8a04')
         elif self.analyzing and self.detail.text().startswith('분석 중'):
             self.set_status('분석 중','#2563eb')
+        elif self.analyzing:self.set_status(self.detail.text() or '새 게임 프레임 대기','#ca8a04')
         else:self.set_status('클라이언트 감지됨','#16a34a')
         if self.watch_error:
             self.status_label.setText(self.status_label.text()+' · '+self.watch_error)

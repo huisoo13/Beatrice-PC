@@ -31,6 +31,23 @@ for pattern in ('msvcp140*.dll','vcruntime140*.dll','concrt140.dll'):
 (runtime/'python312._pth').write_text('python312.zip\n.\nLib/site-packages\n..\nimport site\n')
 for folder in ('beatrice','config'):
     shutil.copytree(ROOT/folder,stage/folder,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+# The engine is part of the app, never resolved from an installed OBS Studio.
+obs_runtime=ROOT/'build/obs-runtime'
+if not (obs_runtime/'manifest.json').is_file():
+    raise ValueError('앱 내장 OBS 엔진을 packaging/prepare_obs.py로 먼저 준비해주세요.')
+if list((obs_runtime/'data/obs-plugins/win-capture').glob('obs-vulkan*.json')):
+    raise ValueError('배포에 Vulkan 전역 등록 설정을 포함할 수 없습니다.')
+shutil.copytree(obs_runtime,stage/'obs-runtime',ignore=shutil.ignore_patterns('*.pdb'))
+shutil.copy2(ROOT/'LICENSE',stage/'LICENSE')
+# Corresponding Beatrice source accompanies the GPL engine distribution.
+source_zip=stage/'obs-runtime/licenses/beatrice-source.zip'
+with zipfile.ZipFile(source_zip,'w',compression=zipfile.ZIP_DEFLATED) as source:
+    for folder in ('beatrice','config','packaging','tests'):
+        for path in (ROOT/folder).rglob('*'):
+            if path.is_file() and '__pycache__' not in path.parts and path.suffix!='.pyc':
+                source.write(path,str(path.relative_to(ROOT)))
+    for name in ('LICENSE','README.md','app_launcher.py','run-as-admin.cmd'):
+        source.write(ROOT/name,name)
 shutil.copytree(ROOT/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',stage/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',dirs_exist_ok=True)
 ui_config=json.loads((ROOT/'config/ui-regions.json').read_text(encoding='utf-8'))
 active_config=ui_config
@@ -50,6 +67,7 @@ if active_config['mode']=='yolo':
             (stage/weights).parent.mkdir(parents=True,exist_ok=True)
             shutil.copy2(ROOT/weights,stage/weights)
 shutil.copy2(ROOT/'app_launcher.py',stage/'app_launcher.py')
+shutil.copy2(ROOT/'run-as-admin.cmd',stage/'run-as-admin.cmd')
 shutil.copy2(ROOT/'build/7zip-sdk/DOC/installer.txt',stage/'7zip-SFX-license.txt')
 (stage/'package-manifest.json').write_text(json.dumps(dict(python='3.12.10 embedded amd64',wheels=wheel_manifest,windowsRuntimeTested=False),indent=2))
 print('Staged',sum(p.stat().st_size for p in stage.rglob('*') if p.is_file()),'bytes',flush=True)

@@ -1,2 +1,0 @@
-# Windows x64 / Python 3.11용 후보. 실제 PC 설치 검증 전입니다.
-dxcam[cv2]==0.3.0; sys_platform == "win32"

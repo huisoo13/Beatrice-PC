@@ -16,6 +16,14 @@ class LiveCoordinator:
         run,n=self.context
         self.session.confirm_character('name:'+name,name,run,n,'live_capture',is_test=True)
         self.session.tracker.max_gap=5
+    def capture_interrupted(self):
+        """Keep confirmed state; unavailable capture cannot count as an observation."""
+        self.candidate=None;self.count=0
+        self.identity.candidate=None;self.identity.count=0
+        self.identity.recovery_count=0;self.identity.login_count=0;self.identity.login_recovery=0
+        self.banner.count=0;self.banner.last=None
+        for tracker in (self.session.tracker,self.session.pending_tracker):
+            if tracker is not None:tracker.clear_candidate()
     def update(self,at,character,boxes,dungeon):
         identity=self.identity.update(at.timestamp(),character)
         suspended=any(a['type']=='suspend' for a in identity['actions'])
@@ -74,6 +82,16 @@ class LiveCoordinator:
                       for i,f in enumerate(('dungeonName','difficulty'))) if self.context_pair else False
         if different or count_mismatch:
             self.completion_context=None;self.completion_seen_at=None
+        # Fresh matching title/mode still identifies the raid when an icon is
+        # temporarily unreadable. Reuse only its already-confirmed gate count.
+        tracker=self.session.tracker or self.session.pending_tracker
+        if (not suspended and not different and not count_mismatch
+            and frame_pair is not None and frame_pair==self.context_pair
+            and dungeon.get('currentRaidPanel') and self.context is not None
+            and tracker is not None and tracker.stable is not None
+            and len(tracker.stable)==self.context[1]):
+            self.completion_context=dict(dungeon)
+            self.completion_seen_at=at.timestamp()
         if self.completion_seen_at is not None and at.timestamp()-self.completion_seen_at>120:
             self.completion_context=None;self.completion_seen_at=None
         overlay=dungeon.get('completionOverlay') or {}

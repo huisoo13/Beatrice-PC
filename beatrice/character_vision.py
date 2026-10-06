@@ -72,8 +72,8 @@ class CharacterVision:
         gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY)
         enlarged=cv2.resize(gray,None,fx=3,fy=3,interpolation=cv2.INTER_CUBIC)
         readings=[]
-        for variant in [gray,enlarged]:
-            values=self.reader.recognize(variant)
+        from .paddle_reader import recognize_images
+        for values in recognize_images(self.reader,[gray,enlarged]):
             if len(values)==1:
                 readings.append(dict(text=values[0][1],confidence=float(values[0][2]),
                     name=name_from_line(values[0][1],includes_level)))

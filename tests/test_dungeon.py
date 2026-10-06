@@ -23,7 +23,7 @@ class DungeonTests(unittest.TestCase):
         import numpy as np
         from unittest.mock import Mock
         ocr=DungeonOCR(reader=Mock())
-        for text in ('[하드]맹렬한 업화','하드] 맹렬한 업화','하드 맹렬한 업화'):
+        for text in ('[하드]맹렬한 업화','하드] 맹렬한 업화'):
             ocr.read_regions=Mock(return_value=dict(dungeonName=dict(text=text,confidence=.98),ocr={}))
             result=ocr.analyze_gateless(np.zeros((1440,3440,3),dtype=np.uint8),[0,45,405,125])
             self.assertEqual(result['dungeonName']['text'],'맹렬한 업화')
@@ -32,6 +32,14 @@ class DungeonTests(unittest.TestCase):
             self.assertLessEqual(region[3],125)  # 도전 과제/목표 영역을 읽지 않음
         ocr.read_regions=Mock(return_value=dict(dungeonName=dict(text='도전 과제',confidence=.98),ocr={}))
         self.assertFalse(ocr.analyze_gateless(np.zeros((1440,3440,3),dtype=np.uint8),[0,45,405,125])['dungeonVisible'])
+
+    def test_gateless_accepts_new_bracketed_mode_without_a_dictionary(self):
+        from unittest.mock import Mock
+        ocr=DungeonOCR(reader=Mock())
+        ocr.read_regions=Mock(return_value=dict(dungeonName=dict(text='[새 단계]새 콘텐츠',confidence=.98),ocr={}))
+        result=ocr.analyze_gateless(None,[0,0,100,50])
+        self.assertEqual(result['difficulty']['text'],'새 단계')
+        self.assertEqual(result['dungeonName']['text'],'새 콘텐츠')
 
     def test_mode_line_excludes_title_fragment_and_divider(self):
         import numpy as np
@@ -44,6 +52,9 @@ class DungeonTests(unittest.TestCase):
         self.assertIsNotNone(line)
         self.assertLessEqual(line.shape[0],20)
         self.assertEqual(int(line.max()),200)
+        dim=trim_difficulty_line((crop*.4).astype(np.uint8))
+        self.assertIsNotNone(dim)
+        self.assertLessEqual(dim.shape[0],20)
 
     def test_spacing_variants_agree_without_name_dictionary(self):
         result=validate_readings([
@@ -59,6 +70,17 @@ class DungeonTests(unittest.TestCase):
         self.assertTrue(result['dungeonVisible'])
         self.assertEqual(result['difficulty']['text'],'매칭 모드')
         self.assertEqual(result['dungeonName']['text'],'고통의 마녀, 세르카')
+
+    def test_modes_are_read_without_a_dictionary(self):
+        from unittest.mock import Mock
+        ocr=DungeonOCR(reader=Mock())
+        result=ocr.verify_context(self.observation('구원의 종탑','[3단계]'))
+        self.assertTrue(result['dungeonVisible'])
+        self.assertEqual(result['difficulty']['text'],'3단계')
+        self.assertEqual(result['dungeonName']['text'],'구원의 종탑')
+        self.assertTrue(ocr.verify_context(self.observation('다른 던전','새 단계'))['dungeonVisible'])
+        low=self.observation('구원의 종탑','3단계');low['difficulty']['confidence']=.4
+        self.assertFalse(ocr.verify_context(low)['dungeonVisible'])
 
     def test_title_keeps_words_separated_by_spaces(self):
         import numpy as np
@@ -122,12 +144,12 @@ class DungeonTests(unittest.TestCase):
 
     def test_no_fuzzy_correction_even_high_confidence(self):
         readings=[dict(text='어둡군단장 카엔',confidence=.99)]*3
-        self.assertIsNone(validate_readings(readings,['어둠군단장 카멘']))
+        self.assertEqual(validate_readings(readings)['text'],'어둡군단장 카엔')
 
     def test_punctuation_normalization_and_agreement(self):
         readings=[dict(text='고통의 마녀 세르카',confidence=.9),dict(text='고통의 마녀, 세르카',confidence=.8)]
-        self.assertEqual(validate_readings(readings,['고통의 마녀, 세르카'])['text'],'고통의 마녀, 세르카')
-        self.assertIsNone(validate_readings(readings[:1],['고통의 마녀, 세르카']))
+        self.assertEqual(validate_readings(readings)['text'],'고통의 마녀 세르카')
+        self.assertIsNone(validate_readings(readings[:1]))
 
     def test_three_frames_then_keep_display_without_reusing_for_recording(self):
         tracker=DungeonTracker()

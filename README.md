@@ -36,6 +36,12 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 고정 화면 좌표나 패널 비율로 OCR 영역을 지정하지 않습니다. 모델 파일은 로컬 관리하며 Git에 포함하지 않습니다.
 <!-- MODEL-INVENTORY:END -->
 
+2026-10-06 최신: [내장 OBS·분석 성능 개선 정리](docs/55-capture-performance-summary.md). OBS 단일 캡처, OCR 일괄 제출, CPU 가속, 짧은 프레임 대기 처리를 적용했습니다. 보존 화면 재생에서 던전 분석 중앙값 875→431ms, 전체 회귀 테스트 301개 통과. 실제 실행에서도 사용자가 성능 개선을 확인했습니다.
+
+2026-10-06: [구원의 종탑 제목 인식·목록 제한 제거](docs/48-tower-title-no-dictionary.md). 제목 요소 모델을 보강하고 던전명·난이도 목록 제한을 제거했습니다. 탐지 영역의 OCR 결과로 이름과 단계를 확인하며 어두운 단계 글자 처리도 보완했습니다. 기존 요소 70장 퇴행 0, 종탑 제목과 벨가르딘 완료 재생 확인, 전체 테스트 266개 통과. 앱 재시작 후 적용됩니다.
+
+2026-10-06: [벨가르딘 2관문 인식 보강](docs/47-belgardin-panel-recovery.md). 던전 패널 YOLO를 추가 학습하고 기존 음성 라벨 오류 2장을 수정했습니다. 새로 확인된 같은 던전 제목으로 완료 문맥을 복구합니다. 기존 109장 퇴행 0, 동일 플레이 재생에서 2관문 저장 확인, 전체 테스트 264개 통과. 앱을 완전히 재시작해야 적용됩니다.
+
 2026-09-29: [관문 돌파·던전 클리어 전용 탐지](docs/43-completion-overlay.md). 일반 퀘스트 배너 완료 판단을 중앙 완료 표시 YOLO+OCR로 교체하고, 완료 관측 진단을 순환 프레임과 분리합니다. 모델 구성·검증 범위·정리 내역은 문서를 참고하세요.
 
 2026-09-28 최신: [공용 JSON 매칭·완료 기록 상세](docs/42-content-record-matching.md). 완료 저장 시 던전·난이도·관문이 한 항목으로 확인되면 공용 JSON의 정식 키를 사용하며, 실패·복수 후보는 OCR 원문을 유지합니다. 기록을 클릭하면 해당 관문의 골드·비용·귀속 비율을 확인할 수 있습니다. 앱 재시작 후 적용됩니다.
@@ -115,10 +121,12 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 | 역할 | 코드 / 안내 | iOS 개발에 빗대면 |
 | --- | --- | --- |
-| Windows 캡처 | beatrice/capture.py, [환경 준비](docs/02-windows-setup.md) | 영상 입력 어댑터 |
+| OBS 게임 캡처 | beatrice/obs_capture.py, [환경 준비](docs/02-windows-setup.md) | 영상 입력 어댑터 |
 | 관문 탐지 | tools/yolo_first.py, [학습·추론](docs/09-first-training.md) | 이미지 분석 서비스 |
 | 관문 상태 | beatrice/gates.py | 연속 관측을 처리하는 상태 객체 |
 | 이벤트 저장 | beatrice/session.py, beatrice/storage.py, [저장 안내](docs/12-local-storage.md) | 모델 계층과 영속 저장소 |
 | 캐릭터 인식 | beatrice/character_vision.py, beatrice/character.py, [연결 안내](docs/16-character-recognition.md) | 문자열 인식과 현재 사용자 상태 |
+
+데스크톱 앱은 앱에 포함한 OBS 엔진의 게임 캡처를 유일한 캡처 입력으로 사용합니다. 별도 OBS 설치·실행·가상 카메라 설정은 필요 없습니다. 게임이 관리자 권한이면 앱도 같은 권한으로 실행해야 합니다. [내장 OBS 구조와 검증 범위](docs/50-embedded-obs.md). [OBS 단일 경로 정리 내역](docs/51-obs-only-cleanup.md).
 
 분석 입력은 BGR 이미지 배열입니다. 한 프레임의 관측과 최종 이벤트는 구분합니다. 실제 이벤트에는 시간대가 포함된 절대 시각을 저장하며, 영상 검증 JSON의 videoSeconds는 영상 안의 위치를 뜻합니다. 학습 이미지 재현 결과를 새로운 영상에 대한 정확도로 해석하지 않습니다.

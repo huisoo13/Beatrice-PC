@@ -9,7 +9,7 @@
   "imageSize": 1280,
   "nmsIou": 0.4,
   "elementConfig": "config/dungeon-elements.json",
-  "trainingRun": "dungeon-parents-clean-0929",
-  "trainingManifest": "data/annotations/dungeon-parents-clean-0929.json",
-  "modelSha256": "1868ad0c8610ae1ba01bf8700bec87224a6e08504a373082803e07ee55fbda10"
+  "trainingRun": "dungeon-parents-belgardin-reviewed-1006",
+  "trainingManifest": "data/annotations/dungeon-parents-belgardin-1006.json",
+  "modelSha256": "607bb3af24ab41840dc6cb8a3a1f77efe7aedf2a18c11d484b4291046678ddc5"
 }

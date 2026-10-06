@@ -39,6 +39,8 @@ def trim_difficulty_line(region):
     import cv2
     import numpy as np
     gray=cv2.cvtColor(region,cv2.COLOR_BGR2GRAY)
+    if 0<int(gray.max())<110 and int(gray.max())>int(gray.min()):
+        gray=cv2.normalize(gray,None,0,255,cv2.NORM_MINMAX)
     mask=gray>=110
     rows=np.flatnonzero(mask.sum(axis=1)>=max(2,region.shape[1]*.01))
     bands=[]
@@ -51,21 +53,20 @@ def trim_difficulty_line(region):
     return region[max(0,band[0]-1):min(region.shape[0],band[-1]+2)]
 
 
-def validate_readings(readings, allowed=None, threshold=.65):
-    canonical={key(value):value for value in allowed} if allowed is not None else None
+def validate_readings(readings, threshold=.65):
     votes={}
     originals={}
     for reading in readings:
         text=clean_text(reading['text']);confidence=reading['confidence']
-        if text and math.isfinite(confidence) and 0.5<=confidence<=1 and (canonical is None or key(text) in canonical):
-            value=canonical[key(text)] if canonical is not None else key(text)
+        if text and math.isfinite(confidence) and 0.5<=confidence<=1:
+            value=key(text)
             votes.setdefault(value,[]).append(confidence)
             originals.setdefault(value,[]).append((confidence,text))
     accepted=[(value,scores) for value,scores in votes.items() if len(scores)>=2 and max(scores)>=threshold]
     if len(accepted)!=1 or len(votes)!=1:
         return None
     value,scores=accepted[0]
-    text=value if canonical is not None else max(originals[value],key=lambda item:item[0])[1]
+    text=max(originals[value],key=lambda item:item[0])[1]
     return dict(text=text,confidence=max(scores),agreementMinimumConfidence=min(scores))
 
 
@@ -92,19 +93,23 @@ class DungeonOCR:
         line=region  # Direct YOLO text-line box; no panel-relative crop.
         result=self.read_regions(frame,{'dungeonName':line})
         value=result.get('dungeonName')
-        match=re.fullmatch(r'\[?\s*(노말|하드|헬|익스트림)\s*(?:\]\s*|\s+)(.+)',value['text']) if value else None
+        match=re.fullmatch(r'\[?\s*([^\[\]]+?)\s*\]\s*(.+)',value['text']) if value else None
         if match:
-            result['difficulty']=dict(text=match[1],confidence=value['confidence'])
+            result['difficulty']=dict(text=match[1].strip(),confidence=value['confidence'])
             result['dungeonName']=dict(text=match[2],confidence=value['confidence'])
         else:result.update(dungeonName=None,difficulty=None)
         return self.verify_context(result)
 
     def verify_context(self,result):
-        # 진행 아이콘과 닮은 일반 HUD도 있으므로 난이도 표기까지 함께 확인합니다.
-        difficulty=result.get('difficulty')
-        difficulties={key(value):value for value in CONFIG['supportedDifficulties']}
-        visible=bool(difficulty and key(difficulty['text']) in difficulties)
-        if visible:difficulty['text']=difficulties[key(difficulty['text'])]
+        # Both texts come from freshly detected YOLO text regions and OCR voting.
+        # Content names and mode/stage labels are not constrained by a dictionary.
+        values=[result.get(field) for field in FIELDS]
+        visible=all(value and clean_text(value.get('text',''))
+                    and isinstance(value.get('confidence'),(int,float))
+                    and math.isfinite(value['confidence'])
+                    and CONFIG['minimumConfidence']<=value['confidence']<=1 for value in values)
+        if visible:
+            for value in values:value['text']=clean_text(value['text'])
         result['dungeonVisible']=visible
         if not visible:
             result['dungeonName']=None
@@ -115,6 +120,7 @@ class DungeonOCR:
     def read_regions(self,panel,regions):
         import cv2
         result=dict(kind='dungeon_observation',engine=self.engine,ocr={})
+        pending=[]
         for field in FIELDS:
             if field not in regions:continue
             l,t,r,b=regions[field]
@@ -139,6 +145,8 @@ class DungeonOCR:
                     result['ocr'][field]=dict(region=[l,t,r,b],raw=[],status='no_text_pixels')
                     continue
             gray=cv2.cvtColor(region,cv2.COLOR_BGR2GRAY)
+            if field=='difficulty' and 0<int(gray.max())<110 and int(gray.max())>int(gray.min()):
+                gray=cv2.normalize(gray,None,0,255,cv2.NORM_MINMAX)
             mask=cv2.threshold(gray,130 if field=='dungeonName' else 110,255,cv2.THRESH_BINARY)[1]
             points=cv2.findNonZero(mask)
             readings=[]
@@ -147,12 +155,18 @@ class DungeonOCR:
                 crop=gray[max(0,y-2):min(gray.shape[0],y+h+2),max(0,x-2):min(gray.shape[1],x+w+2)]
                 enlarged=cv2.resize(crop,None,fx=3,fy=3,interpolation=cv2.INTER_CUBIC)
                 for variant,image in [('gray',crop),('enlarged',enlarged),('inverted',255-enlarged)]:
-                    values=self.reader.recognize(image)
-                    if len(values)==1:
-                        readings.append(dict(variant=variant,text=values[0][1],confidence=float(values[0][2])))
-            result[field]=validate_readings(readings,threshold=CONFIG['minimumConfidence'])
+                    pending.append((field,variant,image))
             result['ocr'][field]=dict(region=[l,t,r,b],raw=readings,
-                status='accepted' if result[field] else 'unrecognized_or_unverified')
+                status='unrecognized_or_unverified')
+        from .paddle_reader import recognize_images
+        outputs=recognize_images(self.reader,[item[2] for item in pending])
+        if len(outputs)!=len(pending):raise RuntimeError('OCR 일괄 처리 결과 수가 입력과 다릅니다.')
+        for (field,variant,_),values in zip(pending,outputs):
+            if len(values)==1:
+                result['ocr'][field]['raw'].append(dict(variant=variant,text=values[0][1],confidence=float(values[0][2])))
+        for field,entry in result['ocr'].items():
+            result[field]=validate_readings(entry['raw'],threshold=CONFIG['minimumConfidence'])
+            if result[field]:entry['status']='accepted'
         return result
 
 

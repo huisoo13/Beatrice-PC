@@ -4,7 +4,9 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--weights',required=True);p.add_argument('--output',required=True,type=Path);args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--weights',required=True);p.add_argument('--output',required=True,type=Path)
+    p.add_argument('--manifest',type=Path,default=ROOT/'data/annotations/dungeon-parents-clean-0929.json')
+    args=p.parse_args()
     os.environ.setdefault('YOLO_CONFIG_DIR',str(ROOT/'outputs/ultralytics-config'))
     import cv2,numpy as np,torch
     torch.set_num_threads(2)
@@ -13,7 +15,7 @@ def main():
     baseline=UIRegionDetector(cfg)
     clean=dict(cfg,weights=args.weights,classes=['dungeon_panel','gateless_raid_panel'])
     candidate=UIRegionDetector(clean)
-    manifest=json.loads((ROOT/'data/annotations/dungeon-parents-clean-0929.json').read_text(encoding='utf-8'))
+    manifest=json.loads(args.manifest.read_text(encoding='utf-8'))
     rows=[]
     def inspect(regions,boxes):
         errors=[]

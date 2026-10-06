@@ -58,6 +58,8 @@ class UIRegionDetector:
             if not path.is_file():raise ValueError('통합 UI 모델을 현재 해상도 데이터로 학습한 뒤 yolo 모드를 켜주세요.')
             from ultralytics import YOLO
             model=YOLO(str(path))
+            from .cpu_inference import load_config as load_cpu_config
+            self.cpu_threads=load_cpu_config()['yoloThreads']
         if [model.names[i] for i in range(len(model.names))]!=self.config['classes']:
             raise ValueError('통합 UI 모델 클래스와 설정이 다릅니다.')
         self.model=model
@@ -122,8 +124,15 @@ class UIRegionDetector:
 
     def _locate(self,frame,model):
         thresholds=self.config.get('classConfidence',{})
-        prediction=model.predict(frame,imgsz=self.config['imageSize'],conf=min([self.config['confidence'],*thresholds.values()]),
-            iou=.5,device='cpu',verbose=False)[0]
+        if hasattr(self,'cpu_threads'):
+            from .cpu_inference import configure_yolo_threads
+            configure_yolo_threads(self.cpu_threads)
+        try:
+            prediction=model.predict(frame,imgsz=self.config['imageSize'],conf=min([self.config['confidence'],*thresholds.values()]),
+                iou=.5,device='cpu',verbose=False)[0]
+        finally:
+            # Ultralytics' first CPU predictor setup resets the torch thread count.
+            if hasattr(self,'cpu_threads'):configure_yolo_threads(self.cpu_threads)
         groups={name:[] for name in self.config['classes']}
         h,w=frame.shape[:2]
         for box in prediction.boxes:

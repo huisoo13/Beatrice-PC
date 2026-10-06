@@ -89,7 +89,21 @@ class CompletionBannerTests(unittest.TestCase):
     def test_expired_context_cannot_supply_a_target(self):
         self.feed(count=3)
         self.at+=timedelta(seconds=121)
-        self.feed(states=(),banner=True,count=3)
+        self.feed(states=(),banner=True,fresh=False,status='ocr_held',count=3)
+        self.assertEqual(self.states(),[])
+
+    def test_fresh_matching_header_recovers_expired_context_without_icons(self):
+        self.feed(count=3)
+        self.at+=timedelta(seconds=121)
+        self.feed(states=(),fresh=False,status='ocr_held')
+        self.assertIsNone(self.live.completion_context)
+        self.feed(states=(),banner=True,count=2)
+        self.assertEqual(self.states(),['완료'])
+
+    def test_fresh_other_header_cannot_recover_expired_context_without_icons(self):
+        self.feed(count=3)
+        self.at+=timedelta(seconds=121)
+        self.feed(states=(),banner=True,name='다른 던전',count=3)
         self.assertEqual(self.states(),[])
 
     def test_different_preview_invalidates_context_before_display_changes(self):

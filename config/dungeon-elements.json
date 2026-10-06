@@ -13,10 +13,11 @@
   "confidence": 0.7,
   "imageSize": 512,
   "nmsIou": 0.4,
-  "trainingRun": "dungeon-elements-0926",
-  "trainingManifest": "data/annotations/dungeon-elements-0926.json",
+  "trainingRun": "dungeon-elements-tower-dark-1006",
+  "trainingManifest": "data/annotations/dungeon-elements-tower-1006.json",
   "classConfidence": {
-    "gateless_title": 0.65
+    "gateless_title": 0.65,
+    "dungeon_name": 0.45
   },
-  "modelSha256": "4233b0b2ad76561a459fb803d34b8dcc8e52b3a7e2fc8089dd7fb6d11c2239d1"
+  "modelSha256": "3526afa02be2961c0a826c88a4878f676618d181b87c9e5a2dfa4e49050d2aa2"
 }

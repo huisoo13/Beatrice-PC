@@ -8,7 +8,7 @@ from unittest.mock import patch,Mock
 
 from PySide6.QtWidgets import QApplication
 from beatrice import desktop
-from beatrice.windows_capture import Client,find_clients
+from beatrice.game_window import Client,find_clients
 
 
 class ClientDetectionTests(unittest.TestCase):
@@ -57,9 +57,14 @@ class ClientDetectionTests(unittest.TestCase):
         self.assertIn('프로세스 확인 실패',self.window.status_label.text())
         self.search.reset_mock();self.window.tick();self.search.assert_not_called()
 
-    def test_background_client_is_yellow(self):
+    def test_background_client_can_analyze_and_wait_for_actual_frames(self):
         self.active.return_value=False;self.window.apply_clients([self.client])
-        self.assertEqual(self.window.status_label.text(),'게임 화면 활성화 대기')
+        self.assertEqual(self.window.status_label.text(),'클라이언트 감지됨')
+        self.window.analyzing=True
+        self.window.detail.setText('분석 중 · 게임 창 직접 캡처');self.window.update_status()
+        self.assertEqual(self.window.status_label.text(),'분석 중')
+        self.window.worker_status(self.window.generation,'최소화 상태 · 새 게임 프레임 대기')
+        self.assertEqual(self.window.status_label.text(),'최소화 상태 · 새 게임 프레임 대기')
         self.assertIn('#ca8a04',self.window.status_dot.styleSheet())
 
     def test_refresh_same_client_does_not_restart_analysis(self):
@@ -156,7 +161,7 @@ class ClientDetectionTests(unittest.TestCase):
             self.app.processEvents()
 
     def test_non_windows_discovery_is_empty(self):
-        with patch('beatrice.windows_capture.sys.platform','linux'):
+        with patch('beatrice.game_window.sys.platform','linux'):
             self.assertEqual(find_clients(),[])
 
     @unittest.skipUnless(os.name=='nt','Windows enumeration callback')
@@ -169,8 +174,8 @@ class ClientDetectionTests(unittest.TestCase):
         api.GetWindowTextW.side_effect=lambda hwnd,buffer,size:setattr(buffer,'value',titles[hwnd])
         api.GetWindowThreadProcessId.side_effect=lambda hwnd,pid:setattr(pid._obj,'value',hwnd)
         api.EnumWindows.side_effect=lambda callback,data:[callback(hwnd,0) for hwnd in titles]
-        with patch('beatrice.windows_capture.api',return_value=api),patch(
-                'beatrice.windows_capture.process_name',side_effect=lambda pid:'chrome.exe' if pid==102 else 'lostark.exe'):
+        with patch('beatrice.game_window.api',return_value=api),patch(
+                'beatrice.game_window.process_name',side_effect=lambda pid:'chrome.exe' if pid==102 else 'lostark.exe'):
             self.assertEqual([c.hwnd for c in find_clients()],[100,101])
 
 

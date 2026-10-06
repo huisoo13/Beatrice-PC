@@ -1,22 +1,7 @@
 {
   "minimumConfidence": 0.65,
   "confirmations": 3,
-  "supportedDungeonNames": [
-    "고통의 마녀, 세르카",
-    "종막 : 최후의 날",
-    "서막 : 붉어진 백야의 나선",
-    "1막 : 대지를 부수는 업화의 궤적",
-    "어둠군단장 카멘"
-  ],
-  "supportedDifficulties": [
-    "하드",
-    "노말",
-    "헬",
-    "익스트림",
-    "싱글 모드",
-    "매칭 모드"
-  ],
-  "vocabularySource": "던전명 목록은 참고 전사이며 이름 제한에 사용하지 않습니다. 실시간 던전 판별은 관문 UI와 supportedDifficulties의 난이도 표기를 함께 요구합니다.",
+  "vocabularySource": "던전명과 난이도·단계는 사전 제한 없이 새 YOLO 글자 영역의 OCR 일치·신뢰도로 확인합니다.",
   "engine": "paddle",
   "model": "korean_PP-OCRv5_mobile_rec"
 }

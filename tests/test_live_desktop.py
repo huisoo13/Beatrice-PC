@@ -6,6 +6,19 @@ from beatrice.storage import Store
 from beatrice.live import LiveCoordinator
 
 class LiveTests(unittest.TestCase):
+    def test_capture_gap_preserves_owner_and_consumed_banner_but_breaks_confirmation(self):
+        store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
+        now=datetime(2026,9,30,tzinfo=timezone.utc)
+        for i in range(3):
+            live.update(now+timedelta(seconds=i),dict(currentName=dict(text='테스트',confidence=.99)),[],{})
+        live.banner.active=True;live.banner.consumed=True;live.banner.count=1
+        live.capture_interrupted()
+        self.assertEqual(live.identity.current,'테스트')
+        self.assertFalse(live.identity.blocked)
+        self.assertTrue(live.banner.consumed)
+        self.assertEqual(live.banner.count,0)
+        self.assertEqual(store.state_records(),[])
+
     def test_switch_target_records_without_reopening_menu(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
         now=datetime(2026,9,30,tzinfo=timezone.utc)

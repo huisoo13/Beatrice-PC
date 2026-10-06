@@ -1,0 +1,5 @@
+{
+  "yoloThreads": 4,
+  "ocrThreads": 4,
+  "ocrMkldnn": true
+}

@@ -178,7 +178,7 @@ OCR 관측, 현재 캐릭터 확정, 완료 이벤트 저장은 별도 단계입
 
 | 코드 / 문서 | 역할 |
 | --- | --- |
-| `beatrice/windows_capture.py`, `beatrice/layout.py` | 캡처와 좌표 보정 |
+| `beatrice/obs_capture.py`, `beatrice/layout.py` | 캡처와 좌표 보정 |
 | `beatrice/character_vision.py`, `beatrice/paddle_reader.py` | 캐릭터 영역, OCR, 팝업·로딩 감지 |
 | `beatrice/character.py` | 캐릭터 확정·변경 상태 |
 | `beatrice/dungeon.py`, `config/dungeon-ocr.json` | 던전 판별, 제목·난이도 읽기 |

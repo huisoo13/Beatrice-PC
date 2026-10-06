@@ -38,7 +38,7 @@
 | `config/dungeon-panel.json`, `DungeonOCR.analyze_gateless` | 탐지 패널 내부 제목·난이도의 상대 사각형 | 실시간 사용. YOLO 탐지 없이 해당 화면 위치를 직접 읽지 않음 |
 | `beatrice/dungeon_panel.py`, `has_dungeon_hud` | 320×112 관문 모델 입력과 `[32..352,112..224]` 가상 좌표 | 실시간 사용. 실제 화면 crop은 탐지 패널에서 계산하며 이 상수는 정규화·검증용 |
 | `beatrice/live.py`의 `[40,130,80,170]` | 무관문 레이드 상태를 전달하는 내부 가상 슬롯 | 화면 픽셀을 읽는 좌표가 아님 |
-| `beatrice/windows_capture.py` | Windows API에서 받은 게임 창 위치·크기 | 동적으로 계산된 캡처 범위. 고정 게임 화면 ROI 아님 |
+| `beatrice/game_window.py`, `beatrice/obs_engine.py` | 선택한 게임 창과 OBS 프레임 크기 | 게임 창 식별 및 동적 영상 크기. 고정 게임 화면 ROI 아님 |
 | `tools/yolo_first.py`의 prepare/predict, `tools/check_training_predictions.py` | `(32,112,352,224)` 고정 crop | 옛 관문 학습·단일 이미지 검사 도구. 앱과 현재 OCR 경로에서는 호출하지 않음 |
 | `tools/character_model.py` | 초상화·팝업 고정 ROI | 옛 학습 데이터 준비 도구. 현재 캐릭터 실행 모델 로더가 아님 |
 | `tools/predict_video.py`의 `frame[:240,:800]` | 검토 이미지 저장용 crop | YOLO/OCR 입력에는 사용하지 않지만 미리보기 위치는 고정되어 있음 |
