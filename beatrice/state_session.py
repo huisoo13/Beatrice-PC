@@ -70,7 +70,8 @@ class StateSession:
         if self.character:self.tracker=trial
         else:self.pending_tracker=trial
         completions=[r for r in changed if r['state']=='완료']
-        return dict(status=result['status'],stableStates=trial.stable,changedRecords=changed,
+        return dict(status=result['status'],stableStates=trial.stable,
+                    observedStates=result.get('observedStates'),changedRecords=changed,
                     events=completions if self.character else [],pendingEvents=completions if not self.character else [])
 
     def complete_banner(self,at,dungeon,gate):

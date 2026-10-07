@@ -1,0 +1,12 @@
+{
+  "type": "snapshot", "status": "디자인 검증 · 샘플 데이터", "error": "", "busy": false, "catalogBusy": false,
+  "profile": {"character": "샘플 캐릭터", "message": "플레이 중", "active": true, "dungeon": "카제로스 레이드", "dungeonSubtitle": "하드 · 2관문", "dungeonState": "진행 중"},
+  "clients": [{"hwnd": 1, "pid": 100, "title": "LOST ARK · 샘플"}], "selected": 1,
+  "catalogStatus": "공용 데이터 · 로컬 보관본",
+  "records": [
+    {"character": "샘플 캐릭터", "dungeon": "카제로스 레이드", "mode": "하드", "gate": "1관문", "date": "2026.09.26 21:22", "detail": {"status": "matched", "source": "샘플 공용 데이터", "values": {"gold": 10000, "fee": 2000, "bound_percentage": 0.2}}},
+    {"character": "샘플 캐릭터", "dungeon": "에키드나", "mode": "노말", "gate": "2관문", "date": "2026.09.26 21:15", "detail": {"status": "unmatched"}},
+    {"character": "샘플 캐릭터", "dungeon": "에키드나", "mode": "노말", "gate": "1관문", "date": "2026.09.26 21:08", "detail": {"status": "unmatched"}},
+    {"character": "다른 캐릭터", "dungeon": "카멘", "mode": "하드", "gate": "3관문", "date": "2026.09.25 22:46", "detail": {"status": "unmatched"}}
+  ]
+}

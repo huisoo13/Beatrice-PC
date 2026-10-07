@@ -10,7 +10,7 @@ with exe.open('rb') as f:
  assert b'RunProgram="runtime\\\\pythonw.exe app_launcher.py"' in header
 with py7zr.SevenZipFile(archive) as z:
  names=set(z.getnames())
- required=['app_launcher.py','runtime/pythonw.exe','runtime/python312.dll','runtime/python312._pth','beatrice/desktop.py','models/character-regions.pt','models/dungeon-regions.pt','models/dungeon-elements.pt','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','runtime/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll']
+ required=['app_launcher.py','runtime/pythonw.exe','runtime/python.exe','runtime/python312.dll','runtime/python312._pth','beatrice/desktop.py','beatrice/native_bridge.py','native-ui/BeatricePC.exe','native-ui/BeatricePC.dll','native-ui/BeatricePC.pri','native-ui/Assets/tokens.json','models/character-regions.pt','models/dungeon-regions.pt','models/dungeon-elements.pt','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','runtime/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll']
  for path in required:assert path in names,path
  assert not any('easyocr' in path.lower() for path in names)
  assert not any('torch-2.14' in path for path in names)

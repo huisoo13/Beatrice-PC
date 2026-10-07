@@ -2,6 +2,9 @@
 from pathlib import Path
 import zipfile,shutil,hashlib,json,sys
 ROOT=Path(__file__).resolve().parents[1]
+native_ui=ROOT/'build/native-ui'
+if not (native_ui/'BeatricePC.exe').is_file():
+    raise ValueError('WinUI 앱을 ui/Beatrice.App/build.ps1 -Publish로 먼저 준비해주세요.')
 stage=ROOT/'build/windows-app'
 if stage.exists():shutil.rmtree(stage)  # 이 스크립트가 생성한 임시 패키지 폴더만 재구성
 stage.mkdir(parents=True,exist_ok=True)
@@ -31,6 +34,7 @@ for pattern in ('msvcp140*.dll','vcruntime140*.dll','concrt140.dll'):
 (runtime/'python312._pth').write_text('python312.zip\n.\nLib/site-packages\n..\nimport site\n')
 for folder in ('beatrice','config'):
     shutil.copytree(ROOT/folder,stage/folder,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+shutil.copytree(native_ui,stage/'native-ui',ignore=shutil.ignore_patterns('*.pdb','*.log'))
 # The engine is part of the app, never resolved from an installed OBS Studio.
 obs_runtime=ROOT/'build/obs-runtime'
 if not (obs_runtime/'manifest.json').is_file():
@@ -42,11 +46,11 @@ shutil.copy2(ROOT/'LICENSE',stage/'LICENSE')
 # Corresponding Beatrice source accompanies the GPL engine distribution.
 source_zip=stage/'obs-runtime/licenses/beatrice-source.zip'
 with zipfile.ZipFile(source_zip,'w',compression=zipfile.ZIP_DEFLATED) as source:
-    for folder in ('beatrice','config','packaging','tests'):
+    for folder in ('beatrice','config','packaging','tests','ui'):
         for path in (ROOT/folder).rglob('*'):
-            if path.is_file() and '__pycache__' not in path.parts and path.suffix!='.pyc':
+            if path.is_file() and not {'__pycache__','bin','obj'}.intersection(path.parts) and path.suffix not in ('.pyc','.png'):
                 source.write(path,str(path.relative_to(ROOT)))
-    for name in ('LICENSE','README.md','app_launcher.py','run-as-admin.cmd'):
+    for name in ('LICENSE','README.md','app_launcher.py','Run-Beatrice.cmd'):
         source.write(ROOT/name,name)
 shutil.copytree(ROOT/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',stage/'models/paddleocr/korean_PP-OCRv5_mobile_rec_infer',dirs_exist_ok=True)
 ui_config=json.loads((ROOT/'config/ui-regions.json').read_text(encoding='utf-8'))
@@ -67,7 +71,7 @@ if active_config['mode']=='yolo':
             (stage/weights).parent.mkdir(parents=True,exist_ok=True)
             shutil.copy2(ROOT/weights,stage/weights)
 shutil.copy2(ROOT/'app_launcher.py',stage/'app_launcher.py')
-shutil.copy2(ROOT/'run-as-admin.cmd',stage/'run-as-admin.cmd')
+shutil.copy2(ROOT/'Run-Beatrice.cmd',stage/'Run-Beatrice.cmd')
 shutil.copy2(ROOT/'build/7zip-sdk/DOC/installer.txt',stage/'7zip-SFX-license.txt')
 (stage/'package-manifest.json').write_text(json.dumps(dict(python='3.12.10 embedded amd64',wheels=wheel_manifest,windowsRuntimeTested=False),indent=2))
 print('Staged',sum(p.stat().st_size for p in stage.rglob('*') if p.is_file()),'bytes',flush=True)

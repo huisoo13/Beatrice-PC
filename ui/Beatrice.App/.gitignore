@@ -1,0 +1,8 @@
+bin/
+obj/
+
+# Generated native UI review captures and diagnostics
+/*-native.png
+/capture-status.txt
+/capture-error.txt
+/startup-check.txt

@@ -66,9 +66,11 @@ class Worker(QThread):
             from .completion_diagnostic import CompletionDiagnostic
             ui_config=load_ui_config()
             if ui_config['mode']!='yolo':raise ValueError('YOLO 탐지만 지원합니다.')
-            ui_detector=UIRegionDetector(ui_config)
+            ui_detector=UIRegionDetector(ui_config,progress=lambda message:self.progress.emit('1 / 3 · '+message))
+            self.progress.emit('1 / 3 · 한국어 OCR 모델을 불러오는 중…')
             dungeon=DungeonOCR();character=CharacterVision(reader=dungeon.reader);tracker=DungeonTracker(max_gap=5)
             dungeon_observer=DungeonObserver(dungeon)
+            self.progress.emit('1 / 3 · 완료 표시 모델을 불러오는 중…')
             completion=CompletionOverlayDetector(dungeon.reader,json.loads((ROOT/'config/completion-overlay.json').read_text(encoding='utf-8')))
             completion_diagnostic=CompletionDiagnostic(DATA/'completion-diagnostics')
             store=Store(DATA/'records.sqlite3',catalog=FileContentMatcher(ROOT,DATA));coordinator=LiveCoordinator(store)

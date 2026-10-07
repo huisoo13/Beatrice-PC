@@ -6,6 +6,20 @@ from beatrice.storage import Store
 from beatrice.live import LiveCoordinator
 
 class LiveTests(unittest.TestCase):
+    def test_current_gate_survives_saved_completion_on_reentry(self):
+        store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
+        now=datetime(2026,9,30,tzinfo=timezone.utc)
+        context=dict(dungeonName='카멘',difficulty='하드',contextStatus='ocr_verified',currentRaidPanel=True)
+        char=dict(currentName=dict(text='테스트',confidence=.99))
+        def feed(i, states):
+            boxes=[dict(xyxy=[40+60*j,130,60+60*j,160],state=s,confidence=.99) for j,s in enumerate(states)]
+            return live.update(now+timedelta(seconds=i),char,boxes,context)
+        for i in range(8): feed(i,['완료','완료'])
+        for i in range(8,12): result=feed(i,['완료','진행중'])
+        self.assertEqual(result['result']['stableStates'],('완료','완료'))
+        self.assertEqual(result['result']['observedStates'],('완료','진행중'))
+        self.assertEqual([r['state'] for r in store.state_records()],['완료','완료'])
+
     def test_capture_gap_preserves_owner_and_consumed_banner_but_breaks_confirmation(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
         now=datetime(2026,9,30,tzinfo=timezone.utc)

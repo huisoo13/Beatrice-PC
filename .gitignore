@@ -23,3 +23,13 @@ client_secret_*.json
 google-session.bin
 google-session.tmp
 google_drive_api_key.txt
+
+# Locally installed agent skills and their review helpers
+/.agents/skills/
+/tools/uipro.cmd
+/tools/probe_ui_ux_skill.py
+
+# Superseded design experiments (kept locally)
+/design/ui-review/
+/design/ui-v2/
+/design/winui-preview/

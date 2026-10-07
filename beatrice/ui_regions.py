@@ -47,15 +47,16 @@ def merge_text_duplicates(items):
 
 
 class UIRegionDetector:
-    def __init__(self,config=None,model=None):
+    def __init__(self,config=None,model=None,progress=None):
         self.config=config or load_config()
         if self.config.get('architecture')=='split' and model is None:
-            self.character_detector=UIRegionDetector(json.loads((ROOT/self.config['characterConfig']).read_text(encoding='utf-8')))
-            self.dungeon_detector=UIRegionDetector(json.loads((ROOT/self.config['dungeonConfig']).read_text(encoding='utf-8')))
+            self.character_detector=UIRegionDetector(json.loads((ROOT/self.config['characterConfig']).read_text(encoding='utf-8')),progress=progress)
+            self.dungeon_detector=UIRegionDetector(json.loads((ROOT/self.config['dungeonConfig']).read_text(encoding='utf-8')),progress=progress)
             return
         if model is None:
             path=ROOT/self.config['weights']
             if not path.is_file():raise ValueError('통합 UI 모델을 현재 해상도 데이터로 학습한 뒤 yolo 모드를 켜주세요.')
+            if progress: progress('YOLO 모델 · '+path.name)
             from ultralytics import YOLO
             model=YOLO(str(path))
             from .cpu_inference import load_config as load_cpu_config
@@ -64,7 +65,7 @@ class UIRegionDetector:
             raise ValueError('통합 UI 모델 클래스와 설정이 다릅니다.')
         self.model=model
         if self.config.get('elementConfig'):
-            self.element_detector=UIRegionDetector(json.loads((ROOT/self.config['elementConfig']).read_text(encoding='utf-8')))
+            self.element_detector=UIRegionDetector(json.loads((ROOT/self.config['elementConfig']).read_text(encoding='utf-8')),progress=progress)
 
     def locate(self,frame):
         if hasattr(self,'character_detector'):
