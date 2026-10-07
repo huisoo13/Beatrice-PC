@@ -49,6 +49,39 @@ class ObsCapture:
         self.status_thread=None
         self.wait_kind='interrupted';self.wait_reason=self.message
         self.source_received_at=None;self.read_wait_since=None;self.read_waits={}
+        self.engine_ready=threading.Event();self.binding_ready=threading.Event()
+        self.target_revision=1;self.active_revision=None;self.sent_revision=None
+        self.command_lock=threading.RLock();self.closing=False
+
+    def bind(self,client):
+        with self.command_lock:
+            if client!=self.client:
+                self.client=client;self.target_revision+=1
+                self.active_revision=None;self.binding_ready.clear()
+                self.last_sequence=0;self.last_digest=None;self.changed_at=0
+                self.source_received_at=None;self.read_wait_since=None
+                self.observed_at=None;self.frame_info={}
+                self._waiting('내장 OBS 게임 연결 대기' if client else '클라이언트 실행 대기')
+            self._send_target()
+
+    def _send_target(self):
+        with self.command_lock:
+            if self.closing or not self.engine_ready.is_set() or self.sent_revision==self.target_revision:return
+            client=self.client
+            command=dict(hwnd=client.hwnd if client else 0,pid=client.pid if client else 0,revision=self.target_revision)
+            try:
+                self.process.stdin.write(json.dumps(command)+'\n');self.process.stdin.flush()
+                self.sent_revision=self.target_revision
+            except (OSError,ValueError):self.message='내장 OBS 엔진 연결 종료 · 재연결 대기'
+
+    def prepare(self,stop_event,timeout=15):
+        if self.process is None:self._start()
+        deadline=time.monotonic()+timeout
+        while not self.engine_ready.wait(.05):
+            if stop_event.is_set():return False
+            if self.process.poll() is not None:raise RuntimeError(self.message+' · obs-engine.log 확인')
+            if time.monotonic()>=deadline:raise RuntimeError('내장 OBS 엔진 준비 시간 초과 · obs-engine.log 확인')
+        return not stop_event.is_set()
 
     def _waiting(self,reason,transient=False):
         self.wait_kind='transient' if transient else 'interrupted'
@@ -58,7 +91,14 @@ class ObsCapture:
     def _status(self,process):
         for line in process.stdout:
             if process is not self.process:break
-            try:self.message=json.loads(line).get('message',self.message)
+            try:
+                status=json.loads(line);self.message=status.get('message',self.message)
+                if status.get('event')=='engine_ready':
+                    self.engine_ready.set();self._send_target()
+                elif status.get('event')=='target_ready':
+                    with self.command_lock:
+                        if status.get('revision')==self.target_revision:
+                            self.active_revision=self.target_revision;self.binding_ready.set()
             except (ValueError,TypeError):
                 if self.log is not None:self.log.write(line.encode('utf-8'))
                 if 'could not open process' in line:
@@ -70,19 +110,22 @@ class ObsCapture:
         runtime=runtime_path()
         manifest=json.loads((runtime/'manifest.json').read_text(encoding='utf-8'))
         if manifest.get('version')!='32.0.4':raise RuntimeError('내장 OBS 엔진 버전이 일치하지 않습니다.')
+        self.closing=False;self.engine_ready.clear();self.binding_ready.clear()
+        self.active_revision=None;self.sent_revision=None
         tag='Local\\BeatriceOBS-'+uuid.uuid4().hex
         self.memory=mmap.mmap(-1,CAPACITY,tagname=tag)
         self.memory[:OFFSET]=bytes(OFFSET)
         self.data_dir.mkdir(parents=True,exist_ok=True)
         self.log=(self.data_dir/'obs-engine.log').open('ab',buffering=0)
-        command=[sys.executable,'-m','beatrice.obs_engine','--hwnd',str(self.client.hwnd),
-                 '--pid',str(self.client.pid),'--memory',tag,'--runtime',str(runtime)]
+        command=[sys.executable,'-m','beatrice.obs_engine','--memory',tag,'--runtime',str(runtime)]
         self.process=subprocess.Popen(command,cwd=ROOT,stdin=subprocess.PIPE,stdout=subprocess.PIPE,
             stderr=self.log,text=True,encoding='utf-8',errors='replace',creationflags=subprocess.CREATE_NO_WINDOW)
         self.status_thread=threading.Thread(target=self._status,args=(self.process,),daemon=True)
         self.status_thread.start()
 
     def close(self):
+        self.closing=True;self.engine_ready.clear();self.binding_ready.clear()
+        self.active_revision=None;self.sent_revision=None
         process=self.process
         if process is not None:
             try:process.stdin.close();process.wait(timeout=3)
@@ -97,6 +140,7 @@ class ObsCapture:
 
     def grab(self):
         from .game_window import client_alive,api
+        if self.client is None:return self._waiting('클라이언트 실행 대기')
         if not client_alive(self.client):raise RuntimeError('게임 창이 종료됐습니다.')
         now=time.monotonic()
         if self.process is not None and self.process.poll() is not None:
@@ -107,6 +151,7 @@ class ObsCapture:
             except Exception as exc:
                 self.close();self.message=str(exc);self.retry_at=now+2
         if self.memory is None:return self._waiting(self.message)
+        if self.active_revision!=self.target_revision:return self._waiting(self.message)
         now=time.monotonic()
         diagnostic={}
         result=read_frame(self.memory,self.last_sequence,diagnostic)

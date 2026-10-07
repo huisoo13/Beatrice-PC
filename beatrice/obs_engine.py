@@ -6,6 +6,7 @@ import mmap
 import os
 import sys
 import threading
+import queue
 import time
 from ctypes import wintypes as W
 from pathlib import Path
@@ -82,7 +83,7 @@ class Engine:
         result=self.obs.obs_reset_video(C.byref(info))
         if result!=0:raise RuntimeError(f'OBS 영상 초기화 실패 ({result})')
         self.width=width;self.height=height
-    def start(self,settings,width,height,test_pattern=False):
+    def initialize(self,width=640,height=360,test_pattern=False):
         if self.obs.obs_get_version_string().decode()!='32.0.4':raise RuntimeError('OBS ABI 버전 불일치')
         # Vulkan manifests must be absent: stock plugin otherwise registers global layers.
         if list((self.runtime/'data/obs-plugins/win-capture').glob('obs-vulkan*.json')):
@@ -97,6 +98,18 @@ class Engine:
                                         str(self.runtime/f'data/obs-plugins/{plugin}').encode())
         if result!=0 or not self.obs.obs_init_module(module):raise RuntimeError(f'OBS 캡처 모듈 초기화 실패 ({result})')
         self.obs.obs_post_load_modules()
+    def start(self,settings,width,height,test_pattern=False):
+        self.initialize(width,height,test_pattern)
+        self.attach(settings,width,height,test_pattern)
+    def detach(self):
+        if self.callback:
+            self.obs.obs_remove_raw_video_callback(self.callback,None);self.callback=None
+        self.obs.obs_set_output_source(0,None)
+        if self.source:self.obs.obs_source_release(self.source);self.source=None
+        self.memory[:OFFSET]=bytes(OFFSET)
+    def attach(self,settings,width,height,test_pattern=False):
+        self.detach()
+        if (width,height)!=(self.width,self.height):self.video(width,height)
         data=self.obs.obs_data_create_from_json(json.dumps(settings).encode('utf-8'))
         try:self.source=self.obs.obs_source_create(b'color_source_v3' if test_pattern else b'game_capture',b'Beatrice Game',data,None)
         finally:self.obs.obs_data_release(data)
@@ -129,35 +142,47 @@ class Engine:
             self.obs.obs_add_raw_video_callback(None,self.callback,None)
     def close(self):
         if self.started:
-            if self.callback:self.obs.obs_remove_raw_video_callback(self.callback,None)
-            self.obs.obs_set_output_source(0,None)
-            if self.source:self.obs.obs_source_release(self.source)
+            self.detach()
             self.obs.obs_shutdown();self.started=False
         self.dll_directory.close()
 
 def main():
     from .game_window import Client,api,client_alive
-    parser=argparse.ArgumentParser();parser.add_argument('--hwnd',type=int,required=True)
-    parser.add_argument('--pid',type=int,required=True);parser.add_argument('--memory',required=True)
+    parser=argparse.ArgumentParser();parser.add_argument('--memory',required=True)
     parser.add_argument('--runtime',type=Path,required=True);args=parser.parse_args()
-    u=api();buffer=C.create_unicode_buffer(1024);u.GetWindowTextW(args.hwnd,buffer,1024)
-    client=Client(args.hwnd,args.pid,buffer.value)
+    u=api();client=None
     runtime=args.runtime.resolve()
     root=Path(__file__).resolve().parents[1]
     if runtime not in ((root/'obs-runtime').resolve(),(root/'build/obs-runtime').resolve()):
         raise RuntimeError('앱 외부 OBS 엔진 경로는 허용하지 않습니다.')
     try:u.SetProcessDpiAwarenessContext(C.c_void_p(-4))
     except (AttributeError,OSError):pass
-    settings,width,height=window_settings(client)
     os.chdir(runtime/'bin/64bit')
     memory=mmap.mmap(-1,CAPACITY,tagname=args.memory);engine=None
     stop=threading.Event()
+    pending=queue.Queue()
     def commands():
-        sys.stdin.read();stop.set()  # EOF when parent closes or exits
+        try:
+            for line in sys.stdin:pending.put(json.loads(line))
+        finally:stop.set()  # EOF when parent closes or exits
     threading.Thread(target=commands,daemon=True).start()
     try:
-        engine=Engine(runtime,memory);engine.start(settings,width,height)
-        while not stop.wait(.25) and client_alive(client):engine.resize()
+        engine=Engine(runtime,memory);engine.initialize()
+        print(json.dumps(dict(event='engine_ready',message='내장 OBS 엔진 준비 완료')),flush=True)
+        while not stop.wait(.05):
+            while not pending.empty():
+                command=pending.get_nowait()
+                engine.detach();client=None
+                if command['hwnd']:
+                    buffer=C.create_unicode_buffer(1024);u.GetWindowTextW(command['hwnd'],buffer,1024)
+                    client=Client(command['hwnd'],command['pid'],buffer.value)
+                    settings,width,height=window_settings(client)
+                    engine.attach(settings,width,height)
+                print(json.dumps(dict(event='target_ready',revision=command['revision'],
+                                      message='내장 OBS 게임 연결 대기' if client else '클라이언트 실행 대기')),flush=True)
+            if client is not None:
+                if client_alive(client):engine.resize()
+                else:engine.detach();client=None
     finally:
         if engine is not None:engine.close()
         memory.close()

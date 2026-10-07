@@ -22,6 +22,7 @@ def main():
     engine=Engine(runtime,memory)
     capture=ObsCapture(Client(0,0,'Internal OBS test'),output.parent)
     capture.memory=memory;capture.process=SimpleNamespace(poll=lambda:None)
+    capture.active_revision=capture.target_revision
     api=SimpleNamespace(IsIconic=lambda hwnd:False,GetForegroundWindow=lambda:0)
     counts={};transitions=[];last_kind=None;last_color_change=0;color=0
     phases=[('stream',1.5),('paused',2.5),('resumed',1.5)]

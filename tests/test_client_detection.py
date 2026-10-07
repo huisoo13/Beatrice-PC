@@ -37,8 +37,10 @@ class ClientDetectionTests(unittest.TestCase):
         self.search.return_value=[self.client]
         self.window.process_changed((frozenset({200}),''))
         self.assertEqual(self.window.client,self.client)
-        self.assertEqual(self.window.status_label.text(),'클라이언트 감지됨')
-        self.assertIn('#16a34a',self.window.status_dot.styleSheet())
+        self.assertTrue(self.window.analyzing)
+        self.assertEqual(self.worker.requested()[1],self.client)
+        self.assertEqual(self.window.status_label.text(),'내장 OBS · 첫 게임 프레임 대기')
+        self.assertIn('#ca8a04',self.window.status_dot.styleSheet())
 
     def test_process_before_window_waits_for_window_creation(self):
         self.window.process_changed((frozenset({200}),''))
@@ -59,8 +61,8 @@ class ClientDetectionTests(unittest.TestCase):
 
     def test_background_client_can_analyze_and_wait_for_actual_frames(self):
         self.active.return_value=False;self.window.apply_clients([self.client])
-        self.assertEqual(self.window.status_label.text(),'클라이언트 감지됨')
-        self.window.analyzing=True
+        self.assertTrue(self.window.analyzing)
+        self.assertEqual(self.worker.requested()[1],self.client)
         self.window.detail.setText('분석 중 · 게임 창 직접 캡처');self.window.update_status()
         self.assertEqual(self.window.status_label.text(),'분석 중')
         self.window.worker_status(self.window.generation,'최소화 상태 · 새 게임 프레임 대기')
@@ -86,13 +88,65 @@ class ClientDetectionTests(unittest.TestCase):
         self.window.update_observation({'generation':old_generation})
         self.assertNotIn('old message',self.window.detail.text())
 
-    def test_stop_prevents_resume_and_waits_before_delete(self):
-        self.search.return_value=[self.client];self.window.start();self.window.stop()
-        self.assertFalse(self.window.delete_button.isEnabled())
+    def test_delete_waits_for_analysis_then_automatically_resumes(self):
+        self.search.return_value=[self.client];self.window.apply_clients([self.client])
+        with patch.object(self.window.store,'clear_all') as clear:
+            self.window.delete()
+            paused=self.window.generation
+            self.assertFalse(self.window.delete_button.isEnabled())
+            self.assertIsNone(self.worker.requested()[1]);clear.assert_not_called()
+            self.window.refresh()  # Process polling cannot resume a pending delete.
+            self.assertIsNone(self.worker.requested()[1])
+            self.window.command_settled(paused-1);clear.assert_not_called()
+            self.window.command_settled(paused);clear.assert_called_once()
+            self.assertIsNone(self.window.maintenance)
+            self.assertEqual(self.worker.requested()[1],self.client)
+            self.assertTrue(self.window.analyzing)
+
+    def test_restore_pauses_until_settled_and_resumes_after_completion(self):
+        self.search.return_value=[self.client];self.window.apply_clients([self.client])
+        def begin():self.window.drive.busy=True
+        action=Mock(side_effect=begin)
+        self.window.prepare_restore(action)
+        action.assert_not_called()
         self.window.command_settled(self.window.generation)
-        self.assertTrue(self.window.delete_button.isEnabled())
-        self.window.refresh()
-        self.assertIsNone(self.worker.requested()[1])
+        action.assert_called_once()
+        self.window.refresh();self.assertIsNone(self.worker.requested()[1])
+        self.window.drive.busy=False;self.window.drive_changed()
+        self.assertEqual(self.worker.requested()[1],self.client)
+        self.assertIsNone(self.window.maintenance)
+
+    def test_prepared_startup_target_is_kept_without_another_selection(self):
+        self.worker.select(7,self.client);self.worker.settled_generation=7
+        window=desktop.Window(self.worker,[self.client])
+        try:
+            self.assertEqual(window.generation,7)
+            self.assertEqual(self.worker.requested(),(7,self.client))
+            self.assertTrue(window.analyzing)
+            self.assertFalse(hasattr(window,'start_button'))
+            self.assertFalse(hasattr(window,'stop_button'))
+        finally:window.close()
+
+    def test_restore_started_without_game_keeps_new_game_paused(self):
+        from beatrice.drive_ui import DRIVE_SCOPE
+        self.window.drive.login.session={'account':{'sub':'test'},'scopes':[DRIVE_SCOPE]}
+        self.window.drive.login.pending=None
+        with patch('beatrice.drive_ui.threading.Thread'):
+            self.window.drive.begin('download')
+            self.assertEqual(self.window.maintenance,'restore')
+            self.window.command_settled(self.window.generation)
+            self.assertTrue(self.window.drive.busy)
+            self.window.apply_clients([self.client])
+            self.assertFalse(self.window.analyzing)
+            self.assertIsNone(self.worker.requested()[1])
+            self.window.drive.pending=None;self.window.drive.busy=False
+            self.search.return_value=[self.client];self.window.drive_changed()
+            self.assertTrue(self.window.analyzing)
+
+    def test_pending_record_action_blocks_automatic_upload(self):
+        self.window.prepare_restore(Mock())
+        with patch.object(self.window.store,'drive_pending') as pending:
+            self.window.drive.check_auto_upload();pending.assert_not_called()
 
     def test_blue_only_after_observation(self):
         self.search.return_value=[self.client];self.window.start()

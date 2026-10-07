@@ -14,10 +14,11 @@ from .auto_upload import AutoUploadSchedule
 
 
 class DrivePanel(QWidget):
-    def __init__(self, root, data, login, store, can_restore, changed, parent=None):
+    def __init__(self, root, data, login, store, can_restore, changed, parent=None,prepare_restore=None):
         super().__init__(parent)
         self.root, self.data, self.login, self.store = root, Path(data), login, store
         self.can_restore, self.changed = can_restore, changed
+        self.prepare_restore=prepare_restore
         self.pending = None
         self.busy = False
         self.closed = False
@@ -31,7 +32,7 @@ class DrivePanel(QWidget):
         self.connect_button = QPushButton('Drive 권한 연결')
         self.upload_button = QPushButton('Drive에 저장')
         self.download_button = QPushButton('Drive에서 불러오기')
-        self.download_button.setToolTip('분석을 정지한 후 사용할 수 있습니다. 로컬 백업 후 기록을 교체합니다.')
+        self.download_button.setToolTip('기록 교체 전에 분석을 잠시 보류하고, 완료 후 자동으로 재개합니다.')
         for button in (self.connect_button, self.upload_button, self.download_button):
             row.addWidget(button)
         layout.addLayout(row)
@@ -55,7 +56,7 @@ class DrivePanel(QWidget):
         self.connect_button.setVisible(not authorized)
         self.connect_button.setEnabled(available)
         self.upload_button.setEnabled(available and authorized)
-        self.download_button.setEnabled(available and authorized and self.can_restore())
+        self.download_button.setEnabled(available and authorized and (self.can_restore() or self.prepare_restore is not None))
 
     def connect_drive(self):
         if self.busy or self.closed or not self.login.session or self.login.pending:
@@ -64,8 +65,11 @@ class DrivePanel(QWidget):
         self.login.begin(True, self.login.session)
         self.update_buttons()
 
-    def begin(self, action, automatic=False):
-        if self.closed or self.busy or not self.login.session or self.login.pending:
+    def begin(self, action, automatic=False, prepared=False):
+        if self.closed or self.busy or not self.isEnabled() or not self.login.session or self.login.pending:
+            return
+        if action == 'download' and self.prepare_restore is not None and not prepared:
+            self.prepare_restore(lambda:self.begin(action,automatic,prepared=True))
             return
         if action == 'download' and not self.can_restore():
             return
@@ -137,7 +141,7 @@ class DrivePanel(QWidget):
                 self.label.setText(f'{prefix} · {count}건 · 제외 {omitted}건')
                 return
             if not self.can_restore():
-                self.label.setText('분석을 정지한 후 다시 불러와주세요.')
+                self.label.setText('분석 보류가 확인되지 않아 기록을 적용하지 않았습니다. 다시 불러와주세요.')
                 return
             rows = result['records']
             completed_count=sum(row['state']=='완료' for row in rows)
@@ -173,7 +177,7 @@ class DrivePanel(QWidget):
 
     def check_auto_upload(self):
         now = time.monotonic()
-        if self.closed or self.busy or now < self.next_scan:
+        if self.closed or self.busy or not self.isEnabled() or now < self.next_scan:
             return
         self.next_scan = now + 1
         session = self.login.session

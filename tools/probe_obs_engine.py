@@ -27,6 +27,16 @@ def main():
             rows.append(dict(sequence=last,ticks=ticks,width=width,height=height,
                              firstPixel=list(pixels[:4]),nonzero=any(pixels)))
         if rows[0]['firstPixel']==rows[1]['firstPixel']:raise RuntimeError('Internal OBS frame did not update')
+        engine.detach()
+        if read_frame(memory,last) is not None:raise RuntimeError('Detached source retained a ready frame')
+        engine.attach(dict(width=640,height=360,color=0xffcc3366),640,360,test_pattern=True)
+        time.sleep(.5)
+        result=read_frame(memory,last)
+        if result is None:raise RuntimeError('Reattached source produced no new frame')
+        sequence,ticks,received,width,height,stride,pixels=result
+        if (width,height)!=(640,360):raise RuntimeError('Reattached frame dimensions did not change')
+        rows.append(dict(sequence=sequence,ticks=ticks,width=width,height=height,
+                         firstPixel=list(pixels[:4]),nonzero=any(pixels)))
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(rows,indent=2))
         print(json.dumps(dict(passed=True,frames=rows)))
     finally:engine.close();memory.close()

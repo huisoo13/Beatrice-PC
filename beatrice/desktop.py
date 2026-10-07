@@ -31,6 +31,7 @@ class Worker(QThread):
         self.command_lock=threading.Lock();self.command=(0,None)
         self.process_snapshot=None
         self.capture_pause=None
+        self.settled_generation=0
     def process_state(self,pids,error):
         self.process_snapshot=(pids,error);self.process_changed.emit(self.process_snapshot)
     def select(self,generation,client):
@@ -52,7 +53,8 @@ class Worker(QThread):
     def run(self):
         store=None;capture=None;watch=None
         try:
-            self.progress.emit('1 / 2 · 모델을 불러오는 중… 첫 실행은 시간이 걸릴 수 있습니다.')
+            DATA.mkdir(parents=True,exist_ok=True)
+            self.progress.emit('1 / 3 · 모델을 불러오는 중… 첫 실행은 시간이 걸릴 수 있습니다.')
             from .character_vision import CharacterVision
             from .dungeon import DungeonOCR,DungeonTracker
             from .live import LiveCoordinator
@@ -72,22 +74,32 @@ class Worker(QThread):
             store=Store(DATA/'records.sqlite3',catalog=FileContentMatcher(ROOT,DATA));coordinator=LiveCoordinator(store)
             diagnostic=RecognitionDiagnostic(DATA/'recognition-diagnostics')
             last_diagnostic=0
-            self.progress.emit('2 / 2 · LOSTARK 클라이언트를 탐색하는 중…')
+            self.progress.emit('2 / 3 · 내장 OBS 엔진을 준비하는 중…')
+            capture=ObsCapture(None,DATA)
+            if not capture.prepare(self.stop_event):return
+            self.progress.emit('3 / 3 · LOSTARK 클라이언트를 연결하는 중…')
             watch=ProcessWatch(self.process_state);watch.start()
             while not watch.ready.wait(.1):
                 if self.stop_event.is_set():return
             if self.stop_event.is_set():return
-            self.ready.emit(find_clients(watch.pids) if watch.pids else [])
+            clients=find_clients(watch.pids) if watch.pids else []
+            initial=next((c for c in clients if client_active(c)),clients[0] if clients else None)
+            if initial is not None:
+                self.select(1,initial);capture.bind(initial)
+                deadline=time.monotonic()+3
+                while not capture.binding_ready.wait(.05):
+                    if self.stop_event.is_set():return
+                    if not client_alive(initial) or time.monotonic()>=deadline:break
+            self.ready.emit(clients)
             generation=-1
             while not self.stop_event.is_set():
                 requested,client=self.requested()
                 if requested!=generation:
-                    if capture is not None:capture.close()
-                    capture=None;generation=requested;self.capture_pause=None
+                    generation=requested;self.capture_pause=None
                     character.reset_name_cache();tracker.reset();dungeon_observer.reset()
                     coordinator=LiveCoordinator(store)
-                    if client is not None:
-                        capture=ObsCapture(client,DATA)
+                    capture.bind(client)
+                    self.settled_generation=generation
                     self.settled.emit(generation)
                 if client is None:
                     self.stop_event.wait(.1);continue
@@ -179,7 +191,9 @@ class Window(QMainWindow):
     def __init__(self,worker,clients,error=''):
         super().__init__();DATA.mkdir(parents=True,exist_ok=True)
         self.worker=worker;self.closing=False;self.store=Store(DATA/'records.sqlite3')
-        self.clients=[];self.client=None;self.generation=0;self.settled_generation=0;self.analyzing=False;self.error=error
+        self.generation,self.client=worker.requested()
+        self.clients=[];self.settled_generation=worker.settled_generation;self.analyzing=False;self.error=error
+        self.maintenance=None;self.pending_action=None
         self.process_pids,self.watch_error=worker.process_snapshot or (frozenset(c.pid for c in clients),'')
         self.setWindowTitle('Beatrice PC · 실시간 관문 기록 테스트');self.resize(1000,620)
         root=QWidget();self.setCentralWidget(root);layout=QVBoxLayout(root)
@@ -191,10 +205,9 @@ class Window(QMainWindow):
         row.addWidget(QLabel('대상'));row.addWidget(self.targets,1);row.addWidget(refresh)
         self.targets.currentIndexChanged.connect(self.target_changed)
         layout.addLayout(row)
-        controls=QHBoxLayout();self.start_button=QPushButton('시작');self.stop_button=QPushButton('정지');self.delete_button=QPushButton('기록 전체 삭제')
-        for button in (self.start_button,self.stop_button,self.delete_button):button.setMinimumHeight(42);controls.addWidget(button)
-        layout.addLayout(controls);self.stop_button.setEnabled(False)
-        self.start_button.clicked.connect(self.start);self.stop_button.clicked.connect(self.stop);self.delete_button.clicked.connect(self.delete)
+        controls=QHBoxLayout();self.delete_button=QPushButton('기록 전체 삭제')
+        self.delete_button.setMinimumHeight(42);controls.addWidget(self.delete_button)
+        layout.addLayout(controls);self.delete_button.clicked.connect(self.delete)
         self.character=QLabel('현재 캐릭터: 확인 대기 — 게임에서 ESC 메뉴를 잠시 유지해주세요.')
         self.status_dot=QLabel('●');self.status_label=QLabel();self.status_label.setWordWrap(True)
         status_row=QHBoxLayout();status_row.addWidget(self.status_dot);status_row.addWidget(self.status_label,1)
@@ -212,7 +225,7 @@ class Window(QMainWindow):
         layout.addWidget(QLabel('저장 위치: '+str(DATA)))
         self.drive=DrivePanel(ROOT,DATA,self.google_login,self.store,
             lambda: not self.analyzing and self.settled_generation==self.generation,
-            self.drive_changed,self)
+            self.drive_changed,self,prepare_restore=self.prepare_restore)
         layout.insertWidget(1,self.drive)
         self.public_content=PublicContentPanel(ROOT,DATA,self)
         layout.insertWidget(2,self.public_content)
@@ -225,12 +238,10 @@ class Window(QMainWindow):
     def set_status(self,text,color):
         self.status_label.setText(text);self.status_dot.setStyleSheet(f'color: {color}; font-size: 22px;')
     def update_status(self):
-        busy=self.drive.busy
+        busy=self.drive.busy or bool(self.maintenance)
         self.refresh_button.setEnabled(not busy)
-        self.start_button.setEnabled(bool(self.client) and not self.analyzing and not self.error and not busy)
-        self.stop_button.setEnabled(self.analyzing)
-        self.delete_button.setEnabled(not self.analyzing and self.settled_generation==self.generation and not busy)
-        self.targets.setEnabled(not self.analyzing and not busy)
+        self.delete_button.setEnabled(not busy and not self.error)
+        self.targets.setEnabled(not busy)
         if self.error:self.set_status(self.error,'#dc2626')
         elif self.client is None:
             if self.process_pids:self.set_status('클라이언트 시작 중 · 게임 창 생성 대기','#ca8a04')
@@ -251,14 +262,25 @@ class Window(QMainWindow):
         for c in clients:self.targets.addItem(f'{c.title} · PID {c.pid}',c)
         if chosen is not None:self.targets.setCurrentIndex(clients.index(chosen))
         self.targets.blockSignals(False);self.client=chosen
-        if previous!=(chosen.identity if chosen else None):
+        desired=chosen if not self.error and not self.maintenance else None
+        changed=previous!=(chosen.identity if chosen else None)
+        if self.worker.requested()[1]!=desired:
             self.generation+=1
-            self.worker.select(self.generation,chosen if self.analyzing else None)
+            self.worker.select(self.generation,desired)
+        self.analyzing=desired is not None
+        if changed:
             self.detail.clear();self.character.setText('현재 캐릭터: 확인 대기')
+        if self.analyzing and not self.detail.text():self.detail.setText('내장 OBS · 첫 게임 프레임 대기')
         self.update_status()
     def target_changed(self,index):
+        if self.maintenance or self.error or self.drive.busy:return
         if 0<=index<len(self.clients):
-            self.client=self.clients[index];self.detail.clear();self.update_status()
+            chosen=self.clients[index]
+            if chosen!=self.client:
+                self.client=chosen;self.generation+=1
+                self.worker.select(self.generation,chosen);self.analyzing=True
+                self.detail.setText('내장 OBS · 새 게임 창 연결 중');self.character.setText('현재 캐릭터: 확인 대기')
+            self.update_status()
     def refresh(self):
         self.apply_clients(find_clients(self.process_pids) if self.process_pids else [])
     def process_changed(self,snapshot):
@@ -270,19 +292,20 @@ class Window(QMainWindow):
         if self.process_pids and (self.client is None or not client_alive(self.client)):self.refresh()
         else:self.update_status()
     def start(self):
-        if self.analyzing or self.error or self.drive.busy:return
         self.refresh()
-        if self.client is None:return
-        self.analyzing=True;self.generation+=1;self.detail.setText('첫 캡처 프레임 대기 중')
-        self.worker.select(self.generation,self.client);self.update_status()
     def stop(self):
         self.analyzing=False;self.generation+=1;self.worker.select(self.generation,None)
         self.detail.setText('정지됨 · 기록은 PC에 보존됩니다.');self.update_status()
     def stopped(self):
         if self.closing:self.close()
     def command_settled(self,generation):
-        self.settled_generation=generation;self.update_status()
+        if self.closing:return
+        self.settled_generation=generation
+        if generation==self.generation and self.pending_action is not None:
+            action=self.pending_action;self.pending_action=None;action()
+        self.update_status()
     def worker_failed(self,message):
+        self.pending_action=None;self.maintenance=None;self.drive.setEnabled(True)
         self.error=message;self.analyzing=False;self.update_status()
     def worker_status(self,generation,message):
         if generation!=self.generation or not self.analyzing:return
@@ -326,13 +349,33 @@ class Window(QMainWindow):
         self.record_dialog=RecordDetailDialog(record,self.public_content.cached,self)
         self.record_dialog.show()
     def delete(self):
-        if self.analyzing or self.settled_generation!=self.generation or self.drive.busy:return
-        self.store.clear_all();self.reload();self.character.setText('현재 캐릭터: 확인 대기');self.detail.setText('완료·임시 기록과 중복 방지 이력을 모두 삭제했습니다.')
+        if self.maintenance or self.drive.busy or self.error:return
+        def clear():
+            try:self.store.clear_all();self.reload();self.character.setText('현재 캐릭터: 확인 대기')
+            finally:self.finish_maintenance()
+        self.pause_for_action('delete',clear)
+    def pause_for_action(self,kind,action):
+        self.maintenance=kind;self.pending_action=action;self.stop()
+        self.detail.setText('기록 작업을 준비하는 중…');self.update_status()
+        self.drive.setEnabled(False)
+        if self.settled_generation==self.generation:
+            self.pending_action=None;action()
+    def finish_maintenance(self):
+        self.maintenance=None;self.drive.setEnabled(True);self.detail.clear();self.start()
+    def prepare_restore(self,action):
+        if self.maintenance or self.error:return
+        def begin():
+            self.drive.setEnabled(True);action()
+            if not self.drive.busy:self.finish_maintenance()
+        self.pause_for_action('restore',begin)
     def drive_changed(self):
+        if self.maintenance=='restore' and not self.drive.busy and self.pending_action is None:
+            self.finish_maintenance()
         self.reload();self.update_status()
     def closeEvent(self,event):
         if self.drive.busy:
             self.drive.label.setText('Drive 작업을 마친 후 앱을 종료해주세요.');event.ignore();return
+        self.closing=True;self.pending_action=None
         self.drive.shutdown()
         self.public_content.shutdown()
         self.google_login.shutdown()
@@ -345,7 +388,7 @@ class Startup(QWidget):
     def __init__(self):
         super().__init__();self.setWindowTitle('Beatrice PC · 시작');self.setFixedSize(480,180)
         layout=QVBoxLayout(self);layout.addWidget(QLabel('Beatrice PC'))
-        self.label=QLabel('1 / 2 · 모델을 준비하는 중…');self.label.setWordWrap(True);layout.addWidget(self.label)
+        self.label=QLabel('1 / 3 · 모델을 준비하는 중…');self.label.setWordWrap(True);layout.addWidget(self.label)
         self.window=None;self.closing=False;self.restarting=False
         self.create_worker()
         QTimer.singleShot(0,self.begin)
@@ -362,7 +405,7 @@ class Startup(QWidget):
         self.window.show();self.hide()
     def restart(self):
         if self.restarting or self.closing:return
-        if self.window is not None and self.window.drive.busy:return
+        if self.window is not None and (self.window.drive.busy or self.window.maintenance):return
         self.restarting=True
         self.label.setText('현재 작업을 종료하고 앱을 초기화하는 중…');self.show()
         if self.window is not None:
@@ -378,7 +421,7 @@ class Startup(QWidget):
     def finish_restart(self):
         self.dispose_main();self.worker.deleteLater()
         self.restarting=False
-        self.label.setText('1 / 2 · 모델을 준비하는 중…')
+        self.label.setText('1 / 3 · 모델을 준비하는 중…')
         self.create_worker();self.begin()
     def startup_failed(self,message):
         if self.window is None:self.open_main([],message)

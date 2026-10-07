@@ -1,4 +1,5 @@
 import json
+import io
 import tempfile
 import time
 import unittest
@@ -44,10 +45,41 @@ class ObsCaptureTests(unittest.TestCase):
     def setUp(self):
         self.capture=ObsCapture(Client(123,456,'LOSTARK'),Path('.'))
         self.capture.process=SimpleNamespace(poll=lambda:None)
+        self.capture.active_revision=self.capture.target_revision
         self.native_api=SimpleNamespace(IsIconic=lambda hwnd:True,GetForegroundWindow=lambda:999)
         self.alive=patch('beatrice.game_window.client_alive',return_value=True);self.alive.start()
         self.api=patch('beatrice.game_window.api',return_value=self.native_api);self.api.start()
         self.addCleanup(self.alive.stop);self.addCleanup(self.api.stop)
+    def test_warm_engine_receives_target_only_after_ready_and_is_reused(self):
+        process=self.capture.process;process.stdin=io.StringIO()
+        self.capture.bind(Client(321,654,'LOSTARK'))
+        self.assertEqual(process.stdin.getvalue(),'')
+        process.stdout=[json.dumps(dict(event='engine_ready'))]
+        self.capture._status(process)
+        command=json.loads(process.stdin.getvalue())
+        self.assertEqual(command['hwnd'],321)
+        self.assertEqual(command['pid'],654)
+        self.capture.bind(self.capture.client)
+        self.assertEqual(len(process.stdin.getvalue().splitlines()),1)
+        self.capture.bind(None)
+        self.assertIs(self.capture.process,process)
+        self.assertEqual(json.loads(process.stdin.getvalue().splitlines()[-1])['hwnd'],0)
+
+    def test_target_change_discards_old_frames_until_matching_acknowledgement(self):
+        self.capture.memory=frame()
+        self.capture.bind(Client(321,654,'LOSTARK'))
+        self.assertIsNone(self.capture.grab()[0])
+        process=self.capture.process
+        process.stdout=[json.dumps(dict(event='target_ready',revision=self.capture.target_revision-1))]
+        self.capture._status(process)
+        self.assertFalse(self.capture.binding_ready.is_set())
+        self.assertIsNone(self.capture.grab()[0])
+        self.capture.memory=frame(sequence=4,value=150)
+        process.stdout=[json.dumps(dict(event='target_ready',revision=self.capture.target_revision))]
+        self.capture._status(process)
+        self.assertTrue(self.capture.binding_ready.is_set())
+        self.assertIsNotNone(self.capture.grab()[0])
+
     def test_minimized_and_unfocused_changed_frame_can_be_analyzed(self):
         self.capture.memory=frame()
         image,reason=self.capture.grab()
