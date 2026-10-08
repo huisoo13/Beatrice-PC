@@ -3,6 +3,7 @@ from collections import defaultdict
 from contextlib import closing
 from datetime import datetime, timezone
 import json
+import re
 from pathlib import Path
 import sqlite3
 import uuid
@@ -37,8 +38,12 @@ def validate_records(records):
         if not key(row['dungeonName']):
             raise ValueError('던전명이 올바르지 않습니다.')
         identity = record_id(row['characterName'], row['dungeonName'], row['gate'])
-        if 'recordID' in row and row['recordID'] != identity:
-            raise ValueError('recordID가 캐릭터·던전·관문과 일치하지 않습니다.')
+        if 'recordID' in row:
+            supplied = row['recordID']
+            if isinstance(supplied,str) and re.fullmatch(r'br2_[0-9a-f]{32}', supplied):
+                identity = supplied
+            elif supplied != identity:
+                raise ValueError('recordID 형식 또는 캐릭터·던전·관문 일치를 확인해주세요.')
         value = {field: row[field] for field in FIELDS}
         value.update(recordID=identity, updatedAt=normalized_time(row['updatedAt']) if 'updatedAt' in row else UNKNOWN_UPDATED_AT)
         previous = by_id.get(identity)
@@ -50,17 +55,30 @@ def validate_records(records):
         by_id[identity] = value
     validated = list(by_id.values())
     for row in validated:
-        groups[(row['characterName'], key(row['dungeonName']))].add(row['gate'])
+        groups[(row['characterName'], key(row['dungeonName']), row['recordID'] if row['recordID'].startswith('br2_') else 'legacy')].add(row['gate'])
     for gates in groups.values():
         if 0 in gates and gates != {0}:
             raise ValueError('관문 없는 레이드와 관문 기록을 함께 포함할 수 없습니다.')
     return sorted(validated, key=lambda r: (r['characterName'], key(r['dungeonName']), r['gate']))
 
 
+def merge_records(local, incoming, now=None):
+    """History import: newer updatedAt wins; neither age nor absence removes rows."""
+    merged = {}
+    for rows in (local, incoming):
+        for row in validate_records(rows):
+            previous = merged.get(row['recordID'])
+            if previous and previous['updatedAt'] == row['updatedAt'] and previous != row:
+                raise ValueError('같은 recordID와 수정 시각에 서로 다른 기록이 있습니다.')
+            if previous is None or previous['updatedAt'] < row['updatedAt']:
+                merged[row['recordID']] = row
+    return validate_records(list(merged.values()))
+
+
 def export_records(store):
     records = []
     omitted = 0
-    for row in store.state_records():
+    for row in store.history_records():
         if (row.get('state')!='완료' or not row.get('characterName') or not row.get('dungeonName') or not row.get('difficulty')
                 or row.get('isTest') or row.get('timeBasis') == 'synthetic_test'):
             omitted += 1
@@ -68,7 +86,7 @@ def export_records(store):
         record = {field: row[field] for field in FIELDS}
         if row.get('completionScope') == 'raid':
             record['gate'] = 0
-        record['recordID'] = record_id(record['characterName'],record['dungeonName'],record['gate'])
+        record['recordID'] = row.get('recordID') or record_id(record['characterName'],record['dungeonName'],record['gate'])
         record['updatedAt'] = existing_time(row)
         records.append(record)
     return validate_records(records), omitted
@@ -122,7 +140,7 @@ def restore_records(store, records, backup_directory):
         if row['state']=='완료':grouped[(row['characterName'], key(row['dungeonName']))].append(row)
     at = now.isoformat()
     with store.db:
-        for table in ('gate_states', 'outbox', 'pending_events', 'events', 'pending_segments', 'sessions'):
+        for table in ('gate_states', 'completion_history', 'outbox', 'pending_events', 'events', 'pending_segments', 'sessions'):
             store.db.execute(f'DELETE FROM {table}')
         store.reset_drive_queue()
         for (character, dungeon), rows in grouped.items():
@@ -133,6 +151,9 @@ def restore_records(store, records, backup_directory):
                              observedAt=at, confirmedAt=at, savedAt=at, completedAt=None,
                              evidenceType='drive_import', timeBasis='drive_import',
                              completionScope='raid' if row['gate'] == 0 else 'gate')
-                store.db.execute('INSERT INTO gate_states VALUES (?,?,?,?)',
-                                 (owner, dungeon, value['gate'], json.dumps(value, ensure_ascii=False)))
+                store.remember_completion(value)
+                if existing_time(value) >= store.repeat_start():
+                    store.db.execute("""INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
+                        WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
+                                     (owner, dungeon, value['gate'], json.dumps(value, ensure_ascii=False)))
     return backup

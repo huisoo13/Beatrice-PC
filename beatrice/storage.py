@@ -43,6 +43,11 @@ class Store:
         CREATE TABLE IF NOT EXISTS gate_states (
             owner TEXT NOT NULL, dungeon_key TEXT NOT NULL, gate INTEGER NOT NULL CHECK(gate>0),
             payload TEXT NOT NULL, PRIMARY KEY(owner,dungeon_key,gate));
+        CREATE TABLE IF NOT EXISTS completion_history (
+            record_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS weekly_repeat (
+            id INTEGER PRIMARY KEY CHECK(id=1), period_start TEXT NOT NULL);
+        INSERT OR IGNORE INTO weekly_repeat VALUES(1,'');
         CREATE TABLE IF NOT EXISTS drive_changes (
             id INTEGER PRIMARY KEY CHECK(id=1), epoch TEXT NOT NULL, revision INTEGER NOT NULL);
         INSERT OR IGNORE INTO drive_changes VALUES(1,lower(hex(randomblob(16))),0);
@@ -80,6 +85,52 @@ class Store:
                     row['updatedAt']=existing_time(row)
                     self.db.execute('UPDATE gate_states SET payload=? WHERE owner=? AND dungeon_key=? AND gate=?',
                         (json.dumps(row,ensure_ascii=False),owner,dungeon,gate))
+
+        # Preserve existing completions independently of weekly recognition checkpoints.
+        with self.db:
+            for payload, in self.db.execute('SELECT payload FROM gate_states').fetchall():
+                self.remember_completion(json.loads(payload))
+
+    def remember_completion(self, row):
+        if not row.get('recordID') or not row.get('characterName') or not row.get('dungeonName'):
+            return False
+        row = dict(row)
+        previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordID'],)).fetchone()
+        if previous:
+            previous = json.loads(previous[0])
+            from .weekly import week_start
+            from datetime import datetime
+            old_time, new_time = existing_time(previous), existing_time(row)
+            if row['recordID'].startswith('br1_') and week_start(datetime.fromisoformat(old_time.replace('Z','+00:00'))) != week_start(datetime.fromisoformat(new_time.replace('Z','+00:00'))):
+                from .record_identity import occurrence_id
+                row['recordID'] = occurrence_id(row['recordID'], new_time)
+                previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordID'],)).fetchone()
+                previous = json.loads(previous[0]) if previous else None
+            if previous and existing_time(previous) >= new_time:
+                return False
+        self.db.execute('INSERT INTO completion_history VALUES(?,?) ON CONFLICT(record_id) DO UPDATE SET payload=excluded.payload',
+                        (row['recordID'], json.dumps(row,ensure_ascii=False)))
+        return True
+
+    def history_records(self):
+        rows = [json.loads(payload) for payload, in self.db.execute('SELECT payload FROM completion_history ORDER BY record_id')]
+        identities = {r['recordID'] for r in rows}
+        # Include unconfirmed/test checkpoints for existing omission and diagnostic behavior.
+        rows.extend(r for r in self.state_records() if not r.get('recordID') or r['recordID'] not in identities)
+        return rows
+
+    def repeat_start(self):
+        return self.db.execute('SELECT period_start FROM weekly_repeat WHERE id=1').fetchone()[0]
+
+    def roll_week(self, now=None):
+        from .weekly import week_start
+        start = week_start(now)
+        with self.db:
+            if self.repeat_start() >= start:
+                return False
+            self.db.execute('UPDATE weekly_repeat SET period_start=? WHERE id=1', (start,))
+        # No history/Drive payload/queue is changed by a weekly reset.
+        return True
 
     def load(self, character_key, session_id, settings, transactional=True):
         encoded = json.dumps(settings, sort_keys=True, ensure_ascii=False)
@@ -142,6 +193,9 @@ class Store:
         if dungeon_key is not None and self.catalog is None:conditions.append('dungeon_key=?');values.append(dungeon_key)
         if conditions:sql+=' WHERE '+' AND '.join(conditions)
         rows = [json.loads(row[0]) for row in self.db.execute(sql+' ORDER BY owner,dungeon_key,gate',values)]
+        start = self.repeat_start()
+        if start:
+            rows = [r for r in rows if existing_time(r) >= start]
         if dungeon_key is not None and self.catalog is not None:
             from .dungeon import key
             matcher = self.catalog()
@@ -195,6 +249,7 @@ class Store:
                 row=stamp_local(row,previous)
                 self.db.execute('INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload',
                     (owner,storage_key,row['gate'],json.dumps(row,ensure_ascii=False)))
+                self.remember_completion(row)
                 changed.append(row)
             if any(r['state']=='완료' and r.get('characterName') and r.get('dungeonName')
                    and r.get('difficulty') and not r.get('isTest')
@@ -229,7 +284,7 @@ class Store:
     def clear_all(self):
         """분석 작업자가 정지한 뒤 호출합니다. 모델/설정은 보존합니다."""
         with self.db:
-            for table in ("gate_states", "outbox", "pending_events", "events", "pending_segments", "sessions"):
+            for table in ("gate_states", "completion_history", "outbox", "pending_events", "events", "pending_segments", "sessions"):
                 self.db.execute(f"DELETE FROM {table}")
             self.reset_drive_queue()
 

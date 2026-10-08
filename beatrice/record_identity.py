@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
 import re
+import uuid
 from .dungeon import key
 
 UNKNOWN_UPDATED_AT = '1970-01-01T00:00:00.000Z'
@@ -41,11 +42,15 @@ def stamp_local(row, previous=None):
     if not row.get('characterName') or not row.get('dungeonName'):
         value.pop('recordID', None)
     else:
-        gate = 0 if row.get('completionScope') == 'raid' else row['gate']
-        value['recordID'] = record_id(row['characterName'], row['dungeonName'], gate)
+        value['recordID'] = previous.get('recordID') if previous and previous.get('recordID') else 'br2_' + uuid.uuid4().hex
     now = datetime.now(timezone.utc)
     if previous:
         prior = datetime.fromisoformat(existing_time(previous).replace('Z', '+00:00'))
         now = max(now, prior + timedelta(milliseconds=1))
     value['updatedAt'] = now.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     return value
+
+
+def occurrence_id(identity, occurred_at):
+    """Stable recovery ID for repeats from the old weekly databases."""
+    return 'br2_' + uuid.uuid5(uuid.NAMESPACE_URL, identity + ':' + normalized_time(occurred_at)).hex

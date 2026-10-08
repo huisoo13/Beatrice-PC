@@ -163,19 +163,5 @@ class ContentMatchTests(unittest.TestCase):
             self.assertEqual(provider().record(row())['catalogMatch']['status'],'matched')
 
 
-class DetailUITests(unittest.TestCase):
-    def test_detail_dialog_displays_values_and_unmatched_reason(self):
-        os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
-        from PySide6.QtWidgets import QApplication
-        from beatrice.record_detail_ui import RecordDetailDialog
-        app=QApplication.instance() or QApplication([])
-        matched=RecordDetailDialog(ContentMatcher(CACHED).record(row()),CACHED)
-        self.assertIn('10,000',matched.info.text())
-        self.assertIn('50%',matched.info.text())
-        matched.close()
-        unmatched=RecordDetailDialog(ContentMatcher().record(row()),CACHED)
-        self.assertIn('연결되지',unmatched.info.text())
-        unmatched.close()
 
-
-if __name__=='__main__':unittest.main()
+if __name__ == "__main__": unittest.main()

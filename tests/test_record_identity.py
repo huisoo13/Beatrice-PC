@@ -110,7 +110,9 @@ class StoredIdentityTests(unittest.TestCase):
         self.save(completionScope='raid')
         rows, _ = export_records(self.store)
         self.assertEqual(rows[0]['gate'], 0)
-        self.assertEqual(rows[0]['recordID'], record_id('테스트', '던전', 0))
+        self.assertEqual(rows[0]['gate'], 0)
+        self.assertEqual(rows[0]['recordID'], self.store.history_records()[0]['recordID'])
+        self.assertRegex(rows[0]['recordID'], r'^br2_[0-9a-f]{32}$')
         restore_records(self.store, rows, Path(self.temp.name) / 'backups')
         self.assertEqual(export_records(self.store)[0], rows)
 

@@ -27,7 +27,7 @@ class DungeonObserver:
             observation=self.ocr.analyze_detected(frame,location,gates,allow_without_gates=True)
         valid=bool(observation.get('dungeonVisible') and observation.get('dungeonName') and observation.get('difficulty'))
         if not valid:gates=[]
-        observation.update(raidKind=kind,raidBounds=gateless or gated,currentRaidPanel=bool((gated or gateless) and not blocked),
+        observation.update(raidKind=kind,raidBounds=gateless or gated,raidPanelVisible=bool((gated or gateless) and not conflict),currentRaidPanel=bool((gated or gateless) and not blocked),
             regionSource='yolo_direct',regionAgeSeconds=0,
             diagnosticStatus='verified' if valid else 'text_unverified' if gated or gateless else 'region_missing',
             transitionSignal=not blocked and not gated and not gateless)

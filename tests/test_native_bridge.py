@@ -7,10 +7,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QApplication
-from beatrice import desktop
+from PySide6.QtCore import QCoreApplication
+from beatrice import engine_worker as engine
 from beatrice.game_window import Client
-from beatrice.native_bridge import Host, observation_view, record_view
+from beatrice.native_bridge import Host, DungeonFooter, observation_view, record_view
 
 
 class FakeWorker(QObject):
@@ -38,11 +38,11 @@ class FakeWorker(QObject):
 
 class NativeBridgeTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls): cls.app = QApplication.instance() or QApplication([])
+    def setUpClass(cls): cls.app = QCoreApplication.instance() or QCoreApplication([])
 
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
-        self.patch = patch.object(desktop, 'DATA', Path(self.folder.name))
+        self.patch = patch.object(engine, 'DATA', Path(self.folder.name))
         self.patch.start()
         self.messages = []
         self.workers = []
@@ -69,6 +69,77 @@ class NativeBridgeTests(unittest.TestCase):
 
     def ready(self):
         self.workers[-1].ready.emit([])
+
+    def test_weekly_reset_waits_for_worker_preserves_screen_drive_and_queue(self):
+        from datetime import datetime, timedelta, timezone
+        from beatrice.weekly import week_start
+        from beatrice.drive_data import export_snapshot
+        self.ready();self.seed()
+        before=export_snapshot(self.host.store)
+        future=datetime.now(timezone.utc)+timedelta(days=7)
+        roll=self.host.store.roll_week
+        with patch('beatrice.native_bridge.week_start',return_value=week_start(future)), \
+                patch.object(self.host.store,'roll_week',side_effect=lambda:roll(future)):
+            self.host.tick()
+            self.assertEqual(self.host.maintenance_action,'weekly')
+            self.assertEqual(len(self.host.store.state_records()),1)
+            self.workers[-1].settled.emit(self.host.generation)
+            self.assertFalse(self.host.maintenance)
+            self.assertEqual(self.host.store.state_records(),[])
+            self.assertEqual(len(self.host.store.history_records()),1)
+            self.assertEqual(export_snapshot(self.host.store),before)
+            self.assertEqual(len(self.messages[-1]['records']),1)
+
+    def test_startup_waits_for_catalog_after_worker_ready(self):
+        self.host.settings = {'refreshSeconds': 300}
+        self.ready()
+        self.assertFalse(self.messages[-1]['startupReady'])
+        self.assertEqual(self.messages[-1]['startupStep'], 2)
+
+    def test_startup_catalog_failure_preserves_cache_and_opens_main(self):
+        import queue
+        for cached in (None, {'checkedAt': '2026-10-07T15:00:00+00:00', 'content': {}}):
+            self.host.settings = {'refreshSeconds': 300}
+            self.host.cached = cached
+            self.host.startup_catalog_finished = False
+            self.ready()
+            results = queue.Queue()
+            results.put((None, 'offline'))
+            self.host.catalog_pending = threading.Event(), results
+            self.host.tick()
+            self.assertIs(self.host.cached, cached)
+            self.assertTrue(self.messages[-1]['startupReady'])
+            self.assertEqual(self.messages[-1]['startupStep'], 3)
+
+    def test_startup_missing_credentials_does_not_block_main(self):
+        from beatrice.public_content import ContentError
+        self.host.settings = {'refreshSeconds': 300}
+        self.ready()
+        with patch('beatrice.native_bridge.load_api_key', side_effect=ContentError('missing')):
+            self.host.refresh_catalog()
+        self.assertTrue(self.messages[-1]['startupReady'])
+
+    def test_manual_catalog_refresh_has_persisted_five_minute_cooldown(self):
+        self.ready()
+        self.host.settings = {'refreshSeconds': 300}
+        with patch('beatrice.native_bridge.time.time', return_value=1000), patch.object(self.host, 'refresh_catalog') as refresh:
+            self.host.command({'type': 'catalog_refresh'})
+            self.host.command({'type': 'catalog_refresh'})
+            refresh.assert_called_once()
+        self.assertEqual(self.host.catalog_refresh_available_at, 1300)
+        import json
+        saved = json.loads(self.host.catalog_cooldown_path.read_text(encoding='utf-8'))
+        self.assertEqual(saved['availableAt'], 1300)
+        with patch('beatrice.native_bridge.time.time', return_value=1300), patch.object(self.host, 'refresh_catalog') as refresh:
+            self.host.command({'type': 'catalog_refresh'})
+            refresh.assert_called_once()
+        self.assertEqual(self.host.catalog_refresh_available_at, 1600)
+
+    def test_catalog_snapshot_reports_last_successful_update(self):
+        self.host.cached = {'checkedAt': '2026-10-07T15:00:00+00:00', 'content': {}}
+        self.host.catalog_message = '갱신 실패'
+        self.host.snapshot()
+        self.assertEqual(self.messages[-1]['catalogLastUpdated'], '2026-10-07T15:00:00+00:00')
 
     def test_catalog_thread_waits_until_models_are_initialized(self):
         self.host.next_check = 0
@@ -123,7 +194,7 @@ class NativeBridgeTests(unittest.TestCase):
 
     def test_startup_watch_does_not_override_worker_initial_selection(self):
         client = Client(100, 200, 'A')
-        with patch.object(desktop, 'find_clients', return_value=[client]):
+        with patch.object(engine, 'find_clients', return_value=[client]):
             self.host.process_changed(({200}, None))
         self.assertEqual(self.workers[0].command, (0, None))
         self.host.command(dict(type='delete'))
@@ -149,7 +220,7 @@ class NativeBridgeTests(unittest.TestCase):
         self.assertEqual(view['dungeonSubtitle'], '하드 · 2관문')
         self.assertEqual(view['dungeonState'], '진행 중')
         value['dungeon']['contextStatus'] = 'ocr_held'
-        self.assertIsNone(observation_view(value)['dungeon'])
+        self.assertEqual(observation_view(value)['dungeon'], '카멘')
 
     def test_shutdown_waits_until_worker_finished(self):
         self.host.command(dict(type='shutdown'))
@@ -168,16 +239,231 @@ class NativeBridgeTests(unittest.TestCase):
         value['result']['observedStates'] = None
         self.assertEqual(observation_view(value)['dungeonSubtitle'], '하드')
 
-    def test_character_status_hides_capture_engine_diagnostics(self):
+    def test_character_status_preserves_identity_during_capture_diagnostics(self):
         self.ready()
-        self.host.profile['character'] = '후이수'
-        for raw, expected in [('내장 OBS 엔진 연결 중', '게임 화면 연결 중'),
-                              ('OBS 새 게임 프레임 대기', '게임 화면 대기'),
-                              ('OBS 최소화 상태 · 변경된 게임 프레임 대기', '게임 최소화')]:
+        self.host.observation(dict(generation=self.host.generation, identity=dict(currentName='후이수', recordingAllowed=True)))
+        for raw in ('내장 OBS 엔진 연결 중', 'OBS 새 게임 프레임 대기', 'OBS 최소화 상태', '게임 실행 대기'):
             self.host.worker_status(self.host.generation, raw)
             self.assertEqual(self.host.profile['character'], '후이수')
-            self.assertEqual(self.host.profile['message'], expected)
+            self.assertEqual(self.host.profile['message'], '플레이 중')
+            self.assertEqual(self.host.profile['characterState'], 'playing')
             self.assertEqual(self.host.status, raw)
+
+    def test_character_states_are_character_specific(self):
+        cases = [({}, '캐릭터 미설정', 'unset'),
+                 (dict(currentName='후이수', recordingAllowed=True), '플레이 중', 'playing'),
+                 (dict(status='switching', currentName='후이수', pendingName='다음'), '캐릭터 변경 중', 'selecting'),
+                 (dict(status='initial_login_selection'), '캐릭터 선택 중', 'selecting'),
+                 (dict(status='initial_login_loading', pendingName='다음'), '캐릭터 선택 중', 'selecting')]
+        for identity, message, state in cases:
+            view = observation_view(dict(identity=identity))
+            self.assertEqual((view['message'], view['characterState']), (message, state))
+
+    def footer_frame(self, panel=True, held=False):
+        return dict(generation=self.host.generation,
+            identity=dict(currentName='후이수', recordingAllowed=True),
+            dungeon=dict(dungeonName='카멘', difficulty='하드', currentRaidPanel=panel,
+                         contextStatus='ocr_held' if held else 'ocr_verified'),
+            result={} if held else dict(observedStates=['완료', '진행중']))
+
+    def test_held_dungeon_and_gate_survive_video_until_thirty_seconds(self):
+        self.ready()
+        with patch('beatrice.native_bridge.time.monotonic', return_value=100):
+            self.host.observation(self.footer_frame())
+        for now in (101, 129.999):
+            with patch('beatrice.native_bridge.time.monotonic', return_value=now):
+                self.host.observation(self.footer_frame(panel=False, held=True))
+                self.assertEqual(self.host.profile['dungeon'], '카멘')
+                self.assertEqual(self.host.profile['dungeonSubtitle'], '하드 · 2관문')
+        with patch('beatrice.native_bridge.time.monotonic', return_value=130):
+            self.host.tick()
+        self.assertIsNone(self.host.profile['dungeon'])
+
+    def test_panel_visibility_extends_grace_even_without_readable_ocr(self):
+        from beatrice.content_match import ContentMatcher
+        footer = DungeonFooter(); matcher = ContentMatcher()
+        footer.update(self.footer_frame(), 100)
+        footer.update(dict(dungeon=dict(raidPanelVisible=True, currentRaidPanel=False)), 125)
+        self.assertEqual(footer.view(matcher,154.999)['dungeon'], '카멘')
+        self.assertIsNone(footer.view(matcher,155)['dungeon'])
+        footer.update(dict(dungeon=dict(currentRaidPanel=True)),160)
+        self.assertEqual(footer.view(matcher,160)['dungeon'], '카멘')
+
+    def test_no_new_frames_still_expires_after_capture_wait(self):
+        self.ready()
+        with patch('beatrice.native_bridge.time.monotonic', return_value=10):
+            self.host.observation(self.footer_frame())
+        self.host.worker_status(self.host.generation,'OBS 새 게임 프레임 대기')
+        self.assertEqual(self.host.profile['dungeon'], '카멘')
+        with patch('beatrice.native_bridge.time.monotonic', return_value=40): self.host.tick()
+        self.assertIsNone(self.host.profile['dungeon'])
+        self.assertEqual(self.host.profile['message'], '플레이 중')
+
+    def test_footer_catalog_labels_match_record_and_unknown_preserves_ocr(self):
+        from beatrice.content_match import ContentMatcher
+        name, typo = '4막: 파멸의 성채', '4막 : 파멸의 성체'
+        values = dict(gold=10000, fee=3200, bound_percentage=.5)
+        cached = dict(content={name: {'싱글 모드': {'1관문': values, '2관문': values}}})
+        matcher = ContentMatcher(cached)
+        frame = self.footer_frame()
+        frame['dungeon'].update(dungeonName=typo, difficulty='싱글모드')
+        view = observation_view(frame, matcher)
+        recorded = matcher.record(dict(dungeonName=typo, difficulty='싱글모드', gate=1))
+        self.assertEqual(view['dungeon'], recorded['dungeonName'])
+        self.assertEqual(view['dungeonSubtitle'], recorded['difficulty']+' · 2관문')
+        frame['dungeon'].update(dungeonName='미등록 던전', difficulty='알수없는 모드')
+        view = observation_view(frame, matcher)
+        self.assertEqual(view['dungeon'], '미등록 던전')
+        self.assertEqual(view['dungeonSubtitle'], '알수없는 모드 · 2관문')
+    def authorize_drive(self):
+        from beatrice.google_auth import DRIVE_SCOPE
+        self.ready()
+        self.host.account.session=dict(account={'sub':'person','email':'test@example.com'},scopes=[DRIVE_SCOPE])
+
+    def fake_download(self):
+        from test_drive_services import FakeJob
+        from beatrice.drive_data import validate_records
+        rows=validate_records([dict(characterName='원격캐릭터',dungeonName='던전',difficulty='하드',gate=1,state='완료')])
+        self.host.drive.pending=dict(job=FakeJob(dict(records=rows,metadata={'createdTime':'2026-10-08T00:00:00Z'})),action='download',account='person')
+
+    def test_drive_restore_waits_for_pause_preview_and_explicit_confirmation(self):
+        self.authorize_drive();self.seed()
+        with patch('beatrice.drive_service.Job'):
+            self.host.command(dict(type='drive_download'))
+            generation=self.host.generation
+            self.assertEqual(self.workers[-1].command,(generation,None))
+            self.assertIsNone(self.host.drive.pending)
+            self.host.settled(generation-1);self.assertIsNone(self.host.drive.pending)
+            self.host.settled(generation);self.assertIsNotNone(self.host.drive.pending)
+            self.host.settled(generation);self.assertTrue(self.host.maintenance)
+            self.assertEqual(self.workers[-1].command,(generation,None))
+        self.fake_download();self.host.drain_commands()
+        preview=next(m for m in self.messages if m['type']=='drive_preview')
+        self.assertEqual(self.host.store.state_records()[0]['characterName'],'캐릭터')
+        self.host.command(dict(type='drive_restore',previewId='stale',apply=True))
+        self.assertTrue(self.host.maintenance)
+        self.host.command(dict(type='drive_restore',previewId=preview['previewId'],apply=True))
+        self.assertEqual(self.host.store.history_records()[0]['characterName'],'원격캐릭터')
+        self.assertFalse(self.host.maintenance)
+        self.assertEqual(self.workers[-1].command,(generation+1,None))
+
+    def test_restore_holds_new_game_and_resumes_after_cancel(self):
+        self.authorize_drive()
+        client=Client(100,200,'LOSTARK')
+        with patch('beatrice.drive_service.Job'):
+            self.host.command(dict(type='drive_download'));generation=self.host.generation
+            self.host.settled(generation)
+        with patch.object(engine,'find_clients',return_value=[client]):
+            self.host.process_changed(({200},None))
+            self.assertEqual(self.workers[-1].command,(generation,None))
+            self.fake_download();self.host.drain_commands()
+            preview=self.host.drive.preview['id']
+            self.host.command(dict(type='delete'))
+            self.host.command(dict(type='restart'))
+            self.host.command(dict(type='google_logout'))
+            self.assertTrue(self.host.maintenance)
+            self.assertIsNotNone(self.host.account.session)
+            self.host.command(dict(type='drive_restore',previewId=preview,apply=False))
+            self.assertEqual(self.workers[-1].command,(generation+1,client))
+
+    def test_download_failure_resumes_analysis_and_keeps_records(self):
+        from test_drive_services import FakeJob
+        self.authorize_drive();self.seed()
+        with patch('beatrice.drive_service.Job'):
+            self.host.command(dict(type='drive_download'));self.host.settled(self.host.generation)
+        self.host.drive.pending=dict(job=FakeJob(error='offline'),action='download',account='person')
+        self.host.drain_commands()
+        self.assertFalse(self.host.maintenance)
+        self.assertEqual(len(self.host.store.state_records()),1)
+
+    def test_upload_blocks_mutations_and_account_changes_but_keeps_analysis(self):
+        self.authorize_drive();self.seed()
+        with patch('beatrice.drive_service.Job'):
+            self.host.command(dict(type='drive_upload'))
+        generation=self.host.generation
+        for kind in ('delete','restart','google_logout','drive_download'):
+            self.host.command(dict(type=kind))
+        self.assertFalse(self.host.maintenance)
+        self.assertEqual(self.host.generation,generation)
+        self.assertIsNotNone(self.host.account.session)
+        self.host.drive.pending=None
+
+    def test_host_automatic_upload_is_suspended_during_record_maintenance(self):
+        self.authorize_drive();self.seed()
+        self.host.pause_for('delete')
+        with patch.object(self.host.drive,'check_auto_upload') as check:
+            self.host.tick();check.assert_not_called()
+
+    def test_shutdown_waits_for_network_and_worker_and_preserves_verified_ack(self):
+        from test_drive_services import FakeJob
+        self.authorize_drive();self.seed()
+        job=FakeJob({'id':'file'})
+        with patch.object(job,'result',return_value=None):
+            self.host.drive.pending=dict(job=job,action='upload',account='person',revision=self.host.store.drive_revision(),count=1,omitted=0,automatic=True)
+            self.host.command(dict(type='shutdown'));self.workers[-1].finish()
+            self.assertFalse(self.host.closed)
+            self.host.drain_commands();self.assertFalse(self.host.closed)
+        self.host.drain_commands()
+        self.assertTrue(self.host.closed);self.assertEqual(self.messages[-1]['type'],'stopped')
+        from beatrice.storage import Store
+        check=Store(Path(self.folder.name)/'records.sqlite3')
+        try:self.assertIsNone(check.drive_pending('person'))
+        finally:check.close()
+
+    def test_public_catalog_commands_keep_cache_after_network_failure(self):
+        import queue
+        self.ready()
+        cached=dict(checkedAt='2026-10-08T00:00:00Z',content={'던전':{'하드':{'1관문':{'gold':100,'fee':20,'bound_percentage':0.2}}}})
+        self.host.cached=cached
+        replies=queue.Queue();replies.put((None,'offline'))
+        self.host.catalog_pending=threading.Event(),replies
+        self.host.tick();self.assertIs(self.host.cached,cached)
+        self.host.command(dict(type='catalog'))
+        self.assertEqual(self.messages[-1]['rows'][0]['gold'],100)
+        with patch('beatrice.native_bridge.load_api_key',side_effect=ValueError('unused')) as key:
+            self.host.command(dict(type='shutdown'));self.host.tick();key.assert_not_called()
+        self.workers[-1].finish()
+
+
+    def test_queued_login_cancel_wins_over_ready_auth_result(self):
+        from test_drive_services import FakeJob, session
+        self.ready();self.host.account.pending=FakeJob(session())
+        self.host.commands.put(dict(type='google_cancel'))
+        with patch.object(self.host.account.tokens,'save') as save:
+            self.host.drain_commands();save.assert_not_called()
+        self.assertIsNone(self.host.account.session)
+
+    def test_queued_shutdown_does_not_persist_ready_login_result(self):
+        from test_drive_services import FakeJob, session
+        self.ready();self.host.account.pending=FakeJob(session())
+        self.host.commands.put(dict(type='shutdown'))
+        with patch.object(self.host.account.tokens,'save') as save:
+            self.host.drain_commands()
+            self.workers[-1].finish()
+            save.assert_not_called()
+        self.assertTrue(self.host.closed)
+
+    def test_restart_retries_failed_saved_login_restore(self):
+        from test_drive_services import session
+        self.ready();self.assertTrue(self.host.account.restored)
+        self.assertIsNone(self.host.account.session)
+        self.host.command(dict(type='restart'));self.workers[-1].finish()
+        with patch.object(self.host.account.tokens,'load',return_value=session()),patch.object(self.host.account,'begin') as begin:
+            self.ready();begin.assert_called_once_with(False,session())
+
+    def test_drive_view_matches_rejected_commands_after_worker_failure(self):
+        self.authorize_drive();self.host.failed('model failure');self.host.snapshot()
+        self.assertFalse(self.messages[-1]['drive']['available'])
+
+
+    def test_restart_clears_previous_error_and_resets_startup_progress(self):
+        self.ready();self.host.failed('previous error')
+        self.host.command(dict(type='restart'))
+        state=self.messages[-1]
+        self.assertTrue(state['restarting']);self.assertFalse(state['startupReady'])
+        self.assertEqual(state['startupStep'],0);self.assertEqual(state['error'],'')
+        self.workers[-1].finish();self.ready()
+        self.assertFalse(self.messages[-1]['restarting'])
 
 
 if __name__ == '__main__': unittest.main()

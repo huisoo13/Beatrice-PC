@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -19,27 +19,27 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, string> colors;
     private readonly string font;
     private readonly List<(Grid grid, FrameworkElement tags, FrameworkElement status)> rows = new();
-    private bool connected;
     private bool settingsOpen;
     private Button? settingsButton;
-    private Button? restartButton;
     private Button? maximizeButton;
     private string currentPage = "records";
     private sealed record Raid(string Character, string Dungeon, string Mode, string Gate, string Date, JsonElement Detail);
     private readonly List<Raid> records = new();
     private readonly EngineClient engine = new();
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
-    private readonly bool startupCheck = Environment.GetCommandLineArgs().Contains("--startup-check");
+    private readonly bool startupCheck = Environment.GetCommandLineArgs().Contains("--startup-check") || Environment.GetCommandLineArgs().Contains("--startup-check-real");
     private readonly Stopwatch startupWatch = Stopwatch.StartNew();
     private TextBlock? characterName, characterStatus, appStatus, catalogStatus;
     private ComboBox? clientSelector;
-    private Button? deleteButton, catalogRefresh;
+    private Button? deleteButton, catalogRefresh, engineRestart;
     private bool applyingClients, closing, dialogOpen;
     private ContentDialog? activeDialog;
     private string lastRecords = "", lastClients = "", statusMessage = "모델을 준비하는 중…";
     private long selectedClient;
     private JsonElement clients;
     private bool busy, catalogBusy;
+    private bool mainContentLoaded;
+    private JsonElement? pendingSnapshot, pendingCatalog;
     public MainWindow()
     {
         InitializeComponent();
@@ -69,18 +69,13 @@ public partial class MainWindow : Window
         SetTitleBar(AppStatusHost);
         AddCaptionControls();
         AppHeader.Background = Brush("surface");
-        restartButton = new Button { Width = 52, Height = 44, Template = (ControlTemplate)Root.Resources["BareSettingsButton"], Content = new Image {
-            Width = 20, Height = 20, Source = new SvgImageSource(new Uri("ms-appx:///Assets/icons/refresh-cw-muted.svg"))
-        }};
-        AutomationProperties.SetName(restartButton,"앱 재실행"); ToolTipService.SetToolTip(restartButton,"앱 재실행");
-        restartButton.Click += async (_, _) => await RestartApp();
-        HeaderContent.Children.Add(restartButton);
-        var gameLabel = Text("LOST ARK",14); gameLabel.VerticalAlignment = VerticalAlignment.Center;
+        var gameLabel = Text("Beatrice",14); gameLabel.VerticalAlignment = VerticalAlignment.Center;
+        gameLabel.Margin = new Thickness(16,0,0,0);
         HeaderContent.Children.Add(gameLabel);
         appStatus = Text(statusMessage,12,"muted"); appStatus.VerticalAlignment = VerticalAlignment.Center;
         appStatus.TextTrimming = TextTrimming.CharacterEllipsis; appStatus.TextWrapping = TextWrapping.NoWrap;
         AppStatusHost.Children.Add(appStatus);
-        var mainMenu = Nav("square-dashed", "관문 기록", "records");
+        var mainMenu = Nav("square-dashed", "관문 기록 및 보상표", "raid-section");
         mainMenu.Width = mainMenu.Height = 48;
         mainMenu.Padding = new Thickness(0);
         mainMenu.HorizontalContentAlignment = HorizontalAlignment.Center;
@@ -90,14 +85,19 @@ public partial class MainWindow : Window
         var recordMenu = Action("관문 기록", (_, _) => ShowPage("records"));
         recordMenu.HorizontalAlignment = HorizontalAlignment.Stretch; recordMenu.HorizontalContentAlignment = HorizontalAlignment.Left;
         recordMenu.Background = Brush("accentTint"); recordMenu.BorderThickness = new Thickness(0);
+        recordMenu.Tag = "records";
         RecordNavigation.Children.Add(recordMenu);
+        var rewardMenu = Action("보상표", (_, _) => ShowPage("rewards"));
+        rewardMenu.Tag = "rewards"; rewardMenu.HorizontalAlignment = HorizontalAlignment.Stretch;
+        rewardMenu.HorizontalContentAlignment = HorizontalAlignment.Left; rewardMenu.BorderThickness = new Thickness(0);
+        RecordNavigation.Spacing = 4; RecordNavigation.Children.Add(rewardMenu);
         characterName = Text("캐릭터 확인 대기",14,bold:true);
         characterName.TextWrapping = TextWrapping.NoWrap; characterName.TextTrimming = TextTrimming.CharacterEllipsis;
         CharacterInfo.Children.Add(characterName);
-        characterStatus = Text("초기화 중",12,"muted"); characterStatus.TextWrapping = TextWrapping.NoWrap;
+        characterStatus = Text("캐릭터 미설정",12,"danger"); characterStatus.TextWrapping = TextWrapping.NoWrap;
         characterStatus.TextTrimming = TextTrimming.CharacterEllipsis;
         CharacterInfo.Children.Add(characterStatus);
-        ProfileStatusDot.Fill = Brush("muted"); DetectedDungeon.Visibility = Visibility.Collapsed;
+        ProfileStatusDot.Fill = Brush("danger"); DetectedDungeon.Visibility = Visibility.Collapsed;
         settingsButton = Nav("settings", "설정", "settings");
         settingsButton.Width = 36; settingsButton.Height = 36; settingsButton.UseSystemFocusVisuals = false;
         settingsButton.Template = (ControlTemplate)Root.Resources["BareSettingsButton"];
@@ -119,7 +119,7 @@ public partial class MainWindow : Window
             if (args.Key == Windows.System.VirtualKey.Escape && DismissSettings()) args.Handled = true;
         };
         Root.SizeChanged += (_, _) => Adapt();
-        ShowPage("records");
+        ShowPage(launchArgs.Contains("--page=rewards") ? "rewards" : "records");
         engine.Message += value => DispatcherQueue.TryEnqueue(() => {
             try { Receive(value); } catch (Exception error) { SetFailure("분석 데이터 표시 오류: " + error.Message); }
         });
@@ -127,30 +127,26 @@ public partial class MainWindow : Window
         Root.Loaded += async (_, _) => {
             try
             {
+                await WaitForMainFrame();
+                mainContentLoaded = true;
+                if (pendingSnapshot is JsonElement snapshot) { pendingSnapshot = null; Receive(snapshot); }
+                if (pendingCatalog is JsonElement catalog) { pendingCatalog = null; AcceptRewards(catalog); }
                 if (demo) LoadDemo(); else engine.Start();
                 if (Environment.GetCommandLineArgs().Contains("--capture")) { await Task.Delay(200); await CaptureReview(); }
             }
             catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-load-error.log"),error.ToString()); SetFailure(error.Message); }
         };
+        if (!demo || launchArgs.Contains("--splash-demo")) BeginSplash(launchWidth, launchHeight);
         SettingsPresenter.TabFocusNavigation = Microsoft.UI.Xaml.Input.KeyboardNavigationMode.Cycle;
         AppWindow.Closing += async (_, args) => {
             args.Cancel = true;
             if (closing) return;
-            closing = true; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
+            closing = true; startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
             if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
-            await engine.StopAsync(); Application.Current.Exit();
+            try { await engine.StopAsync().ConfigureAwait(false); }
+            catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
+            DispatcherQueue.TryEnqueue(() => { try { Application.Current.Exit(); } catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-exit-error.log"),error.ToString()); } });
         };
-    }
-    private async Task RestartApp()
-    {
-        if (demo) { LoadDemo(); return; }
-        DismissSettings(false);
-        if (restartButton is not null) restartButton.IsEnabled = false;
-        if (!engine.IsRunning)
-        {
-            try { engine.Start(); } catch (Exception error) { SetFailure(error.Message); }
-        }
-        else await Send(new { type = "restart" });
     }
     private async Task CaptureReview()
     {
@@ -158,6 +154,7 @@ public partial class MainWindow : Window
         try
         {
             LoadDemo();
+            await VerifyRepeatSplash();
             if (TopNavigation.Children[0] is Button menu && menu.Content is Image menuIcon)
             {
                 var available = menu.ActualWidth - menu.Padding.Left - menu.Padding.Right - menu.BorderThickness.Left - menu.BorderThickness.Right;
@@ -173,21 +170,53 @@ public partial class MainWindow : Window
             var outputArg = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("--capture-dir="));
             var folderPath = outputArg is null ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"..","..","..","..","..")) : Path.GetFullPath(outputArg[14..]);
             var folder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(folderPath);
-            var views = new[]{"records", "detail", "settings", "records-640", "settings-640", "records-375", "settings-375", "empty"};
+            foreach (var destination in new[]{"records", "rewards"})
+            {
+                ShowPage(destination);
+                var content = Page.Children[0];
+                ShowPage("raid-section");
+                ShowPage(destination);
+                var primary = TopNavigation.Children.OfType<Button>().First();
+                if (currentPage != destination || !ReferenceEquals(content,Page.Children[0]) ||
+                    primary.Background is not SolidColorBrush selectedBrush || selectedBrush.Color != Brush("accentTint").Color)
+                    throw new InvalidOperationException("메인 분류 선택 유지 및 반복 클릭 상태 보존 실패");
+            }
+            var views = new[]{"records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "empty"};
             foreach (var view in views)
             {
                 if (view.EndsWith("640")) AppWindow.Resize(new Windows.Graphics.SizeInt32(640,1000));
                 if (view.EndsWith("375")) AppWindow.Resize(new Windows.Graphics.SizeInt32(375,900));
                 var before = AppWindow.Size;
                 DismissSettings(false);
+                ShowPage(view.StartsWith("rewards") ? "rewards" : "records");
+                if (view.StartsWith("character-"))
+                {
+                    var sample = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"Assets","demo.json")))!;
+                    var selecting = view == "character-selecting";
+                    sample["profile"]!["characterState"] = selecting ? "selecting" : "unset";
+                    sample["profile"]!["active"] = false;
+                    sample["profile"]!["message"] = selecting ? "캐릭터 변경 중" : "캐릭터 미설정";
+                    Receive(JsonSerializer.SerializeToElement(sample));
+                }
+                else LoadDemo();
+                if (view == "rewards") ValidateRewardInteractions();
                 Task? detailTask = null;
                 if (view == "detail") detailTask = ShowRecordDetail(records[0]);
+                if (view == "drive-restore") detailTask = ShowDrivePreview(JsonSerializer.SerializeToElement(new { previewId = "review-preview", email = "preview@example.com", createdTime = "2026-10-08T03:00:00Z", completedCount = 8, omittedCount = 0, localCount = records.Count }));
                 if (view == "empty") { records.Clear(); RebuildRecords(); }
                 if (view.StartsWith("settings")) ToggleSettings();
+                if (view.StartsWith("settings-drive")) SettingsContent.Children.Last().StartBringIntoView();
                 await Task.Delay(400);
+                if (view.StartsWith("settings-drive"))
+                {
+                    SettingsScroll.ChangeView(null,SettingsScroll.ScrollableHeight,null,true);
+                    await Task.Delay(150);
+                    if (SettingsScroll.ScrollableHeight > 0 && SettingsScroll.VerticalOffset <= 0) throw new InvalidOperationException("Drive 설정 아래쪽으로 스크롤할 수 없습니다.");
+                }
                 if (before.Width != AppWindow.Size.Width || before.Height != AppWindow.Size.Height) throw new InvalidOperationException("설정 열기로 창 크기가 변경되었습니다.");
                 if (view.StartsWith("settings") && (PageViewport.IsEnabled || !settingsOpen)) throw new InvalidOperationException("설정 오버레이 배경 차단 실패");
-                var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(view == "detail" ? activeDialog! : Root);
+                if (view.StartsWith("rewards")) await ValidateRewardMotion();
+                var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(view is "detail" or "drive-restore" ? activeDialog! : Root);
                 var pixels = await bitmap.GetPixelsAsync();
                 var file = await folder.CreateFileAsync(view + "-native.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
                 using var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite);
@@ -203,7 +232,7 @@ public partial class MainWindow : Window
                     if (!PageViewport.IsEnabled || settingsOpen || settingsButton?.FocusState == FocusState.Unfocused) throw new InvalidOperationException("설정 닫기 후 포커스 복구 실패");
                 }
             }
-            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings 1280,640,375; reward detail; empty state; stable window size; modal background blocking; focus restoration");
+            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
         }
         catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"capture-error.txt"),error.ToString()); }
         finally { Application.Current.Exit(); }
@@ -253,12 +282,15 @@ public partial class MainWindow : Window
     {
         if (destination == "settings") { ToggleSettings(); return; }
         DismissSettings(false);
+        if (destination == "raid-section") destination = currentPage is "records" or "rewards" ? currentPage : "records";
         if (destination == currentPage && Page.Children.Count > 0) return;
         currentPage = destination; Page.Children.Clear(); rows.Clear();
         foreach (var navigation in TopNavigation.Children.Concat(BottomNavigation.Children).OfType<Button>())
         {
             if (navigation == settingsButton) { UpdateSettingsButton(); continue; }
-            var selected = (string?)navigation.Tag == destination;
+            var selected = (string?)navigation.Tag == "raid-section"
+                ? destination is "records" or "rewards"
+                : (string?)navigation.Tag == destination;
             if ((string?)navigation.Tag != "settings")
             {
                 navigation.Background = Brush(selected ? "accentTint" : "surface");
@@ -267,7 +299,10 @@ public partial class MainWindow : Window
             if (navigation.Content is Image icon && navigation.DataContext is string iconName)
                 icon.Source = new SvgImageSource(new Uri($"ms-appx:///Assets/icons/{iconName}-{(selected ? "accent" : "muted")}.svg"));
         }
+        foreach (var menu in RecordNavigation.Children.OfType<Button>())
+            menu.Background = Brush((string?)menu.Tag == destination ? "accentTint" : "sidebar");
         if (destination == "records") ShowRecords();
+        else if (destination == "rewards") { ShowRewards(); _ = RequestRewards(); }
         else ShowAssets();
         Adapt();
     }
@@ -308,7 +343,7 @@ public partial class MainWindow : Window
             statusLabel.Children.Add(Text("완료",12,"muted"));
             status.Children.Add(timestamp); status.Children.Add(statusLabel);
             Grid.SetColumn(status, 1); grid.Children.Add(status);
-            var button = new Button { Content = grid, Padding = new Thickness(16,12,16,12), HorizontalAlignment = HorizontalAlignment.Stretch,
+            var button = new Button { Content = grid, Background = Brush("sidebar"), Padding = new Thickness(16,12,16,12), HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderBrush = new SolidColorBrush(Colors.Transparent), CornerRadius = new CornerRadius(12) };
             AutomationProperties.SetName(button, $"{raid.Character} {raid.Dungeon} {raid.Mode} {raid.Gate} 완료 {raid.Date}");
             button.Click += async (_, _) => await ShowRecordDetail(raid);
@@ -320,17 +355,18 @@ public partial class MainWindow : Window
     private void Adapt()
     {
         UpdateMaximizeIcon();
+        AdaptRewardTables();
         var small = Root.ActualWidth <= 560;
         var compact = Root.ActualWidth <= 900;
         RailColumn.Width = new GridLength(small ? 64 : 76);
-        SidebarColumn.Width = small ? new GridLength(1,GridUnitType.Star) : new GridLength(Root.ActualWidth <= 1000 ? 208 : 248);
-        Root.ColumnDefinitions[2].Width = small ? new GridLength(0) : new GridLength(1,GridUnitType.Star);
-        Grid.SetRowSpan(SecondarySidebar,small ? 1 : 2);
-        Grid.SetRow(PageViewport,small ? 2 : 1); Grid.SetRowSpan(PageViewport,small ? 1 : 2);
-        Grid.SetColumn(PageViewport,small ? 1 : 2);
-        Grid.SetColumnSpan(SidebarFooter,small ? 3 : 2);
+        SidebarColumn.Width = new GridLength(200);
+        Root.ColumnDefinitions[2].Width = new GridLength(1,GridUnitType.Star);
+        Grid.SetRowSpan(SecondarySidebar,2);
+        Grid.SetRow(PageViewport,1); Grid.SetRowSpan(PageViewport,2);
+        Grid.SetColumn(PageViewport,2);
+        Grid.SetColumnSpan(SidebarFooter,2);
         Rail.Padding = small ? new Thickness(8,16,8,16) : new Thickness(12,24,12,24);
-        RecordNavigation.Margin = small ? new Thickness(12) : new Thickness(12,24,12,24);
+        RecordNavigation.Margin = new Thickness(12,24,12,24);
         foreach (var button in TopNavigation.Children.OfType<Button>()) button.Width = button.Height = 48;
         var settingsInset = small ? 28 : compact ? 36 : 84;
         SettingsPanel.Margin = new Thickness(settingsInset,small ? 16 : 48,settingsInset,small ? 16 : 48);
@@ -339,7 +375,7 @@ public partial class MainWindow : Window
         SettingsScroll.Padding = compact ? new Thickness(16) : new Thickness(32,16,32,32);
         foreach (var button in SettingsNavigation.Children.OfType<Button>()) button.Width = small ? 48 : 52;
         if (SettingsNavigation.Children.FirstOrDefault() is TextBlock settingsLabel) settingsLabel.FontSize = small ? 14 : 20;
-        Page.Margin = small ? new Thickness(16,24,16,160) : new Thickness(compact ? 24 : 40,32,compact ? 24 : 40,40);
+        Page.Margin = small ? new Thickness(16,24,16,160) : new Thickness(16,32,16,40);
         if (Page.Children.FirstOrDefault() is StackPanel heading && heading.Children.FirstOrDefault() is TextBlock title) title.FontSize = 24;
         if (Page.Children.ElementAtOrDefault(1) is StackPanel list)
             foreach (var button in list.Children.OfType<Button>()) button.Padding = new Thickness(16,12,16,12);
@@ -372,20 +408,15 @@ public partial class MainWindow : Window
         };
         clientSection.Children.Add(clientSelector); UpdateClients();
         engineStatus = Text(statusMessage,12,"muted"); clientSection.Children.Add(engineStatus);
+        engineRestart = Action("앱 다시 초기화",async (_, _) => await Send(new { type = "restart" }));
+        ToolTipService.SetToolTip(engineRestart,"분석 작업자를 종료하고 모델·OBS를 다시 준비합니다. 저장된 기록과 로그인 정보는 유지됩니다.");
+        clientSection.Children.Add(engineRestart);
         var catalogSection = Section("공용 데이터");
         catalogStatus = Text("",14,"muted"); catalogSection.Children.Add(catalogStatus);
-        catalogSection.Children.Add(Action("공용 데이터 보기",async (_, _) => { if (demo) await ShowCatalog(JsonDocument.Parse("[]").RootElement.Clone()); else await Send(new { type = "catalog" }); }));
         catalogRefresh = Action("공용 데이터 갱신",async (_, _) => await Send(new { type = "catalog_refresh" })); catalogSection.Children.Add(catalogRefresh);
         var recordSection = Section("기록 관리");
         deleteButton = Action("기록 전체 삭제",async (_, _) => await ConfirmDelete()); recordSection.Children.Add(deleteButton);
-        var section = Section("Google Drive · 테스트");
-        section.Children.Add(Text("샘플 데이터로 연결·업로드·다운로드 흐름을 확인합니다.",14,"muted"));
-        var feedback = Text(connected ? "테스트 연결됨" : "연결되지 않음",14,"muted");
-        var upload = Action("업로드 테스트", (_, _) => feedback.Text = "샘플 업로드 테스트 완료");
-        var download = Action("다운로드 테스트", (_, _) => feedback.Text = "샘플 다운로드 테스트 완료");
-        upload.IsEnabled = download.IsEnabled = connected;
-        section.Children.Add(Action("연결 테스트", (_, _) => { connected = true; upload.IsEnabled = download.IsEnabled = true; feedback.Text = "테스트 연결됨"; }));
-        section.Children.Add(upload); section.Children.Add(download); section.Children.Add(feedback);
+        AddDriveSettings();
         UpdateSettingsState();
     }
     private StackPanel Section(string title)
@@ -454,10 +485,9 @@ public partial class MainWindow : Window
     }
     private void SetFailure(string message)
     {
+        EndSplash();
         statusMessage = message;
         if (appStatus is not null) { appStatus.Text = "분석 오류 · 설정에서 상태를 확인해주세요"; ToolTipService.SetToolTip(appStatus,message); }
-        if (characterStatus is not null) characterStatus.Text = "분석 오류";
-        ProfileStatusDot.Fill = Brush("muted"); DetectedDungeon.Visibility = Visibility.Collapsed;
         UpdateSettingsState();
     }
     private void Receive(JsonElement value)
@@ -465,16 +495,31 @@ public partial class MainWindow : Window
         if (closing) return;
         var kind = value.GetProperty("type").GetString();
         if (kind == "error") { SetFailure(value.GetProperty("message").GetString()!); return; }
-        if (kind == "catalog") { _ = ShowCatalog(value.GetProperty("rows").Clone()); return; }
+        if (kind == "catalog") {
+            var catalog = value.GetProperty("rows").Clone();
+            if (!mainContentLoaded) pendingCatalog = catalog; else AcceptRewards(catalog);
+            return;
+        }
+        if (kind == "drive_preview") { _ = ShowDrivePreview(value.Clone()); return; }
         if (kind != "snapshot") return;
+        if (Flag(value,"restarting") && startupWindow is null && !demo)
+        {
+            DismissSettings(false);
+            BeginSplash(AppWindow.Size.Width,AppWindow.Size.Height);
+            ActivateStartup();
+        }
+        UpdateSplash(value);
+        if (!mainContentLoaded) { pendingSnapshot = value.Clone(); return; }
         statusMessage = value.GetProperty("status").GetString()!;
         busy = value.GetProperty("busy").GetBoolean(); catalogBusy = value.GetProperty("catalogBusy").GetBoolean();
         if (appStatus is not null) { appStatus.Text = statusMessage; ToolTipService.SetToolTip(appStatus,statusMessage); }
-        if (restartButton is not null) restartButton.IsEnabled = !busy;
         var profile = value.GetProperty("profile");
         if (characterName is not null) { characterName.Text = profile.GetProperty("character").GetString()!; ToolTipService.SetToolTip(characterName,characterName.Text); }
         if (characterStatus is not null) { characterStatus.Text = profile.GetProperty("message").GetString()!; ToolTipService.SetToolTip(characterStatus,characterStatus.Text); }
-        ProfileStatusDot.Fill = Brush(profile.GetProperty("active").GetBoolean() ? "success" : "muted");
+        var characterState = profile.TryGetProperty("characterState", out var stateValue) ? stateValue.GetString() : profile.GetProperty("active").GetBoolean() ? "playing" : "unset";
+        var characterColor = characterState == "playing" ? "success" : characterState == "selecting" ? "warning" : "danger";
+        ProfileStatusDot.Fill = Brush(characterColor);
+        if (characterStatus is not null) characterStatus.Foreground = Brush(characterColor);
         DetectedDungeonContent.Children.Clear();
         var dungeon = profile.TryGetProperty("dungeon",out var name) ? name.GetString() : null;
         DetectedDungeon.Visibility = string.IsNullOrEmpty(dungeon) ? Visibility.Collapsed : Visibility.Visible;
@@ -502,12 +547,18 @@ public partial class MainWindow : Window
         var selected = value.GetProperty("selected").GetInt64();
         clients = value.GetProperty("clients").Clone();
         if (clientJson != lastClients || selected != selectedClient) { lastClients = clientJson; selectedClient = selected; UpdateClients(); }
+        var previousCatalog = catalogMessage;
         catalogMessage = value.GetProperty("catalogStatus").GetString()!;
+        if (value.TryGetProperty("catalogLastUpdated",out var updated) && DateTimeOffset.TryParse(updated.GetString(),out var lastUpdated)) lastRewardUpdate = lastUpdated;
+        if (value.TryGetProperty("catalogRefreshAvailableAt",out var available) && available.TryGetDouble(out var deadline)) rewardRefreshAvailableAt = DateTimeOffset.FromUnixTimeMilliseconds((long)(deadline*1000));
+        UpdateRewardRefresh();
+        if (currentPage == "rewards" && !catalogBusy && (rewardData.ValueKind != JsonValueKind.Array || previousCatalog != catalogMessage)) _ = RequestRewards();
+        if (value.TryGetProperty("google",out var googleState)) google = googleState.Clone();
+        if (value.TryGetProperty("drive",out var driveState)) drive = driveState.Clone();
         UpdateSettingsState();
-        if (startupCheck && !busy && statusMessage == "게임 실행 대기")
+        if (startupCheck && value.TryGetProperty("startupReady", out var startupReady) && startupReady.GetBoolean())
         {
-            File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"startup-check.txt"),$"PASS: WinUI -> Python -> YOLO/OCR/OBS -> ready in {startupWatch.Elapsed.TotalSeconds:F2}s");
-            Close();
+            _ = VerifyStartupTransition();
         }
     }
     private string catalogMessage = "공용 데이터 · 확인 대기";
@@ -527,14 +578,17 @@ public partial class MainWindow : Window
     }
     private void UpdateSettingsState()
     {
+        UpdateDriveSettings();
         if (catalogStatus is not null) catalogStatus.Text = catalogMessage;
         if (engineStatus is not null) engineStatus.Text = statusMessage;
         if (clientSelector is not null) clientSelector.IsEnabled = !busy;
+        if (engineRestart is not null) engineRestart.IsEnabled = !demo && !busy;
         if (deleteButton is not null) deleteButton.IsEnabled = !busy && (demo || records.Count > 0);
-        if (catalogRefresh is not null) catalogRefresh.IsEnabled = !catalogBusy && !busy;
+        if (catalogRefresh is not null) catalogRefresh.IsEnabled = !catalogBusy && !busy && DateTimeOffset.UtcNow >= rewardRefreshAvailableAt;
     }
     private void RebuildRecords()
     {
+        if (currentPage != "records") return;
         Page.Children.Clear(); rows.Clear(); ShowRecords(); Adapt();
     }
     private async Task ShowRecordDetail(Raid raid)
@@ -582,19 +636,6 @@ public partial class MainWindow : Window
         dialog.Resources["ContentDialogBackground"] = Brush("hover");
         dialog.Resources["ContentDialogBorderBrush"] = Brush("border");
         return dialog;
-    }
-    private async Task ShowCatalog(JsonElement data)
-    {
-        var list = new StackPanel { Spacing = 16 };
-        foreach (var row in data.EnumerateArray())
-        {
-            var item = new StackPanel { Spacing = 4 };
-            item.Children.Add(Text(row.GetProperty("dungeon").GetString() + " · " + row.GetProperty("mode").GetString() + " · " + row.GetProperty("gate").GetString(),14,bold:true));
-            item.Children.Add(Text($"골드 {row.GetProperty("gold").GetInt64():N0} · 비용 {row.GetProperty("fee").GetInt64():N0} · 귀속 {row.GetProperty("bound_percentage").GetDouble()*100:0.##}%",12,"muted"));
-            list.Children.Add(item);
-        }
-        if (list.Children.Count == 0) list.Children.Add(Text("보관된 공용 데이터가 없습니다. 설정에서 공용 데이터를 갱신해주세요.",14,"muted"));
-        await Dialog("공용 데이터",list);
     }
     private void LoadDemo()
     {

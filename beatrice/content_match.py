@@ -37,6 +37,14 @@ class ContentMatcher:
                 if re.findall(r'\d+', normalized(name)) == digits
                 and SequenceMatcher(None, value, normalized(name), autojunk=False).ratio() >= .85]
 
+    def display_context(self, dungeon, difficulty):
+        """Resolve UI labels using the same conservative name/mode rules as records."""
+        names = self.dungeon_candidates(dungeon or '')
+        if len(names) != 1: return dungeon, difficulty
+        name = names[0]
+        modes = [mode for mode in self.content[name] if mode_key(mode) == mode_key(difficulty or '')]
+        return name, modes[0] if len(modes) == 1 else difficulty
+
     def match(self, dungeon, difficulty, gate, raid=False, exact_only=False):
         names = ([name for name in self.content if normalized(name) == normalized(dungeon)]
                  if exact_only else self.dungeon_candidates(dungeon))

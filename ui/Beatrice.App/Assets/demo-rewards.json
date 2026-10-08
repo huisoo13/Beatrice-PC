@@ -1,0 +1,210 @@
+[
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "하드",
+    "gate": "1",
+    "gold": 17500,
+    "fee": 5600,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "하드",
+    "gate": "2",
+    "gold": 26500,
+    "fee": 8480,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "노말",
+    "gate": "1",
+    "gold": 13000,
+    "fee": 5160,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "노말",
+    "gate": "2",
+    "gold": 19000,
+    "fee": 6080,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "매칭 모드",
+    "gate": "1",
+    "gold": 13000,
+    "fee": 5160,
+    "bound_percentage": 0.5
+  },
+  {
+    "dungeon": "고통의 마녀, 세르카",
+    "mode": "매칭 모드",
+    "gate": "2",
+    "gold": 19000,
+    "fee": 6080,
+    "bound_percentage": 0.5
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "하드",
+    "gate": "1",
+    "gold": 25000,
+    "fee": 8000,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "하드",
+    "gate": "2",
+    "gold": 37000,
+    "fee": 11840,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "노말",
+    "gate": "1",
+    "gold": 20000,
+    "fee": 6400,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "노말",
+    "gate": "2",
+    "gold": 30000,
+    "fee": 9600,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "나이트메어",
+    "gate": "1",
+    "gold": 30000,
+    "fee": 9600,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "나이트메어",
+    "gate": "2",
+    "gold": 45000,
+    "fee": 14400,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "매칭 모드",
+    "gate": "1",
+    "gold": 20000,
+    "fee": 6400,
+    "bound_percentage": 0.5
+  },
+  {
+    "dungeon": "죽음의 계율자, 벨가르딘",
+    "mode": "매칭 모드",
+    "gate": "2",
+    "gold": 30000,
+    "fee": 10000,
+    "bound_percentage": 0.5
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "3단계",
+    "gate": "1",
+    "gold": 20000,
+    "fee": 6400,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "3단계",
+    "gate": "2",
+    "gold": 30000,
+    "fee": 9600,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "2단계",
+    "gate": "1",
+    "gold": 16000,
+    "fee": 5120,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "2단계",
+    "gate": "2",
+    "gold": 24000,
+    "fee": 7680,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "1단계",
+    "gate": "1",
+    "gold": 13500,
+    "fee": 4320,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "지평의 성당",
+    "mode": "1단계",
+    "gate": "2",
+    "gold": 16500,
+    "fee": 5280,
+    "bound_percentage": 1
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "하드",
+    "gate": "1",
+    "gold": 16000,
+    "fee": 5120,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "하드",
+    "gate": "2",
+    "gold": 32000,
+    "fee": 10240,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "노말",
+    "gate": "1",
+    "gold": 11000,
+    "fee": 3520,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "노말",
+    "gate": "2",
+    "gold": 21000,
+    "fee": 6720,
+    "bound_percentage": 0
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "싱글 모드",
+    "gate": "1",
+    "gold": 11000,
+    "fee": 3520,
+    "bound_percentage": 0.5
+  },
+  {
+    "dungeon": "종막: 최후의 날",
+    "mode": "싱글 모드",
+    "gate": "2",
+    "gold": 21000,
+    "fee": 6720,
+    "bound_percentage": 0.5
+  }
+]

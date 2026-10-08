@@ -9,10 +9,11 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        UnhandledException += (_, args) => Log(args.Exception);
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        try { window = new MainWindow(); window.Activate(); }
+        try { var main = new MainWindow(); window = main; main.ActivateStartup(); }
         catch (Exception error) { Log(error); throw; }
     }
     private static void Log(Exception error)

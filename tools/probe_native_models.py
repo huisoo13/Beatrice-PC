@@ -19,7 +19,7 @@ os.environ['YOLO_AUTOINSTALL'] = 'false'
 if __name__ == '__main__':
     from PySide6.QtCore import QCoreApplication
     from unittest.mock import patch
-    from beatrice import desktop
+    from beatrice import engine_worker as engine
     trace = (data/'stacks.log').open('w')
     faulthandler.dump_traceback_later(20, repeat=True, file=trace)
     if '--bridge' in sys.argv or '--launcher' in sys.argv:
@@ -34,7 +34,7 @@ if __name__ == '__main__':
             sys.stdin = HeldInput()
         events = []
         def factory():
-            instance = desktop.Worker()
+            instance = engine.Worker()
             instance.progress.connect(events.append)
             instance.failed.connect(lambda value: events.append('FAIL: ' + value))
             instance.finished.connect(QCoreApplication.instance().quit)
@@ -45,7 +45,7 @@ if __name__ == '__main__':
                 capture = stack.enter_context(patch('beatrice.obs_capture.ObsCapture'))
                 capture.return_value.prepare.return_value = False
             stack.enter_context(patch.object(native_bridge,'load_api_key',side_effect=native_bridge.ContentError('probe: network disabled')))
-            stack.enter_context(patch.object(desktop,'find_clients',return_value=[]))
+            stack.enter_context(patch.object(engine,'find_clients',return_value=[]))
             if '--launcher' in sys.argv:
                 import app_launcher
                 original = native_bridge.main
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         (data/'bridge-result.json').write_text(json.dumps(events,ensure_ascii=False),encoding='utf-8')
         sys.exit(result)
     app = QCoreApplication([])
-    worker = desktop.Worker()
+    worker = engine.Worker()
     failures = []
     worker.progress.connect(lambda value: print(value, flush=True))
     worker.failed.connect(lambda value: failures.append(value) or print('FAIL:',value,flush=True))

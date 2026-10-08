@@ -142,49 +142,5 @@ class PublicContentTests(unittest.TestCase):
             self.assertNotIn('secret?bad', str(caught.exception))
 
 
-class PublicContentUITests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-        from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
 
-    def setUp(self):
-        from beatrice.public_content_ui import PublicContentPanel
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.result = PublicContentClient('test-api-key', SETTINGS, threading.Event(), opener=FakePublicDrive()).refresh()
-        ContentCache(self.temp.name, SETTINGS).save(self.result)
-        with patch('beatrice.public_content_ui.load_settings', return_value=SETTINGS):
-            self.panel = PublicContentPanel('.', self.temp.name)
-        self.addCleanup(self.panel.shutdown)
-
-    def finish(self, result, error):
-        replies = queue.Queue()
-        replies.put((result, error))
-        self.panel.pending = threading.Event(), replies
-        self.panel.tick()
-
-    def test_offline_preserves_cache_and_viewer(self):
-        self.finish(None, 'offline')
-        self.assertEqual(self.panel.cached, self.result)
-        self.assertIn('마지막 정상', self.panel.label.text())
-        self.assertTrue(self.panel.view_button.isEnabled())
-
-    def test_success_and_shutdown_ignores_late_result(self):
-        self.finish(self.result, None)
-        self.assertIn('최신 확인', self.panel.label.text())
-        self.panel.shutdown()
-        with patch.object(self.panel.cache, 'save') as save:
-            self.finish(self.result, None)
-            save.assert_not_called()
-
-    def test_missing_api_key_keeps_existing_content(self):
-        with patch('beatrice.public_content_ui.load_api_key', side_effect=ContentError('key missing')):
-            self.panel.refresh()
-        self.assertIsNone(self.panel.pending)
-        self.assertEqual(self.panel.cached, self.result)
-
-
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__": unittest.main()

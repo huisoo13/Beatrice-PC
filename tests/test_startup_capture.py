@@ -7,17 +7,17 @@ import unittest
 from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import Mock,patch
-from PySide6.QtWidgets import QApplication
-from beatrice import desktop
+from PySide6.QtCore import QCoreApplication
+from beatrice import engine_worker as engine
 from beatrice.game_window import Client
 
 
 class StartupCaptureTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):cls.app=QApplication.instance() or QApplication([])
+    def setUpClass(cls):cls.app=QCoreApplication.instance() or QCoreApplication([])
 
     def run_startup(self,clients,replace=False):
-        worker=desktop.Worker();events=[]
+        worker=engine.Worker();events=[]
         capture=Mock(wait_kind='transient',observed_at=None)
         capture.binding_ready=threading.Event();capture.binding_ready.set()
         capture.prepare.side_effect=lambda stop:events.append('engine_ready') or True
@@ -36,11 +36,11 @@ class StartupCaptureTests(unittest.TestCase):
         worker.ready.connect(ready)
         failures=[];worker.failed.connect(failures.append)
         with tempfile.TemporaryDirectory() as folder,ExitStack() as stack:
-            stack.enter_context(patch.object(desktop,'DATA',Path(folder)))
-            stack.enter_context(patch.object(desktop,'ProcessWatch',return_value=watch))
-            stack.enter_context(patch.object(desktop,'find_clients',side_effect=lambda pids:events.append('game_query') or clients))
-            stack.enter_context(patch.object(desktop,'client_active',return_value=True))
-            stack.enter_context(patch.object(desktop,'client_alive',return_value=True))
+            stack.enter_context(patch.object(engine,'DATA',Path(folder)))
+            stack.enter_context(patch.object(engine,'ProcessWatch',return_value=watch))
+            stack.enter_context(patch.object(engine,'find_clients',side_effect=lambda pids:events.append('game_query') or clients))
+            stack.enter_context(patch.object(engine,'client_active',return_value=True))
+            stack.enter_context(patch.object(engine,'client_alive',return_value=True))
             for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',
                          'live.LiveCoordinator','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
                          'completion_overlay.CompletionOverlayDetector','completion_diagnostic.CompletionDiagnostic',

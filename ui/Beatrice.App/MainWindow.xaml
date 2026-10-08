@@ -8,8 +8,48 @@
          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
        </Grid>
      </ControlTemplate>
+     <ControlTemplate x:Key="RewardExpanderTemplate" TargetType="Expander">
+       <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+        <Grid>
+         <VisualStateManager.VisualStateGroups>
+          <VisualStateGroup x:Name="ExpandStates">
+           <VisualState x:Name="ExpandDown"><Storyboard/></VisualState>
+           <VisualState x:Name="CollapseDown"><Storyboard/></VisualState>
+           <VisualState x:Name="ExpandUp"><Storyboard/></VisualState>
+           <VisualState x:Name="CollapseUp"><Storyboard/></VisualState>
+          </VisualStateGroup>
+         </VisualStateManager.VisualStateGroups>
+         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+         <ToggleButton x:Name="ExpanderHeader" MinHeight="0" BorderThickness="0" CornerRadius="12"
+          Background="{TemplateBinding Background}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+          Padding="{TemplateBinding Padding}"
+          Content="{TemplateBinding Header}" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+          <ToggleButton.Template>
+           <ControlTemplate TargetType="ToggleButton">
+            <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" MinHeight="0">
+
+             <Grid ColumnSpacing="12">
+
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+              <Path x:Name="RewardChevron" Grid.Column="1" Data="M 4,9 L 10,15 L 16,9" Width="16" Height="8" Stretch="Uniform" Stroke="{ThemeResource ExpanderChevronForeground}" StrokeThickness="1.5" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+               <Path.RenderTransform><RotateTransform x:Name="ChevronRotation"/></Path.RenderTransform>
+              </Path>
+             </Grid>
+            </Border>
+           </ControlTemplate>
+          </ToggleButton.Template>
+         </ToggleButton>
+         <Border x:Name="ExpanderContentClip" Grid.Row="1" Height="0" VerticalAlignment="Top">
+          <Border x:Name="ExpanderContent" VerticalAlignment="Top">
+           <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch"/>
+          </Border>
+         </Border>
+        </Grid>
+       </Border>
+     </ControlTemplate>
    </Grid.Resources>
-   <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="76"/><ColumnDefinition x:Name="SidebarColumn" Width="248"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+   <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="76"/><ColumnDefinition x:Name="SidebarColumn" Width="200"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
    <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
    <Border x:Name="AppHeader" Grid.ColumnSpan="3" Padding="0,0,144,0">
      <Grid ColumnSpacing="16">
@@ -43,7 +83,7 @@
       </StackPanel>
      </Border>
    <ScrollViewer x:Name="PageViewport" Grid.Row="1" Grid.RowSpan="2" Grid.Column="2" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
-     <StackPanel x:Name="Page" Margin="40,32,40,40" Spacing="24" />
+     <StackPanel x:Name="Page" Margin="16,32,16,40" Spacing="24" />
    </ScrollViewer>
    <Grid x:Name="SettingsPresenter" Canvas.ZIndex="10" Grid.RowSpan="3" Grid.ColumnSpan="3" Visibility="Collapsed">
     <Border x:Name="SettingsPanel" Margin="84,48" MaxWidth="1120" CornerRadius="12">

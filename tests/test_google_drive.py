@@ -115,12 +115,15 @@ class FakeDrive:
     def __call__(self, request, timeout):
         self.requests.append(request)
         self.assert_auth(request)
-        if request.method == 'POST':
+        if request.method in ('POST', 'PATCH'):
             message = BytesParser(policy=default).parsebytes(
                 ('Content-Type: ' + request.headers['Content-type'] + '\r\n\r\n').encode() + request.data)
             parts = list(message.iter_parts())
             metadata = json.loads(parts[0].get_payload(decode=True))
-            metadata.update(id=str(len(self.files) + 1), createdTime='2026-09-27T00:00:00Z')
+            identity = urlsplit(request.full_url).path.rsplit('/',1)[-1] if request.method == 'PATCH' else str(len(self.files)+1)
+            if request.method == 'PATCH':
+                metadata = dict(self.files[identity][0], **metadata)
+            metadata.update(id=identity, createdTime='2026-09-27T00:00:00Z')
             self.files[metadata['id']] = (metadata, parts[1].get_payload(decode=True))
             return io.BytesIO(json.dumps(metadata).encode())
         query = parse_qs(urlsplit(request.full_url).query)
@@ -128,6 +131,8 @@ class FakeDrive:
             return io.BytesIO(self.files[urlsplit(request.full_url).path.rsplit('/', 1)[-1]][1])
         namespace = 'integration-test' if 'integration-test' in query['q'][0] else 'v1'
         records = [v[0] for v in self.files.values() if v[0]['appProperties']['beatriceRecords'] == namespace]
+        if "name = 'PC.json'" in query['q'][0]:
+            records = [r for r in records if r['name'] == 'PC.json']
         return io.BytesIO(json.dumps({'files': records[-1:]}).encode())
 
     @staticmethod
@@ -137,27 +142,53 @@ class FakeDrive:
 
 
 class DriveTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+
+
     def test_empty_intermediate_page_is_followed(self):
         responses = iter([{'files': [], 'nextPageToken': 'next'}, {'files': [{'id': 'found'}]}])
         client = DriveClient('fake', threading.Event(), opener=lambda *a, **k: io.BytesIO(json.dumps(next(responses)).encode()))
         self.assertEqual(client.latest(), {'id': 'found'})
 
-    def test_multiple_uploads_preserve_previous_and_download_latest(self):
+    def test_multiple_uploads_update_pc_only_and_back_up_previous(self):
         fake = FakeDrive()
-        client = DriveClient('fake', threading.Event(), opener=fake)
+        client = DriveClient('fake', threading.Event(), opener=fake, backup_directory=self.temp.name)
         first = client.upload([row()])
         second = client.upload([row(state='진행 전')])
-        self.assertNotEqual(first['id'], second['id'])
+        self.assertEqual(first['id'], second['id'])
+        self.assertEqual(len(fake.files), 1)
+        self.assertEqual(second['name'], 'PC.json')
         self.assertEqual(client.download()['records'], validate_records([row(state='진행 전')]))
-        self.assertEqual(client.read(first), validate_records([row()]))
+        backups = list(Path(self.temp.name).glob('PC-*.json'))
+        self.assertEqual(decode_records(backups[0].read_bytes()), validate_records([row()]))
         self.assertEqual(first['parents'], ['appDataFolder'])
-        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '2'})
+        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '3'})
+
+    def test_ios_and_old_snapshot_files_are_never_replaced(self):
+        fake=FakeDrive()
+        metadata=dict(id='ios',name='iOS.json',mimeType='application/json',appProperties={'beatriceRecords':'v1','schemaVersion':'2'})
+        fake.files['ios']=(metadata,encode_records([row()]))
+        client=DriveClient('fake',threading.Event(),opener=fake,backup_directory=self.temp.name)
+        first=client.upload([row()]);client.upload([])
+        self.assertEqual(fake.files['ios'][1],encode_records([row()]))
+        self.assertEqual(client.read(first),[])
+        self.assertEqual(len(fake.files),2)
+
+    def test_missing_recovery_directory_prevents_replacement(self):
+        fake=FakeDrive()
+        client=DriveClient('fake',threading.Event(),opener=fake)
+        first=client.upload([row()])
+        with self.assertRaises(DriveError):client.upload([])
+        self.assertEqual(client.read(first),validate_records([row()]))
+        self.assertFalse(any(r.method=='PATCH' for r in fake.requests))
 
     def test_integration_namespace_not_visible_to_production(self):
         fake = FakeDrive()
         DriveClient('fake', threading.Event(), opener=fake, namespace='integration-test').upload([row()])
         with self.assertRaisesRegex(DriveError, '없습니다'):
-            DriveClient('fake', threading.Event(), opener=fake).download()
+            DriveClient('fake', threading.Event(), opener=fake, backup_directory=self.temp.name).download()
 
     def test_denied_offline_rate_limit_and_oversize(self):
         for error in [HTTPError('url', 403, 'denied', {}, None), HTTPError('url', 429, 'limit', {}, None), URLError('offline')]:
@@ -174,15 +205,15 @@ class DriveTests(unittest.TestCase):
         cancel.set()
         fake = FakeDrive()
         with self.assertRaises(DriveError):
-            DriveClient('fake', cancel, opener=fake).upload([row()])
+            DriveClient('fake', cancel, opener=fake, backup_directory=self.temp.name).upload([row()])
         self.assertEqual(fake.requests, [])
 
     def test_failed_upload_keeps_previous_snapshot(self):
         fake = FakeDrive()
-        client = DriveClient('fake', threading.Event(), opener=fake)
+        client = DriveClient('fake', threading.Event(), opener=fake, backup_directory=self.temp.name)
         first = client.upload([row()])
         def failing(request, timeout):
-            if request.method == 'POST':
+            if request.method in ('POST', 'PATCH'):
                 raise URLError('offline')
             return fake(request, timeout)
         client.opener = failing
@@ -216,94 +247,5 @@ class DriveTests(unittest.TestCase):
                 authenticate('.', saved, threading.Event(), True)
 
 
-class DriveUITests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-        from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
 
-    def setUp(self):
-        from beatrice.google_login_ui import GoogleLogin
-        from beatrice.drive_ui import DrivePanel
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.store = Store(Path(self.temp.name) / 'db.sqlite3')
-        self.addCleanup(self.store.close)
-        self.login = GoogleLogin('.', self.temp.name)
-        self.login.session = dict(account={'sub': 'person', 'email': 'test@example.com'}, scopes=[DRIVE_SCOPE])
-        self.panel = DrivePanel('.', self.temp.name, self.login, self.store, lambda: True, lambda: None)
-        self.addCleanup(self.panel.shutdown)
-        self.addCleanup(self.login.shutdown)
-
-    def pending_download(self, error=None):
-        results = queue.Queue()
-        results.put((dict(records=[row()], metadata={'createdTime': '2026-09-27T00:00:00Z'}), error))
-        self.panel.pending = (threading.Event(), results, 'download', 0, 0, 'person')
-        self.panel.busy = True
-
-    def test_rejected_preview_and_network_error_do_not_restore(self):
-        from PySide6.QtWidgets import QMessageBox
-        self.pending_download()
-        with patch('beatrice.drive_ui.QMessageBox.question', return_value=QMessageBox.StandardButton.No):
-            self.panel.tick()
-        self.assertEqual(self.store.state_records(), [])
-        self.pending_download('offline')
-        with patch('beatrice.drive_ui.QMessageBox.question') as question:
-            self.panel.tick()
-            question.assert_not_called()
-        self.assertFalse(self.panel.busy)
-
-    def test_accepted_preview_restores_after_validation(self):
-        from PySide6.QtWidgets import QMessageBox
-        self.pending_download()
-        with patch('beatrice.drive_ui.QMessageBox.question', return_value=QMessageBox.StandardButton.Yes):
-            self.panel.tick()
-        self.assertEqual(export_records(self.store)[0], validate_records([row()]))
-        self.assertFalse(self.panel.busy)
-        self.assertTrue(list((Path(self.temp.name) / 'drive-backups').glob('*.sqlite3')))
-
-    def test_wrong_account_or_active_capture_does_not_restore(self):
-        self.pending_download()
-        self.login.session['account']['sub'] = 'other'
-        self.panel.tick()
-        self.assertEqual(self.store.state_records(), [])
-        self.login.session['account']['sub'] = 'person'
-        self.pending_download()
-        self.panel.can_restore = lambda: False
-        self.panel.tick()
-        self.assertEqual(self.store.state_records(), [])
-
-    def test_no_permission_and_empty_upload(self):
-        self.login.session['scopes'] = []
-        self.panel.update_buttons()
-        self.assertFalse(self.panel.upload_button.isEnabled())
-        self.assertTrue(self.panel.connect_button.isEnabled())
-        self.login.session['scopes'] = [DRIVE_SCOPE]
-        self.panel.begin('upload')
-        self.assertIsNone(self.panel.pending)
-        self.assertIn('빈 기록', self.panel.label.text())
-
-    def test_window_integration_without_models(self):
-        from beatrice import desktop
-        with patch.object(desktop, 'DATA', Path(self.temp.name) / 'window'):
-            worker = desktop.Worker()
-            window = desktop.Window(worker, [])
-            try:
-                self.assertFalse(window.drive.upload_button.isEnabled())
-                window.google_login.session = self.login.session
-                window.drive.update_buttons()
-                self.assertTrue(window.drive.upload_button.isEnabled())
-                self.assertTrue(window.drive.download_button.isEnabled())
-                window.drive.busy = True
-                window.update_status()
-                self.assertFalse(window.delete_button.isEnabled())
-                self.assertFalse(window.refresh_button.isEnabled())
-                self.assertFalse(window.targets.isEnabled())
-            finally:
-                window.drive.busy = False
-                window.close()
-
-
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__": unittest.main()

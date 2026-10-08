@@ -96,51 +96,5 @@ class GoogleAuthTests(unittest.TestCase):
             self.assertIsNone(store.load())
 
 
-class GoogleLoginUITests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
-        from PySide6.QtWidgets import QApplication
-        cls.app = QApplication.instance() or QApplication([])
 
-    def test_cancelled_result_cannot_save_and_close_stops_timer(self):
-        from beatrice.google_login_ui import GoogleLogin
-        import queue
-        with tempfile.TemporaryDirectory() as directory:
-            widget = GoogleLogin('.', directory)
-            cancel = threading.Event()
-            results = queue.Queue()
-            widget.pending = cancel, results
-            widget.login_clicked()
-            self.assertTrue(cancel.is_set())
-            results.put(({'refresh_token': 'late'}, None))
-            with patch.object(widget.store, 'save') as save:
-                widget.poll()
-                save.assert_not_called()
-            widget.shutdown()
-            self.assertFalse(widget.timer.isActive())
-            widget.restore()
-            self.assertIsNone(widget.pending)
-            widget.close()
-
-    def test_success_displays_account_and_logout_clears(self):
-        from beatrice.google_login_ui import GoogleLogin
-        import queue
-        with tempfile.TemporaryDirectory() as directory:
-            widget = GoogleLogin('.', directory)
-            results = queue.Queue()
-            session = dict(account={'email': 'test@example.com'}, refresh_token='fake')
-            results.put((session, None))
-            widget.pending = threading.Event(), results
-            with patch.object(widget.store, 'save') as save:
-                widget.poll()
-                save.assert_called_once_with(session)
-            self.assertIn('test@example.com', widget.label.text())
-            widget.sign_out()
-            self.assertIsNone(widget.session)
-            widget.shutdown()
-            widget.close()
-
-
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == "__main__": unittest.main()

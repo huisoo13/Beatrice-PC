@@ -40,6 +40,12 @@ class DungeonObserverTests(unittest.TestCase):
         for regions,blocked in (({'quest_complete_banner':box([600,10,1000,100])},False),(self.regions,True)):
             obs,gates=self.observer.analyze(self.frame,regions,0,blocked)
             self.assertFalse(obs['dungeonVisible']);self.assertFalse(obs['currentRaidPanel']);self.assertEqual(gates,[])
+    def test_blocked_but_visible_panel_is_display_only_presence(self):
+        obs, gates = self.observer.analyze(self.frame, self.regions, 0, True)
+        self.assertTrue(obs['raidPanelVisible'])
+        self.assertFalse(obs['currentRaidPanel'])
+        self.assertEqual(gates, [])
+
     def test_gateless_requires_direct_title_and_excludes_conflicting_panel(self):
         regions=dict(gateless_raid_panel=box([600,300,1000,400]),gateless_title=box([620,330,970,370]))
         self.ocr.analyze_gateless.return_value=self.read(None,{'status':'detected'},[])

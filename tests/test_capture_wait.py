@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from beatrice.desktop import Worker
+from beatrice.engine_worker import Worker
 from beatrice.dungeon import DungeonTracker
 from beatrice.live import LiveCoordinator
 from beatrice.storage import Store

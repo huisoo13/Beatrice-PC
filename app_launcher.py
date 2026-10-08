@@ -29,7 +29,8 @@ def main():
         root=Path(__file__).resolve().parent
         native=root/'ui/Beatrice.App/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/BeatricePC.exe'
         packaged=root/'native-ui/BeatricePC.exe'
-        executable=packaged if packaged.is_file() else native
+        published=root/'build/native-ui/BeatricePC.exe'
+        executable=packaged if packaged.is_file() else published if published.is_file() else native
         if not executable.is_file():
             raise FileNotFoundError('WinUI 앱을 먼저 빌드해주세요: ui/Beatrice.App/build.ps1')
         subprocess.Popen([str(executable),'--app-root='+str(root)],cwd=root)

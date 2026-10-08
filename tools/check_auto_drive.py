@@ -1,4 +1,4 @@
-"""Exercise completion -> UI scheduler -> real Drive using an isolated temporary DB."""
+"""Exercise completion -> engine scheduler -> real Drive using an isolated temporary DB."""
 import os
 from pathlib import Path
 import sys
@@ -12,11 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-from PySide6.QtWidgets import QApplication
 from beatrice.google_auth import AuthError, TokenStore, drive_access_token
 from beatrice.google_drive import DriveClient, DriveError, API
-from beatrice.google_login_ui import GoogleLogin
-from beatrice.drive_ui import DrivePanel
+from beatrice.account_service import GoogleAccount
+from beatrice.drive_service import PersonalDrive
 from beatrice.storage import Store
 
 
@@ -36,28 +35,28 @@ def main():
             created.append(metadata)
             return metadata
 
-    app = QApplication.instance() or QApplication([])
     client = DriveClient(token, threading.Event(), namespace='integration-test')
     try:
         with tempfile.TemporaryDirectory() as directory:
             store = Store(Path(directory) / 'test.sqlite3')
-            login = GoogleLogin(ROOT, directory)
+            login = GoogleAccount(ROOT, directory)
             login.session = session
-            panel = DrivePanel(ROOT, directory, login, store, lambda: False, lambda: None)
+            panel = PersonalDrive(ROOT, directory, login, store)
             rows = [dict(characterName='자동연결테스트', characterKey='name:자동연결테스트',
                          dungeonName='테스트던전', difficulty='노말', gate=i,
                          state='완료' if i == 1 else '진행 전', timeBasis='live_capture') for i in (1, 2)]
             try:
-                with patch('beatrice.drive_ui.DriveClient', TestDrive):
+                with patch('beatrice.drive_service.DriveClient', TestDrive):
                     previous_cloud = None
                     for complete_gate in (1, 2):
                         rows[complete_gate - 1]['state'] = '완료'
                         store.save_states('name:자동연결테스트', '테스트던전', rows)
                         deadline = time.monotonic() + 90
                         while store.drive_pending(session['account']['sub']) or panel.busy:
-                            app.processEvents()
+                            panel.poll()
+                            panel.check_auto_upload()
                             if time.monotonic() > deadline:
-                                raise DriveError('자동 저장 테스트 제한 시간 초과: ' + panel.label.text())
+                                raise DriveError('자동 저장 테스트 제한 시간 초과: ' + panel.message)
                             time.sleep(.05)
                         if len(created) != complete_gate:
                             raise DriveError('완료 변경당 자동 업로드 횟수가 일치하지 않습니다.')
@@ -67,10 +66,8 @@ def main():
                         if any(not r.get('recordID') or not r.get('updatedAt') for r in cloud):
                             raise DriveError('Drive에 recordID 또는 updatedAt이 없습니다.')
                         if previous_cloud:
-                            if [r['recordID'] for r in previous_cloud] != [r['recordID'] for r in cloud]:
-                                raise DriveError('상태 변경 후 recordID가 달라졌습니다.')
-                            if cloud[1]['updatedAt'] <= previous_cloud[1]['updatedAt']:
-                                raise DriveError('수정 시각이 갱신되지 않았습니다.')
+                            if cloud[0]['recordID'] != previous_cloud[0]['recordID']:
+                                raise DriveError('기존 관문의 recordID가 달라졌습니다.')
                             if cloud[0]['updatedAt'] != previous_cloud[0]['updatedAt']:
                                 raise DriveError('변경 없는 기록의 시각이 달라졌습니다.')
                         previous_cloud = cloud
@@ -82,6 +79,8 @@ def main():
             finally:
                 panel.shutdown()
                 login.shutdown()
+                while not panel.settled:
+                    panel.poll(); time.sleep(.05)
                 store.close()
     finally:
         for metadata in created:
