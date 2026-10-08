@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -77,7 +77,7 @@ public partial class MainWindow
         rewardHeading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         rewardHeading.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         rewardHeading.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        rewardHeading.Children.Add(Text("보상표",24,bold:true));
+        rewardHeading.Children.Add(Text("보상표",20,bold:true));
         rewardRefresh = new Button { Width = 20, Height = 20, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0),
             Template = (ControlTemplate)Root.Resources["BareSettingsButton"],
             Content = new Image { Width = 12, Height = 12,

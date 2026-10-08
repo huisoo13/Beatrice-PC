@@ -33,3 +33,7 @@ google_drive_api_key.txt
 /design/ui-review/
 /design/ui-v2/
 /design/winui-preview/
+
+# Presentation test build outputs
+ui/Beatrice.Presentation.Tests/bin/
+ui/Beatrice.Presentation.Tests/obj/

@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-08 UI 최신: [주간 관문 로그·Pretendard·최종 에셋 기준](docs/61-weekly-record-ui.md). 수요일 06시 기준 주간 이동, 날짜별 완료 로그, 한국어 조사와 관문 생략, 캐릭터명 살구색, 전체 본문 타이틀 20px을 적용했습니다.
+
 2026-10-08: [완료 이력 보존과 주간 중복 방지 실게임 검증](docs/60-weekly-history-verification.md). 주간 반복 상태만 수요일 오전 6시(한국 시간)에 초기화하고 전체 이력은 화면·PC.json에 유지합니다. 이전 주 세르카 기록 이후 새 완료 저장, 같은 주 4막 하드의 실제 중복 차단을 확인했습니다. Python 테스트 342개 통과.
 
 2026-10-08: [Qt 화면 제거와 WinUI 기능 이전](docs/59-native-drive-migration.md). Google 로그인·개인 Drive 기능을 UI 독립 Python 서비스로 옮기고 WinUI 설정에 연결했습니다. 기존 SQLite·JSON·DPAPI 로그인 정보를 유지하며, Qt는 분석 작업자의 Core 신호·스레드에만 사용합니다.

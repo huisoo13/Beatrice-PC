@@ -9,6 +9,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.UI;
@@ -18,7 +19,7 @@ public partial class MainWindow : Window
 {
     private readonly Dictionary<string, string> colors;
     private readonly string font;
-    private readonly List<(Grid grid, FrameworkElement tags, FrameworkElement status)> rows = new();
+    private readonly string semiboldFont;
     private bool settingsOpen;
     private Button? settingsButton;
     private Button? maximizeButton;
@@ -46,7 +47,8 @@ public partial class MainWindow : Window
         using var tokens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "tokens.json")));
         colors = tokens.RootElement.GetProperty("colors").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!);
         colors["accentTint"] = tokens.RootElement.GetProperty("derivedColors").GetProperty("accentTint").GetString()!;
-        font = tokens.RootElement.GetProperty("font").GetProperty("family").GetString()!;
+        font = tokens.RootElement.GetProperty("font").GetProperty("regularSource").GetString()!;
+        semiboldFont = tokens.RootElement.GetProperty("font").GetProperty("semiboldSource").GetString()!;
         Root.Background = Brush("hover"); Rail.Background = Brush("sidebar");
         SecondarySidebar.Background = Brush("sidebar");
         var sidebarDivider = Brush("border"); sidebarDivider.Opacity = .45; Rail.BorderBrush = sidebarDivider;
@@ -141,7 +143,7 @@ public partial class MainWindow : Window
         AppWindow.Closing += async (_, args) => {
             args.Cancel = true;
             if (closing) return;
-            closing = true; startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
+            closing = true; recordWeekTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
             if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
             try { await engine.StopAsync().ConfigureAwait(false); }
             catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
@@ -181,6 +183,7 @@ public partial class MainWindow : Window
                     primary.Background is not SolidColorBrush selectedBrush || selectedBrush.Color != Brush("accentTint").Color)
                     throw new InvalidOperationException("메인 분류 선택 유지 및 반복 클릭 상태 보존 실패");
             }
+            await ValidateWeeklyRecordInteractions();
             var views = new[]{"records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "empty"};
             foreach (var view in views)
             {
@@ -232,7 +235,7 @@ public partial class MainWindow : Window
                     if (!PageViewport.IsEnabled || settingsOpen || settingsButton?.FocusState == FocusState.Unfocused) throw new InvalidOperationException("설정 닫기 후 포커스 복구 실패");
                 }
             }
-            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
+            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: weekly record navigation and Wednesday 06:00 boundary; preserved selected week; Pretendard and 20px titles; repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
         }
         catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"capture-error.txt"),error.ToString()); }
         finally { Application.Current.Exit(); }
@@ -261,7 +264,7 @@ public partial class MainWindow : Window
     }
     private TextBlock Text(string value, int size = 16, string color = "text", bool bold = false) => new()
     {
-        Text = value, FontFamily = new FontFamily(font), FontSize = size,
+        Text = value, FontFamily = new FontFamily(bold ? semiboldFont : font), FontSize = size,
         Foreground = Brush(color), FontWeight = bold ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
         TextWrapping = TextWrapping.Wrap
     };
@@ -284,7 +287,7 @@ public partial class MainWindow : Window
         DismissSettings(false);
         if (destination == "raid-section") destination = currentPage is "records" or "rewards" ? currentPage : "records";
         if (destination == currentPage && Page.Children.Count > 0) return;
-        currentPage = destination; Page.Children.Clear(); rows.Clear();
+        currentPage = destination; Page.Spacing = destination == "records" ? 12 : 24; Page.Children.Clear();
         foreach (var navigation in TopNavigation.Children.Concat(BottomNavigation.Children).OfType<Button>())
         {
             if (navigation == settingsButton) { UpdateSettingsButton(); continue; }
@@ -306,52 +309,6 @@ public partial class MainWindow : Window
         else ShowAssets();
         Adapt();
     }
-    private void ShowRecords()
-    {
-        var header = new StackPanel { Spacing = 8 };
-        header.Children.Add(Text("관문 기록", 24, bold: true));
-        Page.Children.Add(header);
-        var list = new StackPanel { Spacing = 12 };
-        foreach (var raid in records)
-        {
-            var grid = new Grid { ColumnSpacing = 24, RowSpacing = 12 };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var title = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-            var tags = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-            foreach (var value in new[]{raid.Mode, raid.Gate}) tags.Children.Add(new Border {
-                Background = Brush(value == "하드" ? "accentTint" : "hover"), CornerRadius = new CornerRadius(999), Padding = new Thickness(6,2,6,2),
-                Child = new TextBlock { Text = value, FontFamily = new FontFamily(font), FontSize = 12,
-                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = Brush(value == "하드" ? "accent" : "text"), TextWrapping = TextWrapping.NoWrap }
-            });
-            title.Spacing = 4;
-            var titleLine = new Grid { ColumnSpacing = 8, RowSpacing = 4, HorizontalAlignment = HorizontalAlignment.Left };
-            titleLine.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            titleLine.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            titleLine.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1,GridUnitType.Star) });
-            titleLine.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            titleLine.Children.Add(Text(raid.Dungeon,16,bold:true));
-            Grid.SetColumn(tags,1); titleLine.Children.Add(tags); title.Children.Add(titleLine);
-            title.Children.Add(Text(raid.Character, 14, "muted"));
-            grid.Children.Add(title);
-            var status = new StackPanel { Spacing = 8, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
-            var timestamp = Text(raid.Date, 12, "muted"); timestamp.HorizontalAlignment = HorizontalAlignment.Right;
-            var statusLabel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right };
-            statusLabel.Children.Add(new Image { Width = 16, Height = 16, Source = new SvgImageSource(new Uri("ms-appx:///Assets/icons/check-success.svg")) });
-            statusLabel.Children.Add(Text("완료",12,"muted"));
-            status.Children.Add(timestamp); status.Children.Add(statusLabel);
-            Grid.SetColumn(status, 1); grid.Children.Add(status);
-            var button = new Button { Content = grid, Background = Brush("sidebar"), Padding = new Thickness(16,12,16,12), HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderBrush = new SolidColorBrush(Colors.Transparent), CornerRadius = new CornerRadius(12) };
-            AutomationProperties.SetName(button, $"{raid.Character} {raid.Dungeon} {raid.Mode} {raid.Gate} 완료 {raid.Date}");
-            button.Click += async (_, _) => await ShowRecordDetail(raid);
-            list.Children.Add(button); rows.Add((grid, tags, status));
-        }
-        if (records.Count == 0) list.Children.Add(Text("저장된 완료 기록이 없습니다.",14,"muted"));
-        Page.Children.Add(list);
-    }
     private void Adapt()
     {
         UpdateMaximizeIcon();
@@ -360,6 +317,7 @@ public partial class MainWindow : Window
         var compact = Root.ActualWidth <= 900;
         RailColumn.Width = new GridLength(small ? 64 : 76);
         SidebarColumn.Width = new GridLength(200);
+        AdaptRecordWeek();
         Root.ColumnDefinitions[2].Width = new GridLength(1,GridUnitType.Star);
         Grid.SetRowSpan(SecondarySidebar,2);
         Grid.SetRow(PageViewport,1); Grid.SetRowSpan(PageViewport,2);
@@ -376,29 +334,15 @@ public partial class MainWindow : Window
         foreach (var button in SettingsNavigation.Children.OfType<Button>()) button.Width = small ? 48 : 52;
         if (SettingsNavigation.Children.FirstOrDefault() is TextBlock settingsLabel) settingsLabel.FontSize = small ? 14 : 20;
         Page.Margin = small ? new Thickness(16,24,16,160) : new Thickness(16,32,16,40);
-        if (Page.Children.FirstOrDefault() is StackPanel heading && heading.Children.FirstOrDefault() is TextBlock title) title.FontSize = 24;
-        if (Page.Children.ElementAtOrDefault(1) is StackPanel list)
-            foreach (var button in list.Children.OfType<Button>()) button.Padding = new Thickness(16,12,16,12);
-        if (SettingsContent.Children.FirstOrDefault() is TextBlock settingsTitle) settingsTitle.FontSize = small ? 24 : 32;
+        if (Page.Children.FirstOrDefault() is StackPanel heading && heading.Children.FirstOrDefault() is TextBlock title) title.FontSize = 20;
+        if (SettingsContent.Children.FirstOrDefault() is TextBlock settingsTitle) settingsTitle.FontSize = 20;
         var settingsContentWidth = Math.Max(0,Math.Min(1120,Root.ActualWidth - settingsInset*2) - SettingsMenuColumn.Width.Value - SettingsScroll.Padding.Left - SettingsScroll.Padding.Right);
         foreach (var section in SettingsContent.Children.OfType<StackPanel>()) section.Width = Math.Min(640,settingsContentWidth);
-        foreach (var row in rows)
-        {
-            if (row.tags.Parent is Grid titleLine)
-            {
-                titleLine.ColumnDefinitions[1].Width = small ? new GridLength(0) : GridLength.Auto;
-                Grid.SetColumn(row.tags,small ? 0 : 1); Grid.SetRow(row.tags,small ? 1 : 0);
-            }
-            var narrow = Root.ActualWidth <= 760;
-            row.grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : GridLength.Auto;
-            Grid.SetColumn(row.status, narrow ? 0 : 1); Grid.SetRow(row.status, narrow ? 1 : 0);
-            row.grid.RowSpacing = narrow ? 12 : 0;
-        }
     }
     private void ShowSettings()
     {
         SettingsContent.Children.Clear();
-        SettingsContent.Children.Add(Text("설정",32,bold:true));
+        SettingsContent.Children.Add(Text("설정",20,bold:true));
         var clientSection = Section("게임 클라이언트");
         clientSelector = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "게임 실행 대기", MinHeight = 44, FontFamily = new FontFamily(font), FontSize = 14 };
         AutomationProperties.SetName(clientSelector,"분석할 게임 클라이언트");
@@ -463,7 +407,7 @@ public partial class MainWindow : Window
     }
     private void ShowAssets()
     {
-        Page.Children.Add(Text("에셋 검토",32,bold:true));
+        Page.Children.Add(Text("에셋 검토",20,bold:true));
         Page.Children.Add(Text("맑은 고딕 · 12 / 14 / 16 / 20 / 24 / 32 · Regular / Semibold / Bold",16,"muted"));
         foreach (var color in colors.Where(c => c.Key != "accentTint"))
         {
@@ -571,7 +515,7 @@ public partial class MainWindow : Window
             foreach (var client in clients.EnumerateArray())
             {
                 var hwnd = client.GetProperty("hwnd").GetInt64();
-                var item = new ComboBoxItem { Content = client.GetProperty("title").GetString() + " · PID " + client.GetProperty("pid").GetInt32(), Tag = hwnd };
+                var item = new ComboBoxItem { FontFamily = new FontFamily(font), Content = client.GetProperty("title").GetString() + " · PID " + client.GetProperty("pid").GetInt32(), Tag = hwnd };
                 clientSelector.Items.Add(item); if (hwnd == selectedClient) clientSelector.SelectedItem = item;
             }
         applyingClients = false;
@@ -589,13 +533,13 @@ public partial class MainWindow : Window
     private void RebuildRecords()
     {
         if (currentPage != "records") return;
-        Page.Children.Clear(); rows.Clear(); ShowRecords(); Adapt();
+        Page.Children.Clear(); ShowRecords(); Adapt();
     }
     private async Task ShowRecordDetail(Raid raid)
     {
         var content = new StackPanel { Spacing = 16 };
         content.Children.Add(Text(raid.Dungeon,20,bold:true));
-        content.Children.Add(Text(raid.Mode + " · " + raid.Gate + "\n" + raid.Character + " · " + raid.Date,14,"muted"));
+        content.Children.Add(Text(string.Join(" · ",new[]{raid.Mode,RecordPresentation.Gate(raid.Gate)}.Where(v => !string.IsNullOrWhiteSpace(v))) + "\n" + raid.Character + " · " + raid.Date,14,"muted"));
         if (raid.Detail.GetProperty("status").GetString() == "matched")
         {
             var values = raid.Detail.GetProperty("values");
@@ -630,9 +574,11 @@ public partial class MainWindow : Window
     private ContentDialog CreateDialog(string title, UIElement content)
     {
         var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark,
-            Title = title, Background = Brush("hover"), Foreground = Brush("text"), FontFamily = new FontFamily(font), FontSize = 14,
+            Title = Text(title,20,bold:true), Background = Brush("hover"), Foreground = Brush("text"), FontFamily = new FontFamily(font), FontSize = 14,
             Content = new ScrollViewer { Content = content, HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, CloseButtonText = "닫기" };
         foreach (var key in Root.Resources.Keys) dialog.Resources[key] = Root.Resources[key];
+        dialog.Resources["ContentDialogTitleFontSize"] = 20d;
+        dialog.Resources["ContentDialogTitleFontFamily"] = new FontFamily(semiboldFont);
         dialog.Resources["ContentDialogBackground"] = Brush("hover");
         dialog.Resources["ContentDialogBorderBrush"] = Brush("border");
         return dialog;

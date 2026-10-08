@@ -1,7 +1,14 @@
-<Application x:Class="BeatricePC.App"
+﻿<Application x:Class="BeatricePC.App"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Application.Resources><ResourceDictionary>
    <ResourceDictionary.MergedDictionaries><XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" /></ResourceDictionary.MergedDictionaries>
+   <FontFamily x:Key="DefaultTextFontFamily">ms-appx:///Assets/fonts/Pretendard-Regular.otf#Pretendard</FontFamily>
+   <FontFamily x:Key="ContentControlThemeFontFamily">ms-appx:///Assets/fonts/Pretendard-Regular.otf#Pretendard</FontFamily>
+   <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="{StaticResource DefaultTextFontFamily}" /></Style>
+   <Style TargetType="TextBox" BasedOn="{StaticResource DefaultTextBoxStyle}"><Setter Property="FontFamily" Value="{StaticResource DefaultTextFontFamily}" /></Style>
+   <Style TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}"><Setter Property="FontFamily" Value="{StaticResource DefaultTextFontFamily}" /></Style>
+   <Style TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}"><Setter Property="FontFamily" Value="{StaticResource DefaultTextFontFamily}" /></Style>
+   <Style TargetType="ToolTip" BasedOn="{StaticResource DefaultToolTipStyle}"><Setter Property="FontFamily" Value="{StaticResource DefaultTextFontFamily}" /></Style>
  </ResourceDictionary></Application.Resources>
 </Application>
