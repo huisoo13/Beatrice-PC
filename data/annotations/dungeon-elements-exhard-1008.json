@@ -1,0 +1,4393 @@
+{
+  "classes": [
+    "gate_panel",
+    "dungeon_name",
+    "difficulty",
+    "gate_in_progress",
+    "gate_completed",
+    "gate_not_started",
+    "gateless_title"
+  ],
+  "annotationMethod": "72 reviewed element images plus 12 reviewed EX Hard single gate panels; icon proposals visually checked",
+  "evaluationPurpose": "training_reconstruction_and_same_session_untrained_replay_not_independent",
+  "images": [
+    {
+      "path": "../raw/direct-elements-0926/010.png",
+      "split": "train",
+      "sessionId": "dungeon-single",
+      "source": "C:\\Users\\Huisoo\\AppData\\Local\\Temp\\codex-clipboard-da8e40b4-9941-45e2-a977-a98a56ff3f5c.png",
+      "synthetic": false,
+      "sha256": "1418b5f21bf93c227e4ba68bb44533b56d38a68198840a2545c463cda5c2f864",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            352,
+            188
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            49,
+            25,
+            312,
+            53
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            81,
+            104,
+            133,
+            155
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            231,
+            103,
+            282,
+            155
+          ]
+        }
+      ],
+      "sourceParent": "../raw/ui-bootstrap/dungeon-single.png",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213151.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213151.jpg",
+      "synthetic": false,
+      "sha256": "0c9732cdb1027a048eea1f51d23ae16557c52ee0d982505a51c385241c1199fa",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260910_213142.png",
+      "split": "train",
+      "sessionId": "260910",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260910_213142.jpg",
+      "synthetic": false,
+      "sha256": "40f10821373fefacaf9394654c7bec3d9c97b3144e4fb1bc8449c7e02e78653a",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260813_213601.png",
+      "split": "train",
+      "sessionId": "260813",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260813_213601.jpg",
+      "synthetic": false,
+      "sha256": "f7bc89ab9e915ddc0658671cae5e37a5b83205bceb3f9d458fd97574d31955ae",
+      "boxes": []
+    },
+    {
+      "path": "../raw/ui-bootstrap/negative-260406_185131.png",
+      "split": "train",
+      "sessionId": "260406",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260406_185131.jpg",
+      "synthetic": false,
+      "sha256": "13a74206f6039bee794dfc479a3ccd26a5417faf2e0a116fda48b9d0ee3b192b",
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-elements-0926/021.png",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "8cb781844ece8224fbdf7de5f2a43365ae542d1b08f30ee78817f0b0df2fbdb2",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            81,
+            104,
+            133,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-matching-0923/matching-1587.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/022.png",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "1aeedeec374006eb09fe6faaf47d4745793878b658b3668c8a6516b77472aea6",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            80,
+            105,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-matching-0923/matching-1590.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/023.png",
+      "split": "train",
+      "sessionId": "1ebdca20c25c45c4a44bb210cd6fd7f0",
+      "synthetic": false,
+      "sha256": "ef2f4395441e05415892f4fd30e8b0efa60322c7624afc39724626b8a9ac3a3e",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            80,
+            104,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-matching-0923/matching-1593.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/024.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "35a2f18522a920cf3ec37943b9f0b70d69e8f52d59b603d776a25283ca44009d",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            81,
+            104,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-58.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/025.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "329a00c13f19925377c062d5b02ea56126ddea59e47be2939043ee6674d8b1b3",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            80,
+            104,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-98.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/026.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "bc7385b20e67dcdfd855cb7d1f21d841dbf6e58f5826a93d50a05d0700a821a5",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            80,
+            104,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-138.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/027.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "8508c36e65c7c8a6b8bf9ce064252c7fa268df39f39b48e8680720e5c8246197",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            81,
+            104,
+            132,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            230,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-178.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/028.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "ea552bf7bed36ae042721f063f503e68cf58c489840ddd492fa93709f961b925",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            104,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            160
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-218.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/029.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "1f4a7d6aa6ba0b8973c24ddfd34a912742cb83bc9db9433757a21288f1888d22",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            104,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            160
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-225.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/030.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "4c1d0f7957eef4b935ec28503bf54bf9320a0cd82c75e5c6898c62c8d20ea9d9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            105,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            160
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-216.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/031.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "52f8070ff8ed47e91f8a5580d6d8f34ad825b71ad90dce237c89a8b22a4feb01",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            104,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-219.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/032.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "c970b21638cf7a944f8af6a0cb20b37869f52a1b55f820651f3f8d2ba606e7a9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            104,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-230.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/033.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": false,
+      "sha256": "3b92e19bda43ae7012cf340c1979dd71e78bef913a1821ab1115da280e5441e9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            104,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "sourceParent": "../raw/dungeon-completion-0923/completion-235.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/034.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-11.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/035.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-40.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/036.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-75.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/037.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-100.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/038.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-108.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/039.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-110.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/040.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-112.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/041.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-120.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/042.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-140.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/043.png",
+      "sessionId": "state-failure-0923",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gateless_title",
+          "xyxy": [
+            108,
+            34,
+            293,
+            65
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/gateless-0.jpg",
+      "sourceDetection": {
+        "class": "gateless_raid_panel",
+        "xyxy": [
+          0,
+          45,
+          405,
+          125
+        ]
+      }
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-0.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/normal-12.jpg",
+      "sessionId": "normal-quest-review-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-175.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-1.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-31.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-80.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-121.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/raid-banner-0924/excluded-127.jpg",
+      "sessionId": "exception-completion-0924",
+      "split": "train",
+      "boxes": []
+    },
+    {
+      "path": "../raw/direct-elements-0926/057.png",
+      "sessionId": "live-dungeon-failure",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            39,
+            25,
+            324,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            81,
+            105,
+            133,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            231,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/act1-68.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/058.png",
+      "sessionId": "live-dungeon-failure",
+      "split": "train",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            39,
+            25,
+            324,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            80,
+            105,
+            133,
+            156
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            231,
+            104,
+            281,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/raid-banner-0924/act1-71.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/070.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113933.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            73,
+            14,
+            202,
+            37
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            98,
+            40,
+            175,
+            62
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            61,
+            74,
+            97,
+            114
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            174,
+            75,
+            209,
+            114
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            58,
+            71,
+            212,
+            117
+          ]
+        }
+      ],
+      "sourceParent": "../raw/direct-regions-0926/Screenshot_260926_113933.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          30,
+          272,
+          189
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/071.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113925.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            96,
+            19,
+            265,
+            49
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            126,
+            50,
+            233,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            78,
+            96,
+            129,
+            152
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            224,
+            95,
+            279,
+            152
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            75,
+            92,
+            282,
+            155
+          ]
+        }
+      ],
+      "sourceParent": "../raw/direct-regions-0926/Screenshot_260926_113925.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          39,
+          356,
+          247
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/072.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113915.jpg",
+      "synthetic": false,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            72,
+            16,
+            200,
+            41
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            96,
+            42,
+            173,
+            64
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            60,
+            73,
+            98,
+            117
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            173,
+            73,
+            211,
+            117
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            57,
+            70,
+            214,
+            120
+          ]
+        }
+      ],
+      "sourceParent": "../raw/direct-regions-0926/Screenshot_260926_113915.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          203,
+          268,
+          365
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/073.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113907.jpg",
+      "synthetic": false,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            55,
+            13,
+            153,
+            31
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            73,
+            31,
+            133,
+            49
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            46,
+            57,
+            76,
+            88
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            132,
+            57,
+            161,
+            88
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            43,
+            54,
+            164,
+            91
+          ]
+        }
+      ],
+      "sourceParent": "../raw/direct-regions-0926/Screenshot_260926_113907.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          155,
+          205,
+          279
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/080.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "ea552bf7bed36ae042721f063f503e68cf58c489840ddd492fa93709f961b925",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            94,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            64,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-28-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/081.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "ea552bf7bed36ae042721f063f503e68cf58c489840ddd492fa93709f961b925",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            75,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            51,
+            70,
+            96,
+            115
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-28-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/082.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "1f4a7d6aa6ba0b8973c24ddfd34a912742cb83bc9db9433757a21288f1888d22",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            94,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            64,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-29-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/083.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "1f4a7d6aa6ba0b8973c24ddfd34a912742cb83bc9db9433757a21288f1888d22",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            75,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            51,
+            70,
+            96,
+            115
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-29-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/084.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "4c1d0f7957eef4b935ec28503bf54bf9320a0cd82c75e5c6898c62c8d20ea9d9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            95,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            64,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-30-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/085.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "4c1d0f7957eef4b935ec28503bf54bf9320a0cd82c75e5c6898c62c8d20ea9d9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            76,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            51,
+            70,
+            96,
+            115
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-30-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/086.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "52f8070ff8ed47e91f8a5580d6d8f34ad825b71ad90dce237c89a8b22a4feb01",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            94,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            65,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-31-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/087.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "52f8070ff8ed47e91f8a5580d6d8f34ad825b71ad90dce237c89a8b22a4feb01",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            75,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            52,
+            70,
+            96,
+            114
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-31-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/088.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "c970b21638cf7a944f8af6a0cb20b37869f52a1b55f820651f3f8d2ba606e7a9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            94,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            64,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-32-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/089.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "c970b21638cf7a944f8af6a0cb20b37869f52a1b55f820651f3f8d2ba606e7a9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            75,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            51,
+            70,
+            96,
+            114
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-32-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/090.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "3b92e19bda43ae7012cf340c1979dd71e78bef913a1821ab1115da280e5441e9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            29,
+            69,
+            288,
+            148
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            82,
+            23,
+            243,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            47,
+            54,
+            277,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            208,
+            94,
+            255,
+            141
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            64,
+            88,
+            121,
+            144
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-33-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          97,
+          434,
+          281
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/091.png",
+      "split": "train",
+      "sessionId": "b050b04e29634ce8b7e1e0d66106f91a",
+      "synthetic": true,
+      "sha256": "3b92e19bda43ae7012cf340c1979dd71e78bef913a1821ab1115da280e5441e9",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            23,
+            55,
+            230,
+            118
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            18,
+            194,
+            40
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            37,
+            43,
+            222,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            166,
+            75,
+            204,
+            112
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            51,
+            70,
+            96,
+            114
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-33-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          196,
+          319,
+          343
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/092.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113933.jpg",
+      "synthetic": true,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            13,
+            182,
+            33
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            88,
+            36,
+            158,
+            56
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            55,
+            67,
+            87,
+            103
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            157,
+            67,
+            188,
+            103
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            52,
+            64,
+            191,
+            105
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-70-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          92,
+          355,
+          235
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/093.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113933.jpg",
+      "synthetic": true,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            53,
+            10,
+            145,
+            26
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            71,
+            28,
+            126,
+            44
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            44,
+            53,
+            70,
+            82
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            125,
+            54,
+            150,
+            82
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            42,
+            51,
+            153,
+            84
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-70-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          192,
+          256,
+          306
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/094.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113925.jpg",
+      "synthetic": true,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            86,
+            17,
+            238,
+            44
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            113,
+            45,
+            210,
+            73
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            70,
+            87,
+            116,
+            137
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            202,
+            86,
+            251,
+            137
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            68,
+            83,
+            254,
+            140
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-71-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          100,
+          430,
+          287
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/095.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113925.jpg",
+      "synthetic": true,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": false,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            69,
+            14,
+            191,
+            35
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            91,
+            36,
+            168,
+            58
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            56,
+            69,
+            93,
+            110
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            161,
+            68,
+            201,
+            110
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            54,
+            66,
+            203,
+            112
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-71-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          198,
+          316,
+          348
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/096.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113915.jpg",
+      "synthetic": true,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            65,
+            14,
+            180,
+            37
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            86,
+            37,
+            156,
+            57
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            54,
+            65,
+            88,
+            105
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            156,
+            65,
+            190,
+            105
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            51,
+            63,
+            193,
+            108
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-72-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          248,
+          351,
+          393
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/097.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113915.jpg",
+      "synthetic": true,
+      "resolution": [
+        2508,
+        1411
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            52,
+            12,
+            144,
+            30
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            69,
+            30,
+            125,
+            46
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            43,
+            53,
+            71,
+            84
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            125,
+            53,
+            152,
+            84
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            41,
+            51,
+            154,
+            87
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-72-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          316,
+          253,
+          433
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/098.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113907.jpg",
+      "synthetic": true,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            50,
+            11,
+            138,
+            27
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            66,
+            27,
+            120,
+            44
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            41,
+            51,
+            68,
+            79
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            119,
+            51,
+            145,
+            79
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            39,
+            48,
+            148,
+            81
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.9,
+        "offset": [
+          110,
+          65
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-73-0.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          110,
+          205,
+          294,
+          316
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/099.png",
+      "split": "train",
+      "sessionId": "260926-resolution",
+      "source": "C:\\Program Files (x86)\\Smilegate\\Games\\LOSTARK\\EFGame\\Screenshots\\Screenshot_260926_113907.jpg",
+      "synthetic": true,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "letterboxed": true,
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            40,
+            9,
+            110,
+            22
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            53,
+            22,
+            96,
+            35
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            33,
+            41,
+            55,
+            63
+          ]
+        },
+        {
+          "class": "gate_not_started",
+          "xyxy": [
+            95,
+            41,
+            116,
+            63
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            31,
+            38,
+            118,
+            65
+          ]
+        }
+      ],
+      "transform": {
+        "scale": 0.72,
+        "offset": [
+          60,
+          170
+        ]
+      },
+      "sourceParent": "../raw/direct-reinforcement-0926/dungeon-73-1.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          60,
+          282,
+          208,
+          371
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/100.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            105,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            133,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-145.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-145.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/102.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            105,
+            283,
+            156
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            133,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-155.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-155.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/103.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            159
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-159.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-159.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/104.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            160
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-160.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-160.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/105.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            160
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-169.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-169.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/106.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            160
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            97,
+            134,
+            160
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-170.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-170.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/107.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            160
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-175.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-175.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/direct-elements-0926/108.png",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            32,
+            76,
+            320,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            91,
+            25,
+            270,
+            55
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            60,
+            308,
+            81
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            221,
+            98,
+            284,
+            160
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            72,
+            97,
+            134,
+            159
+          ]
+        }
+      ],
+      "split": "train",
+      "sessionId": "gate-delay-0923",
+      "synthetic": false,
+      "source": "C:\\Users\\Huisoo\\Develop\\Beatrice-PC\\outputs\\gate-delay-review-0923\\frame-000.jpg",
+      "sourceParent": "../raw/direct-reinforcement-0926/completion-180.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          0,
+          36,
+          360,
+          240
+        ]
+      }
+    },
+    {
+      "path": "../raw/tower-elements-1006/tower-panel.png",
+      "split": "train",
+      "sessionId": "tower-20261006",
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            103,
+            23,
+            259,
+            53
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            43,
+            58,
+            309,
+            80
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            31,
+            76,
+            309,
+            164
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            69,
+            96,
+            132,
+            158
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            229,
+            103,
+            282,
+            157
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/tower-elements-1006/tower-dark-panel.png",
+      "split": "train",
+      "sessionId": "tower-20261006",
+      "boxes": [
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            105,
+            22,
+            261,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            45,
+            57,
+            311,
+            79
+          ]
+        },
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            33,
+            75,
+            311,
+            163
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            71,
+            95,
+            134,
+            157
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            231,
+            102,
+            284,
+            156
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00003499-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            131,
+            75,
+            221,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            57,
+            23,
+            288,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            55,
+            57,
+            306,
+            79
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            154,
+            108,
+            199,
+            152
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00003499.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          4,
+          38,
+          362,
+          248
+        ]
+      },
+      "observedAt": "2026-10-08T12:40:19.947537+00:00",
+      "sha256": "e1d88a1bba4f6cbbd896a14c48838d8fa7ae2cf7efbe5c92aa24f90c8ba54b31"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00003723-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            132,
+            75,
+            222,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            59,
+            22,
+            289,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            49,
+            57,
+            308,
+            79
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            154,
+            108,
+            200,
+            153
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00003723.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          3,
+          38,
+          364,
+          244
+        ]
+      },
+      "observedAt": "2026-10-08T12:42:44.608298+00:00",
+      "sha256": "652d240445485daa0c6922aa85f226f38cb6184dcd9f70517cefd24eec40e42f"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00004047-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            134,
+            74,
+            224,
+            163
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            56,
+            21,
+            304,
+            51
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            56,
+            56,
+            311,
+            79
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            156,
+            107,
+            202,
+            152
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00004047.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          1,
+          39,
+          363,
+          247
+        ]
+      },
+      "observedAt": "2026-10-08T12:46:16.722431+00:00",
+      "sha256": "560372e6e0a48e7f1e35678d3c213fdd380b724ccbe0092b6330e137a486a035"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00004300-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            132,
+            75,
+            222,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            56,
+            23,
+            290,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            55,
+            57,
+            308,
+            80
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            155,
+            108,
+            200,
+            152
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00004300.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          3,
+          38,
+          362,
+          250
+        ]
+      },
+      "observedAt": "2026-10-08T12:49:06.328964+00:00",
+      "sha256": "899169733c2718aba9f50127abb8becae9d00195ecf2c7e2d8217b8ca848fbe1"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00004605-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            73,
+            223,
+            162
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            64,
+            20,
+            288,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            54,
+            55,
+            308,
+            78
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            156,
+            105,
+            201,
+            150
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00004605.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          40,
+          362,
+          249
+        ]
+      },
+      "observedAt": "2026-10-08T12:52:28.204527+00:00",
+      "sha256": "1e5f9b16015b05ae60961d3af204bb0b73d448d951fef703d19c9d4314556e01"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00004944-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            131,
+            75,
+            221,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            54,
+            22,
+            292,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            55,
+            57,
+            307,
+            79
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            153,
+            108,
+            199,
+            152
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00004944.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          4,
+          38,
+          363,
+          248
+        ]
+      },
+      "observedAt": "2026-10-08T12:56:12.114467+00:00",
+      "sha256": "e78c7228f6da2e2e86421c2a9bdeda146f75c7bee317ca5c3f2d7151b4c516b2"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005372-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            131,
+            75,
+            221,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            55,
+            22,
+            289,
+            53
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            55,
+            57,
+            307,
+            79
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            153,
+            108,
+            199,
+            153
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005372.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          4,
+          38,
+          364,
+          249
+        ]
+      },
+      "observedAt": "2026-10-08T13:00:54.040733+00:00",
+      "sha256": "1d0a8a9bd037f8421dce9c8a0b4b40c34a8a5f29b6a454a32dd2764805098453"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005558-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            75,
+            223,
+            164
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            64,
+            22,
+            291,
+            53
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            53,
+            57,
+            308,
+            80
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            155,
+            108,
+            201,
+            153
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005558.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          38,
+          362,
+          246
+        ]
+      },
+      "observedAt": "2026-10-08T13:02:57.055876+00:00",
+      "sha256": "26ed76c8996254ce20bed7028d1a47a4285f89d0329c44a05996cf34ca420668"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005661-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            73,
+            223,
+            162
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            66,
+            20,
+            291,
+            50
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            53,
+            55,
+            308,
+            77
+          ]
+        },
+        {
+          "class": "gate_in_progress",
+          "xyxy": [
+            155,
+            105,
+            202,
+            151
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005661.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          40,
+          360,
+          248
+        ]
+      },
+      "observedAt": "2026-10-08T13:04:02.373964+00:00",
+      "sha256": "550e9cd830b1d693da62678ed3abf07fcc1b6a2317bea313215719d64b0a7c65"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005717-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            74,
+            223,
+            163
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            61,
+            21,
+            293,
+            52
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            51,
+            56,
+            309,
+            79
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            149,
+            102,
+            201,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005717.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          39,
+          361,
+          246
+        ]
+      },
+      "observedAt": "2026-10-08T13:04:36.081388+00:00",
+      "sha256": "076ef24362dcd6337879bcf2b476957bc7d2f7c7687fe7f004bf2a7e9400e161"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005748-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            74,
+            223,
+            163
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            61,
+            22,
+            295,
+            51
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            53,
+            56,
+            308,
+            79
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            149,
+            103,
+            201,
+            155
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005748.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          39,
+          360,
+          247
+        ]
+      },
+      "observedAt": "2026-10-08T13:04:55.449119+00:00",
+      "sha256": "f7e8b23298cce3946eb3ab3900aea93f61a4cf6ce5b042e7c82eaacd00c3d949"
+    },
+    {
+      "path": "../raw/exhard-gate-panel-1008/event-00005765-panel.png",
+      "split": "train",
+      "sessionId": "20261008T120532Z-8d2bc4b7",
+      "boxes": [
+        {
+          "class": "gate_panel",
+          "xyxy": [
+            133,
+            74,
+            223,
+            163
+          ]
+        },
+        {
+          "class": "dungeon_name",
+          "xyxy": [
+            62,
+            21,
+            290,
+            51
+          ]
+        },
+        {
+          "class": "difficulty",
+          "xyxy": [
+            52,
+            56,
+            309,
+            79
+          ]
+        },
+        {
+          "class": "gate_completed",
+          "xyxy": [
+            149,
+            103,
+            201,
+            156
+          ]
+        }
+      ],
+      "sourceParent": "../raw/exhard-gate-panel-1008/event-00005765.jpg",
+      "sourceDetection": {
+        "class": "dungeon_panel",
+        "xyxy": [
+          2,
+          39,
+          360,
+          246
+        ]
+      },
+      "observedAt": "2026-10-08T13:05:05.967320+00:00",
+      "sha256": "a8f9cc52cf1362cb1c72803a79aa92b2b88951bc4ee6e71dfadd4dd922069fca"
+    }
+  ],
+  "notes": "Combat and completed gate HUD added. Same-session untrained frames are replay regression, not independent accuracy."
+}

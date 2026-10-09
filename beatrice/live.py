@@ -11,6 +11,7 @@ class LiveCoordinator:
         self.session=StateSession(store)
         self.context=None;self.context_pair=None;self.candidate=None;self.count=0
         self.banner=CompletionBanner();self.completion_context=None;self.completion_seen_at=None
+        self.gate_recheck=None
     def confirm(self,name):
         if self.context is None:return
         run,n=self.context
@@ -19,6 +20,7 @@ class LiveCoordinator:
     def capture_interrupted(self):
         """Keep confirmed state; unavailable capture cannot count as an observation."""
         self.candidate=None;self.count=0
+        self.gate_recheck=None
         self.identity.candidate=None;self.identity.count=0
         self.identity.recovery_count=0;self.identity.login_count=0;self.identity.login_recovery=0
         self.banner.count=0;self.banner.last=None
@@ -30,6 +32,7 @@ class LiveCoordinator:
         if suspended:
             self.session.begin_character_change();self.context=None;self.context_pair=None;self.candidate=None;self.count=0
             self.banner.reset();self.completion_context=None;self.completion_seen_at=None
+            self.gate_recheck=None
         # 이름 확인은 메뉴에서 이루어지므로 당시 던전 UI가 가려져도 기존 보류 구간을 확정합니다.
         for action in identity['actions']:
             if action['type']=='confirmed':self.confirm(action['name'])
@@ -61,6 +64,7 @@ class LiveCoordinator:
             if self.context!=context:
                 if self.context is not None:self.session.begin_character_change()
                 self.completion_context=None;self.completion_seen_at=None
+                self.gate_recheck=None
                 self.context=context
                 self.context_pair=pair
                 if identity['recordingAllowed']:self.confirm(identity['currentName'])
@@ -80,6 +84,7 @@ class LiveCoordinator:
         preview=dungeon.get('preview',{})
         different=any(preview.get(f) and key(preview[f])!=self.context_pair[i]
                       for i,f in enumerate(('dungeonName','difficulty'))) if self.context_pair else False
+        different=different or bool(frame_pair and self.context_pair and frame_pair!=self.context_pair)
         if different or count_mismatch:
             self.completion_context=None;self.completion_seen_at=None
         # Fresh matching title/mode still identifies the raid when an icon is
@@ -96,30 +101,55 @@ class LiveCoordinator:
             self.completion_context=None;self.completion_seen_at=None
         overlay=dungeon.get('completionOverlay') or {}
         held=self.completion_context
-        gate=None
+        # Banners on gated content request a new observation; they never supply
+        # completed states or infer the last gate from generic clear text.
+        gate=None;banner_target=None
+        is_gateless=bool(held and held.get('raidKind')=='gateless')
         if held and self.context:
-            if overlay.get('kind')=='dungeon_clear':gate=self.context[1]
-            elif overlay.get('kind')=='gate_breakthrough' and held.get('raidKind')!='gateless':
+            if overlay.get('kind')=='dungeon_clear':
+                banner_target=1 if is_gateless else 'all_gates'
+                if is_gateless:gate=1
+            elif overlay.get('kind')=='gate_breakthrough' and not is_gateless:
                 gate=overlay.get('gate')
-        eligible=bool(not suspended and held and overlay.get('status')=='verified'
-                      and isinstance(gate,int) and 1<=gate<=self.context[1])
-        target=(self.session.token,self.context_pair,gate) if eligible else None
+                if isinstance(gate,int) and not isinstance(gate,bool) and 1<=gate<=self.context[1]:
+                    banner_target=gate
+        eligible=bool(not suspended and held and overlay.get('status')=='verified' and banner_target is not None)
+        target=(self.session.token,self.context_pair,banner_target) if eligible else None
         visible=overlay.get('status') not in (None,'missing','not_requested')
         scene=(self.session.token,self.context_pair)
+        recheck_decision=None
+        if self.gate_recheck:
+            if not held or self.gate_recheck['scene']!=scene or at.timestamp()>self.gate_recheck['until']:
+                self.gate_recheck=None
+                recheck_decision='gate_recheck_cancelled'
+            elif valid and result.get('status')=='stable':
+                # StateSession already required repeated fresh icon observations.
+                self.gate_recheck=None
+                recheck_decision='gate_recheck_confirmed'
         trigger=self.banner.update(at.timestamp(),visible,eligible,target,scene)
         decision='missing' if not visible else 'context_unavailable' if not held else 'text_or_gate_unverified' if not eligible else 'confirming'
         if trigger:
-            evidence=dict(held,completionOverlay=overlay)
-            changed=self.session.complete_banner(at,evidence,trigger[2])
+            if is_gateless:
+                evidence=dict(held,completionOverlay=overlay)
+                changed=self.session.complete_banner(at,evidence,1)
+                result.setdefault('changedRecords',[]).extend(changed)
+                result.setdefault('events' if self.session.character else 'pendingEvents',[]).extend(changed)
+                decision='saved' if changed else 'already_completed'
+                if changed:result['bannerCompleted']=True
+            else:
+                self.gate_recheck=dict(scene=scene,until=at.timestamp()+10)
+                result['gateRecheckRequested']=True
+                decision='gate_recheck_requested'
             self.banner.commit()
-            result.setdefault('changedRecords',[]).extend(changed)
-            result.setdefault('events' if self.session.character else 'pendingEvents',[]).extend(changed)
-            decision='saved' if changed else 'already_completed'
-            if changed:result['bannerCompleted']=True
+        elif self.gate_recheck:decision='gate_recheck_pending'
+        elif recheck_decision:decision=recheck_decision
         elif self.banner.consumed:decision='already_consumed'
+        result['gateRecheckPending']=self.gate_recheck is not None
         result['completionDecision']=dict(reason=decision,gate=gate,context=held,observation=overlay)
         if result.get('bannerCompleted'):
             status='완료 배너 확인 · '+('레이드' if held and held.get('raidKind')=='gateless' else '관문')+(' 완료 저장됨' if self.session.character else ' 완료 임시 저장 · 캐릭터 확인 대기')
+        elif result.get('gateRecheckPending') and not result.get('events') and not result.get('pendingEvents'):
+            status='완료 표시 확인 · 관문 상태 재확인 중'
         elif not valid:
             reasons={'region_missing':'관문 영역 재탐지 중','gate_unverified':'관문 상태 재확인 중',
                      'reuse_rejected':'화면 변경 확인 중','text_unverified':'던전명·모드 재확인 중'}

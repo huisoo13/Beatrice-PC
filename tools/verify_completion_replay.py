@@ -1,4 +1,4 @@
-"""Verify video OCR outcomes and completion-only storage in isolated memory DBs.
+"""Verify video OCR outcomes and gated recheck requests in isolated memory DBs.
 
 Character and dungeon context are seeded deliberately; this is not a test of
 those models. The completion observations come from actual full-frame inference.
@@ -33,11 +33,11 @@ def main():
                 expected='gate_breakthrough' if number==3 else 'dungeon_clear'
                 if observation['kind']!=expected or (number==3 and observation['gate']!=1):errors.append('wrong_semantics')
             state=live.update(start+timedelta(seconds=seconds),{},[],dict(completionOverlay=observation))
-            if state['result'].get('bannerCompleted'):triggers.append(seconds)
-        records=store.state_records();expected_count=1 if number==3 else 2
-        if len(triggers)!=1:errors.append('expected_one_completion_event')
+            if state['result'].get('gateRecheckRequested'):triggers.append(seconds)
+        records=store.state_records();expected_count=0
+        if len(triggers)!=1:errors.append('expected_one_recheck_event')
         if len(records)!=expected_count or any(r['state']!='완료' for r in records):errors.append('wrong_saved_records')
-        checks.append(dict(video=number,passed=not errors,errors=errors,completionSeconds=triggers,records=records));store.close()
+        checks.append(dict(video=number,passed=not errors,errors=errors,recheckSeconds=triggers,records=records));store.close()
     transforms=[r for r in rows if 'transformed' in r]
     for row in transforms:
         name=row['source'];expected='gate_breakthrough' if 'gate1' in name else 'dungeon_clear'

@@ -171,7 +171,8 @@ class Worker(QThread):
                     # 진단 저장 실패가 인식 및 기록 루프를 중단하지 않게 합니다.
                     self.status.emit(generation,f'진단 저장 실패: {exc}')
                 self.observation.emit(state)
-                self.stop_event.wait(max(0,.5-(time.monotonic()-started)))
+                interval=.1 if state['result'].get('gateRecheckPending') else .5
+                self.stop_event.wait(max(0,interval-(time.monotonic()-started)))
         except Exception as exc:
             with (DATA/'errors.log').open('a',encoding='utf-8') as f:f.write(traceback.format_exc()+'\n')
             self.failed.emit(f'오류: {exc} — errors.log를 확인해주세요.')
