@@ -76,7 +76,7 @@
      <Border x:Name="SidebarFooter" Canvas.ZIndex="2" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Bottom" Margin="8" CornerRadius="12" BorderThickness="1">
       <StackPanel>
      <Border x:Name="DetectedDungeon" Padding="12" CornerRadius="12,12,0,0" BorderThickness="0,0,0,1"><StackPanel x:Name="DetectedDungeonContent" Spacing="8"/></Border>
-     <Grid x:Name="CharacterProfile" Margin="8" ColumnSpacing="8" MinHeight="56">
+     <Grid x:Name="CharacterProfile" Margin="8,4" ColumnSpacing="8" MinHeight="48">
        <Grid.ColumnDefinitions><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
        <Grid Width="40" Height="40">
         <Image Width="40" Height="40" Source="ms-appx:///Assets/profile-placeholder.svg" AutomationProperties.Name="캐릭터 이미지"/>
