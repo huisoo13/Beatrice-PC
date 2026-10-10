@@ -1,15 +1,17 @@
 """Convert domain observations and history into desktop presentation data."""
 from datetime import datetime
-from .content_match import record_detail
+from .content_match import ContentMatcher, record_detail
 
 
-def record_view(row, cached=None):
+def record_view(row, cached=None, *, matcher=None):
     """Retain the stored matching decision and expose completed records only."""
     when = datetime.fromisoformat(row['observedAt']).astimezone().strftime('%Y.%m.%d %H:%M')
-    detail = record_detail(row, cached)
+    matcher = ContentMatcher(cached) if matcher is None else matcher
+    detail = record_detail(row, cached, matcher=matcher)
+    dungeon, mode = matcher.display_record_context(row)
     if row.get('ocrOriginal'): detail['ocrOriginal'] = row['ocrOriginal']
     return dict(character=row.get('characterName') or '캐릭터 확인 대기',
-                dungeon=row.get('dungeonName') or '확인 대기', mode=row.get('difficulty') or '확인 대기',
+                dungeon=dungeon or '확인 대기', mode=mode or '확인 대기',
                 gate=row.get('gateName') or ('레이드 전체' if row.get('completionScope') == 'raid' else f"{row['gate']}관문"),
                 date=when, observedAt=row['observedAt'], detail=detail)
 

@@ -8,6 +8,8 @@
 | 역할 | 모듈 | 호출부의 책임 |
 | --- | --- | --- |
 | 계정 캐릭터 캐시 | `beatrice/character_catalog.py`의 `CharacterCatalog` | `ensure(names)`는 저장되지 않은 캐릭터의 계정 목록을 비동기로 조회합니다. `poll()`이 전체 응답을 원자적으로 저장하고 `decorate(records, emblem_path)`가 캐시와 공용 엠블럼을 연결합니다. Host는 호출·종료 순서만 담당합니다. SQL이나 UI에 의존하지 않습니다. |
+| 공용 던전 스키마·보상 인덱스 | `beatrice/content_catalog.py`의 `ContentCatalog` | 신규 배열과 이전 객체를 검증하고 보상표 rows를 제공한다. HTTP·SQL·UI에 의존하지 않는다. |
+| 던전 이름·기록 별칭 | `beatrice/content_match.py`의 `ContentMatcher` | OCR은 field_name에 비교해 name을 제공한다. Store는 record_candidates로 중복을 검사하고 native_presentation은 display_record_context와 record_detail로 현재 이름·보상을 표시한다. |
 | 공용 데이터 갱신 | `beatrice/catalog_service.py`의 `CatalogService` | Host는 시작 준비·명령 허용·종료 시점을 결정합니다. 서비스는 네트워크 작업, 취소, 캐시, 매칭기, 갱신 주기와 수동 갱신 제한을 관리합니다. |
 | 화면용 데이터 변환 | `beatrice/native_presentation.py` | 기록·캐릭터·던전 표시 데이터를 생성합니다. Host·작업자·UI 프레임워크에 의존하지 않습니다. 기존 native_bridge의 표시 함수 import는 유지합니다. |
 | 스키마·이전 데이터 변환 | `beatrice/storage_schema.py` | Store가 연결을 생성한 뒤 스키마 초기화와 이전 메타데이터 변환을 호출합니다. |
@@ -68,3 +70,8 @@ Drive 복원은 JSON 검증과 백업을 먼저 수행하고, 기록 교체 실�
 - CharacterCatalog.decorate는 캐시의 ItemAvgLevel을 기록의 itemLevel로 전달합니다. 잘못된 값은 생략하며 레벨은 클리어 당시 값이 아닌 캐시 조회 시점 값입니다. RecordsView는 아이템 레벨을 표시하지 않으며 API 캐시와 메시지의 레벨 값은 유지합니다. 캐릭터명 앞에는 캐릭터명과 같은 characterAccent 색상의 18px 직업 문양을 InlineUIContainer로 넣고 이름의 글자 중심에 맞춥니다. 문양과 캐릭터명 사이 간격은 2px이며 로딩 실패 시 문양만 생략합니다.
 - CharacterCatalog.character_view(name, catalog.emblem_path)는 현재 캐릭터의 직업과 검증된 로컬 SVG를 profile 메시지의 characterClass/characterEmblem에 전달합니다. Host는 기록이 없어도 현재 캐릭터를 ensure 대상에 포함합니다.
 - CharacterPortraitView는 하단 40px 이미지 영역의 SVG 로딩·색상 적용·실패 시 기본 이미지·캐릭터 전환 중 오래된 비동기 응답 폐기를 관리합니다. MainWindow는 profile을 전달하는 연결만 담당합니다. 문양과 미설정 임시 이미지 색상은 흰색(text)을 사용하고 원본 공용 에셋은 변경하지 않습니다. 상태 원형은 별도 UI로 유지합니다. EmblemImageSource가 SvgImageSource의 RasterizePixelWidth/Height를 표시 크기(기록 18px·하단 40px)의 논리 px로 명시해 자동 크기 렌더링에서 확인된 계단형 가장자리를 줄입니다.
+
+
+## ContentJSON 배열·field_name/name 전환 (2026-10-11)
+
+[세부 규칙과 검증](content-catalog.md). ContentCatalog가 형식 검증·인덱스를 소유하고 ContentMatcher가 이름·별칭을 소유한다. CatalogService, Store, native_presentation은 공개 API를 사용한다. Host는 같은 매칭기 전달만 담당한다. 주간 현황과 보상표에는 name을 전달하며 기존 기록 ID·시각·Drive 스키마는 유지한다. Python 테스트 450개와 .NET 표시·프로토콜·주간 현황 77개, 실제 새 JSON 63개 관문 매칭과 별도 DB의 저장·중복·표시 연결이 통과했다.

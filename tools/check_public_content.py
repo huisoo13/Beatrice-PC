@@ -5,6 +5,7 @@ import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from beatrice.content_catalog import ContentCatalog
 from beatrice.public_assets import PublicAssetCache
 from beatrice.public_content import ContentCache, ContentError, PublicContentClient, load_api_key, load_settings
 
@@ -18,8 +19,9 @@ def main():
     if cache.load() != result:
         raise ContentError('공용 데이터 캐시 검증 실패')
     content = result['content']
-    modes = sum(len(value) for value in content.values())
-    gates = sum(len(g) for value in content.values() for g in value.values())
+    catalog = ContentCatalog(content)
+    modes = sum(len(value) for value in catalog.rewards.values())
+    gates = len(catalog.rows())
     print(f'PASS: 최상위 폴더 -> JSON -> {settings["fileName"]} 조회', flush=True)
     print(f'PASS: 던전 {len(content)}개 / 난이도 항목 {modes}개 / 관문 항목 {gates}개 검증 및 로컬 보관', flush=True)
     again = client.refresh(result)

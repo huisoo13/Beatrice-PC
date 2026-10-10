@@ -130,7 +130,7 @@ class Store:
         if dungeon_key is not None and self.catalog is not None:
             from .dungeon import key
             matcher = self.catalog()
-            candidates = matcher.dungeon_candidates(dungeon_key)
+            candidates = list(dict.fromkeys(matcher.dungeon_candidates(dungeon_key) + matcher.stored_candidates(dungeon_key)))
             names = {dungeon_key}
             if len(candidates) == 1:names.add(key(candidates[0]))
             def belongs(row):
@@ -138,9 +138,9 @@ class Store:
                            key(row.get('ocrOriginal', {}).get('dungeonName') or row['dungeonName'])}
                 # A later catalog download must not create a second completion
                 # beside a previously saved OCR-only record. Do not rewrite it.
-                match = matcher.match(row['dungeonName'], row['difficulty'], row['gate'],
-                                      row.get('completionScope') == 'raid')
-                if match['status'] == 'matched':aliases.add(key(match['dungeonName']))
+                candidates = matcher.record_candidates(row, exact_only=False)
+                if len(candidates) == 1:
+                    aliases.add(key(candidates[0]))
                 return bool(names.intersection(aliases))
             rows = [r for r in rows if belongs(r)]
         return rows

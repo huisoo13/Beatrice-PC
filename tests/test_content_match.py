@@ -43,7 +43,7 @@ class ContentMatchTests(unittest.TestCase):
             self.assertEqual(value['ocrOriginal']['dungeonName'], name)
             self.assertEqual(value['catalogMatch']['version']['version'], '2')
 
-    def test_ambiguous_unmatched_mode_gate_and_chapter_preserve_original(self):
+    def test_name_conversion_is_independent_of_reward_match(self):
         multiple = copy.deepcopy(CACHED)
         multiple['content']['4막: 파멸의 성쵸'] = multiple['content'][NAME]
         matcher = ContentMatcher(multiple)
@@ -52,7 +52,9 @@ class ContentMatchTests(unittest.TestCase):
         for source in cases:
             result = self.matcher.record(source)
             self.assertEqual(result['catalogMatch']['status'], 'unmatched')
-            for field in ('dungeonName','difficulty','gate'):
+            expected_name = NAME if source['dungeonName'] == TYPO else source['dungeonName']
+            self.assertEqual(result['dungeonName'], expected_name)
+            for field in ('difficulty','gate'):
                 self.assertEqual(result[field],source[field])
         self.assertEqual(ContentMatcher().record(row())['dungeonName'], TYPO)
 
@@ -135,12 +137,12 @@ class ContentMatchTests(unittest.TestCase):
         self.assertEqual(result[0]['evidenceType'],'completion_banner')
         self.assertEqual(len(self.store.state_records()),1)
 
-    def test_unmatched_and_ambiguous_are_saved_with_original_fields(self):
+    def test_unknown_dungeon_and_ambiguous_names_preserve_ocr(self):
         for source in (row(mode='없는 난이도'),row('미등록 던전')):
             self.store.clear_all()
             saved=self.save(source)[0]
             self.assertEqual(saved['catalogMatch']['status'],'unmatched')
-            self.assertEqual(saved['dungeonName'],source['dungeonName'])
+            self.assertEqual(saved['dungeonName'], NAME if source['dungeonName'] == TYPO else source['dungeonName'])
             self.assertEqual(saved['difficulty'],source['difficulty'])
         self.store.clear_all()
         multiple=copy.deepcopy(CACHED)

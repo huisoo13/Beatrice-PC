@@ -152,3 +152,8 @@ SVG 경로 앞에는 /2018/obt/assets/images/common/class/가 붙는다. 변경�
 ```
 
 이 도구는 공용 던전 JSON, EmblemJSON, Drive 이미지, CDN SVG의 저장·재사용과 직업명 조회를 확인한다. 실패한 직업과 경로는 WARN으로 출력한다. 원격 데이터와 개인 완료 기록은 수정하지 않는다.
+
+
+## ContentJSON 신규 배열 구조 (2026-10-11)
+
+ContentJSON의 신규 배열은 ContentCatalog가 검증·인덱싱한다. OCR 비교용 field_name과 저장·표시용 name을 구분하며 이전 객체 캐시도 유지한다. CatalogService의 보상표, 기록·하단·주간 현황과 중복 판정 연결을 새 구조에 맞췄다. [형식·정책·검증 결과](content-catalog.md)를 참고한다. 기존 Drive 통신·개인 기록 JSON·자산 다운로드 경계는 유지한다.

@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from .content_match import ContentMatcher
+from .content_catalog import ContentCatalog
 from .public_assets import PublicAssetCache
 from .drive import DriveError
 from .public_content import ContentCache, ContentError, PublicContentClient, load_settings, load_api_key
@@ -131,9 +132,7 @@ class CatalogService:
         return not any(job.is_alive() for job in self.jobs)
 
     def rows(self):
-        return [dict(dungeon=dungeon, mode=mode, gate=gate, **values)
-                for dungeon, modes in (self.cached or {}).get('content', {}).items()
-                for mode, gates in modes.items() for gate, values in gates.items()]
+        return ContentCatalog((self.cached or {}).get('content')).rows()
 
     def emblem_path(self, job):
         return self.asset_cache.emblem_path(job, self.assets) if self.asset_cache and self.assets else None

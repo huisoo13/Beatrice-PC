@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-11: [ContentJSON 배열 구조와 이름 매칭](docs/content-catalog.md). OCR은 field_name으로 비교하고 name을 새 기록·화면·주간 현황·보상표에 사용합니다. 이전 캐시와 기록 ID·시각을 보존하며, 별칭 사이의 주간 중복 판정을 유지합니다.
+
 2026-10-10: [모듈 경계 정리](docs/module-boundaries.md). 공용 데이터 갱신·화면 표시 변환·DB 스키마와 저장소 API·기록/보상표 UI·엔진 메시지 모델·추적기 중단 처리·평가 계산을 분리했습니다. Python 테스트 409개, 표시·프로토콜 검사 45개, UI 자동 검증과 실제 모델/OBS 시작·종료 검사를 통과했습니다.
 
 2026-10-10: [실시간 인식 모듈과 사용법](docs/recognition-module.md). OBS 생명주기·YOLO/OCR 파이프라인을 `beatrice.recognition`으로 분리했습니다. 앱 작업자는 Python 스레드·콜백 연결만 담당하고, 모델·완료 판단·기록 형식은 유지합니다. Qt 의존성을 제거했으며 전체 테스트 400개와 내장 OBS의 메인·스플래시 종료 검사를 통과했습니다.
@@ -122,7 +124,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 ## 모듈 구조
 
-최종 갱신: 2026-10-10. 주요 실행 모듈과 관련 파일을 표시합니다.
+최종 갱신: 2026-10-11. 주요 실행 모듈과 관련 파일을 표시합니다.
 모듈의 추가·삭제·이동, 책임 또는 연결 관계를 변경할 때 이 구조와 설명을 함께 갱신합니다.
 각 모듈의 API와 검증 근거는 [모듈 경계 정리](docs/module-boundaries.md)를 참고하세요.
 
@@ -134,8 +136,11 @@ Beatrice-PC/
 │  │
 │  ├─ character_catalog.py       # 계정 전체 캐릭터 조회·영속 캐시·레벨·직업 문양 연결
 │  ├─ catalog_service.py          # 공용 데이터 갱신·취소·갱신 주기
-│  ├─ public_content.py           # 데이터 조회·검증·캐시
-│  ├─ content_match.py            # 콘텐츠 매칭
+│  ├─ public_content.py           # 공용 Drive 조회·JSON 캐시·설정
+│  ├─ public_assets.py            # EmblemJSON·Drive 이미지 버전 캐시
+│  ├─ emblem_cache.py             # CDN SVG 조건부 갱신·직업별 로컬 경로
+│  ├─ content_catalog.py          # 신규·이전 ContentJSON 검증·보상 인덱스
+│  ├─ content_match.py            # OCR field_name → name·기존 기록 별칭·보상 매칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
 │  ├─ storage.py                  # 저장소 API·트랜잭션·기록 저장
@@ -202,9 +207,13 @@ MainWindow
 ├─ EngineClient → Host(native_bridge)
 │                 ├─ CharacterCatalog → LostArkClient.characters.siblings → 캐릭터 정보 캐시
 │                 │                      └─ CatalogService.emblem_path → 검증된 로컬 직업 SVG
-│                 ├─ CatalogService → 공용 데이터·캐시·매칭
+│                 ├─ CatalogService → PublicContentClient → Drive API
+│                 │                  ├─ ContentCatalog → 스키마 검증·name 보상표
+│                 │                  ├─ ContentMatcher → field_name 비교·name 표시
+│                 │                  └─ PublicAssetCache → EmblemCache → CDN SVG
 │                 ├─ native_presentation → 화면 표시 데이터
-│                 ├─ Store → 스키마·트랜잭션·기록 저장
+│                 ├─ Store → ContentMatcher → name 저장·별칭 중복 검사
+│                 │          └─ 스키마·트랜잭션·기록 ID·시각 보존
 │                 ├─ GoogleAccount / PersonalDrive → 인증·Drive API
 │                 └─ Worker → RecognitionService
 │                             ├─ RecognitionPipeline → YOLO·OCR

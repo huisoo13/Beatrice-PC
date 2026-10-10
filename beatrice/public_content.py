@@ -2,20 +2,16 @@
 from datetime import datetime, timezone
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
 from urllib.parse import quote
+from .content_catalog import ContentError, validate_content
 from .drive import GoogleDriveClient, DriveError, DriveRateLimitError
 from .drive.client import API
 from .drive.folders import FOLDER_MIME
 
 MAX_BYTES = 4 * 1024 * 1024
-
-
-class ContentError(Exception):
-    pass
 
 
 def parse_json(body):
@@ -33,34 +29,6 @@ def parse_json(body):
                           parse_constant=lambda value: (_ for _ in ()).throw(ValueError()))
     except (UnicodeError, ValueError, RecursionError):
         raise ContentError('공용 데이터가 올바른 UTF-8 JSON이 아닙니다.') from None
-
-
-def validate_content(content):
-    def label(value):
-        return isinstance(value, str) and 0 < len(value.strip()) <= 200 and not any(ord(c) < 32 for c in value)
-    if not isinstance(content, dict) or not 1 <= len(content) <= 500:
-        raise ContentError('공용 데이터에는 던전별 JSON 객체가 필요합니다.')
-    count = 0
-    for dungeon, modes in content.items():
-        if not label(dungeon) or not isinstance(modes, dict) or not 1 <= len(modes) <= 30:
-            raise ContentError('던전 또는 난이도 형식이 올바르지 않습니다.')
-        for mode, gates in modes.items():
-            if not label(mode) or not isinstance(gates, dict) or not 1 <= len(gates) <= 8:
-                raise ContentError('난이도 또는 관문 형식이 올바르지 않습니다.')
-            if set(gates) != {f'{i}관문' for i in range(1, len(gates) + 1)}:
-                raise ContentError('공용 데이터의 관문은 1관문부터 순서대로 필요합니다.')
-            for values in gates.values():
-                if not isinstance(values, dict) or set(values) != {'gold', 'fee', 'bound_percentage'}:
-                    raise ContentError('각 관문에는 gold, fee, bound_percentage가 필요합니다.')
-                if any(type(values[k]) is not int or not 0 <= values[k] <= 10**12 for k in ('gold', 'fee')):
-                    raise ContentError('gold와 fee는 0 이상의 정수여야 합니다.')
-                ratio = values['bound_percentage']
-                if type(ratio) not in (int, float) or not math.isfinite(ratio) or not 0 <= ratio <= 1:
-                    raise ContentError('bound_percentage는 0~1 사이 숫자여야 합니다.')
-                count += 1
-    if count > 10000:
-        raise ContentError('공용 관문 데이터가 너무 많습니다.')
-    return content
 
 
 def load_settings(root):

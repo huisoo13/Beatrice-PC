@@ -143,7 +143,7 @@ class Host:
 
     def snapshot(self):
         if self.closed: return
-        records = [record_view(row, self.catalog.cached) for row in self.store.history_records() if row['state'] == '완료']
+        records = [record_view(row, self.catalog.cached, matcher=self.catalog.matcher) for row in self.store.history_records() if row['state'] == '완료']
         self.character_catalog.ensure([self.profile['character']] + [row['character'] for row in records])
         self.character_catalog.decorate(records, self.catalog.emblem_path)
         records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp(), reverse=True)
