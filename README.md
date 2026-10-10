@@ -132,6 +132,7 @@ Beatrice-PC/
 │  ├─ native_bridge.py            # Host: 앱 제어·명령 처리·모듈 연결
 │  ├─ engine_worker.py            # 인식 서비스의 스레드·이벤트 어댑터
 │  │
+│  ├─ character_catalog.py       # 계정 전체 캐릭터 조회·영속 캐시·레벨·직업 문양 연결
 │  ├─ catalog_service.py          # 공용 데이터 갱신·취소·갱신 주기
 │  ├─ public_content.py           # 데이터 조회·검증·캐시
 │  ├─ content_match.py            # 콘텐츠 매칭
@@ -178,12 +179,14 @@ Beatrice-PC/
 │  ├─ MainWindow.xaml.cs         # 창 생명주기·화면 전환·연결
 │  ├─ MainWindow.Records.cs      # 기록 화면 연결
 │  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
-│  ├─ RecordsView.cs             # 기록 화면·주간 탐색·타이머
+│  ├─ RecordsView.cs             # 기록 화면·주간 탐색·RichTextBlock 문장·직업 문양
+│  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
+│  ├─ CharacterPortraitView.cs   # 현재 캐릭터 직업 문양·이미지 로딩
 │  ├─ RewardsView.cs             # 보상표·선택 상태·갱신 표시
 │  ├─ ViewTheme.cs               # 공통 글꼴·색상·리소스
 │  ├─ EngineMessages.cs          # 엔진 메시지 모델·JSON 해석
 │  ├─ EngineClient.cs            # Python 엔진 프로세스·통신
-│  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장
+│  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장·레벨 표시 형식
 │
 └─ tools/
    ├─ evaluation_geometry.py     # 공통 IoU 계산
@@ -197,6 +200,8 @@ Beatrice-PC/
 ```text
 MainWindow
 ├─ EngineClient → Host(native_bridge)
+│                 ├─ CharacterCatalog → LostArkClient.characters.siblings → 캐릭터 정보 캐시
+│                 │                      └─ CatalogService.emblem_path → 검증된 로컬 직업 SVG
 │                 ├─ CatalogService → 공용 데이터·캐시·매칭
 │                 ├─ native_presentation → 화면 표시 데이터
 │                 ├─ Store → 스키마·트랜잭션·기록 저장
@@ -205,8 +210,10 @@ MainWindow
 │                             ├─ RecognitionPipeline → YOLO·OCR
 │                             └─ LiveCoordinator → StateSession → Store
 ├─ RecordsView
+├─ CharacterPortraitView
+│  └─ RecordsView와 EmblemImageSource 공유
 └─ RewardsView
-   └─ 두 화면이 ViewTheme 공유
+   └─ 기록·보상표 화면이 ViewTheme 공유
 ```
 
 ## 현재 구현

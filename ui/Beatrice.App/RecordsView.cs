@@ -119,9 +119,29 @@ internal sealed class RecordsView : IDisposable
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1,GridUnitType.Star) });
         var timestamp = Text(date?.ToString("HH:mm",CultureInfo.InvariantCulture) ?? "—",12,"muted"); timestamp.VerticalAlignment = VerticalAlignment.Center; timestamp.TextLineBounds = TextLineBounds.Tight; grid.Children.Add(timestamp);
-        var message = Text("",14,"muted"); message.TextLineBounds = TextLineBounds.Tight; message.VerticalAlignment = VerticalAlignment.Center;
-        void Part(string value, bool bold = false, string color = "muted") => message.Inlines.Add(new Run { Text = value, Foreground = Brush(color), FontFamily = new FontFamily(bold ? semiboldFont : font), FontWeight = bold ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal });
-        Part(raid.Character,true,"characterAccent"); Part(RecordPresentation.Particle(raid.Character,"이/가") + " "); Part(raid.Dungeon,true,"text");
+        var message = new RichTextBlock { FontFamily = new FontFamily(font), FontSize = 14,
+            Foreground = Brush("muted"), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = false,
+            TextLineBounds = TextLineBounds.Full, LineHeight = 20, LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+            VerticalAlignment = VerticalAlignment.Center };
+        var paragraph = new Paragraph { Margin = new Thickness(0) };
+        message.Blocks.Add(paragraph);
+        if (!string.IsNullOrWhiteSpace(raid.CharacterEmblem)) {
+            var icon = new Image { Width = 18, Height = 18, Stretch = Stretch.Uniform };
+            var glyph = Text(raid.Character,14,"characterAccent",true);
+            glyph.TextLineBounds = TextLineBounds.Tight;
+            glyph.Measure(new Windows.Foundation.Size(double.PositiveInfinity,double.PositiveInfinity));
+            var slot = new Canvas { Width = 20, Height = glyph.DesiredSize.Height };
+            Canvas.SetTop(icon,glyph.DesiredSize.Height - glyph.BaselineOffset + glyph.DesiredSize.Height/2 - 9);
+            slot.Children.Add(icon);
+            AutomationProperties.SetName(icon,raid.CharacterClass ?? "직업 문양");
+            ToolTipService.SetToolTip(icon,raid.CharacterClass ?? "직업 문양");
+            var inline = new InlineUIContainer { Child = slot };
+            paragraph.Inlines.Add(inline);
+            _ = LoadEmblem(icon,paragraph,inline,raid.CharacterEmblem);
+        }
+        void Part(string value, bool bold = false, string color = "muted") => paragraph.Inlines.Add(new Run { Text = value, Foreground = Brush(color), FontFamily = new FontFamily(bold ? semiboldFont : font), FontWeight = bold ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal });
+        Part(raid.Character,true,"characterAccent");
+        Part(RecordPresentation.Particle(raid.Character,"이/가") + " "); Part(raid.Dungeon,true,"text");
         if (!string.IsNullOrWhiteSpace(raid.Mode)) Part(" " + raid.Mode,false,"accent");
         var gate = RecordPresentation.Gate(raid.Gate);
         if (gate != "") Part(" " + gate,false,"text");
@@ -132,6 +152,12 @@ internal sealed class RecordsView : IDisposable
         AutomationProperties.SetName(button,RecordPresentation.Sentence(raid.Character,raid.Dungeon,raid.Mode,raid.Gate) + " " + raid.Date + " 상세 보기");
         button.Click += async (_,_) => await showDetail(raid);
         return button;
+    }
+    private async System.Threading.Tasks.Task LoadEmblem(Image image,Paragraph paragraph,InlineUIContainer inline,string path)
+    {
+        var source = await EmblemImageSource.Load(path,18,Brush("characterAccent").Color);
+        if (source is not null) image.Source = source;
+        else paragraph.Inlines.Remove(inline);
     }
     private void ChangeRecordWeek(int delta)
     {
@@ -161,7 +187,9 @@ internal sealed class RecordsView : IDisposable
             var narrow = width < 240;
             row.ColumnDefinitions[0].Width = narrow ? new GridLength(1,GridUnitType.Star) : new GridLength(42);
             row.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1,GridUnitType.Star);
-            Grid.SetColumn((FrameworkElement)row.Children[1],narrow ? 0 : 1); Grid.SetRow((FrameworkElement)row.Children[1],narrow ? 1 : 0);
+            foreach (var child in row.Children.OfType<FrameworkElement>().Skip(1)) {
+                Grid.SetColumn(child,narrow ? 0 : 1); Grid.SetRow(child,narrow ? 1 : 0);
+            }
         }
     }
 }

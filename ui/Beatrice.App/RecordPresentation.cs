@@ -20,6 +20,12 @@ internal static class RecordPresentation
         local = default; return false;
     }
     internal static bool InWeek(DateTime local, DateTime start) => local >= start && local < start.AddDays(7);
+    internal static string ItemLevel(string? value)
+    {
+        if (!decimal.TryParse(value,NumberStyles.AllowThousands | NumberStyles.AllowDecimalPoint,
+            CultureInfo.InvariantCulture,out var level) || level <= 0) return "";
+        return "Lv." + decimal.Truncate(level).ToString("0",CultureInfo.InvariantCulture);
+    }
     internal static string Gate(string gate) => string.IsNullOrWhiteSpace(gate) || gate is "레이드 전체" or "전체" or "관문 없음" or "0관문" ? "" : gate.Trim();
     internal static string Particle(string noun, string pair)
     {

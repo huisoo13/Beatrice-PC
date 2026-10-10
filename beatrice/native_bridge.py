@@ -22,6 +22,7 @@ from .account_service import GoogleAccount
 from .drive_service import PersonalDrive
 from .native_presentation import record_view, empty_profile, character_view, progress_unit, observation_view, DungeonFooter
 from .catalog_service import CatalogService
+from .character_catalog import CharacterCatalog
 
 
 class Host:
@@ -43,6 +44,7 @@ class Host:
         self.maintenance_settled = False
         self.preview_sent = None
         self.lostark_api = LostArkApiKey(engine.DATA)
+        self.character_catalog = CharacterCatalog(engine.DATA, key_available=lambda: self.lostark_api.view()["configured"])
         self.account = GoogleAccount(engine.ROOT, engine.DATA)
         self.drive = PersonalDrive(engine.ROOT, engine.DATA, self.account, self.store)
         self.startup_step = 0
@@ -142,8 +144,13 @@ class Host:
     def snapshot(self):
         if self.closed: return
         records = [record_view(row, self.catalog.cached) for row in self.store.history_records() if row['state'] == '완료']
+        self.character_catalog.ensure([self.profile['character']] + [row['character'] for row in records])
+        self.character_catalog.decorate(records, self.catalog.emblem_path)
         records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp(), reverse=True)
-        value = dict(type='snapshot', status=self.status, error=self.error, profile=self.profile,
+        profile = dict(self.profile, **{key: value for key, value in
+                       self.character_catalog.character_view(self.profile['character'], self.catalog.emblem_path).items()
+                       if key != 'character'})
+        value = dict(type='snapshot', status=self.status, error=self.error, profile=profile,
                      records=records, clients=[asdict(client) for client in self.clients],
                      selected=self.client.hwnd if self.client else 0,
                      catalogStatus=self.catalog.message,
@@ -167,6 +174,7 @@ class Host:
         kind = value.get('type')
         if kind == 'shutdown':
             self.closing = True
+            self.character_catalog.stop()
             self.account.shutdown()
             self.drive.shutdown()
             self.stop_catalog()
@@ -190,10 +198,12 @@ class Host:
             self.pause_for('delete')
         elif kind == 'lostark_api_save':
             success = self.lostark_api.save(value.get('key'))
+            if success: self.character_catalog.credentials_changed()
             self.emit(dict(type='lostark_api_saved', success=success, **self.lostark_api.view()))
             self.snapshot()
         elif kind == 'lostark_api_clear':
             success = self.lostark_api.clear()
+            if success: self.character_catalog.credentials_changed()
             self.emit(dict(type='lostark_api_cleared', success=success, **self.lostark_api.view()))
             self.snapshot()
         elif kind == 'google_cancel':
@@ -263,7 +273,8 @@ class Host:
             self.command(value)
             if self.closing: break
         if self.closed: return
-        changed = self.account.poll()
+        changed = self.character_catalog.poll()
+        changed = self.account.poll() or changed
         changed = self.drive.poll() or changed
         if self.closing:
             self.finish_shutdown()
@@ -298,7 +309,7 @@ class Host:
 
     def finish_shutdown(self):
         if (self.closed or not self.worker_done or not self.account.settled or not self.drive.settled
-                or not self.catalog.settled): return
+                or not self.catalog.settled or not self.character_catalog.settled): return
         self.closed = True
         self.timer.stop()
         self.command_timer.stop()

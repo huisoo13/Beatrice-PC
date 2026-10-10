@@ -15,7 +15,7 @@ public partial class MainWindow
         await Task.Delay(50); Root.UpdateLayout();
         foreach (var row in recordsView.LogRows)
         {
-            var time = (TextBlock)row.Children[0]; var message = (TextBlock)row.Children[1];
+            var time = (TextBlock)row.Children[0]; var message = (RichTextBlock)row.Children[1];
             var timeCenter = time.TransformToVisual(row).TransformPoint(new Windows.Foundation.Point()).Y + time.ActualHeight/2;
             var messageCenter = message.TransformToVisual(row).TransformPoint(new Windows.Foundation.Point()).Y + message.ActualHeight/2;
             if (Math.Abs(timeCenter-messageCenter) > .5) throw new InvalidOperationException("시간과 로그 문장의 수직 중앙 정렬 불일치");

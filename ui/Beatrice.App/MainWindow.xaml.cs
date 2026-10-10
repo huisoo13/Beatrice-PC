@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private string currentPage = "records";
     private readonly List<Raid> records = new();
     private readonly EngineClient engine = new();
+    private readonly CharacterPortraitView characterPortrait;
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
     private readonly bool startupCheck = Environment.GetCommandLineArgs().Contains("--startup-check") || Environment.GetCommandLineArgs().Contains("--startup-check-real");
     private readonly Stopwatch startupWatch = Stopwatch.StartNew();
@@ -49,6 +50,7 @@ public partial class MainWindow : Window
         font = tokens.RootElement.GetProperty("font").GetProperty("regularSource").GetString()!;
         semiboldFont = tokens.RootElement.GetProperty("font").GetProperty("semiboldSource").GetString()!;
         var viewTheme = new ViewTheme(font, semiboldFont, Root.Resources, Brush, Text);
+        characterPortrait = new CharacterPortraitView(ProfilePortrait,Brush("text").Color);
         recordsView = new RecordsView(Page, viewTheme,
             () => demo ? new DateTime(2026,10,8,23,0,0) : RecordPresentation.KoreaNow(DateTimeOffset.UtcNow),
             ShowRecordDetail, () => PageViewport.ChangeView(null,0,null,true));
@@ -463,6 +465,7 @@ public partial class MainWindow : Window
         busy = snapshot.Busy; catalogBusy = snapshot.CatalogBusy;
         if (appStatus is not null) { appStatus.Text = statusMessage; ToolTipService.SetToolTip(appStatus,statusMessage); }
         var profile = snapshot.Profile;
+        characterPortrait.Update(profile.CharacterEmblem,profile.CharacterClass);
         if (characterName is not null) { characterName.Text = profile.Character; ToolTipService.SetToolTip(characterName,characterName.Text); }
         if (characterStatus is not null) { characterStatus.Text = profile.Message; ToolTipService.SetToolTip(characterStatus,characterStatus.Text); }
         var characterState = profile.CharacterState;

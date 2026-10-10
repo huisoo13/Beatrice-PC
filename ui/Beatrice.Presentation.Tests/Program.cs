@@ -29,8 +29,8 @@ Console.WriteLine($"PASS: {passed} weekly boundary, Korean time, parsing, partic
 // Parsed messages must survive disposal of their input document.
 EngineSnapshot parsedSnapshot;
 using (var message = System.Text.Json.JsonDocument.Parse("""
-{"status":"ready","busy":false,"catalogBusy":false,"profile":{"character":"캐릭터","message":"플레이 중","active":true},
- "records":[{"character":"캐릭터","dungeon":"던전","mode":"하드","gate":"1관문","date":"2026.10.08 12:00","detail":{"gold":100}}],
+{"status":"ready","busy":false,"catalogBusy":false,"profile":{"character":"캐릭터","message":"플레이 중","active":true,"characterClass":"바드","characterEmblem":"C:/cached/bard.svg"},
+ "records":[{"character":"캐릭터","dungeon":"던전","mode":"하드","gate":"1관문","date":"2026.10.08 12:00","detail":{"gold":100},"characterClass":"바드","characterEmblem":"C:/cached/bard.svg","itemLevel":"1,774.16"}],
  "clients":[{"hwnd":123,"pid":42,"title":"game"}],"selected":123,"catalogStatus":"cached",
  "catalogLastUpdated":"2026-10-08T00:00:00Z","catalogRefreshAvailableAt":1000,"google":{"email":"example"}}
 """)) parsedSnapshot = EngineSnapshot.Parse(message.RootElement);
@@ -42,3 +42,18 @@ Equal(parsedSnapshot.Google!.Value.GetProperty("email").GetString(),"example","s
 Equal(parsedSnapshot.Drive.HasValue,false,"optional drive state");
 Equal(parsedSnapshot.CatalogRefreshAvailableAt,DateTimeOffset.FromUnixTimeSeconds(1000),"catalog deadline");
 Console.WriteLine($"PASS: {passed} presentation and engine protocol checks");
+
+Equal(parsedSnapshot.Records[0].CharacterClass,"바드","record profession preserved");
+Equal(parsedSnapshot.Records[0].CharacterEmblem,"C:/cached/bard.svg","local record emblem preserved");
+Console.WriteLine($"PASS: {passed} presentation and character emblem protocol checks");
+
+Equal(parsedSnapshot.Records[0].ItemLevel,"1,774.16","cached record item level preserved");
+Equal(parsedSnapshot.Profile.CharacterClass,"바드","current profile class preserved");
+Equal(parsedSnapshot.Profile.CharacterEmblem,"C:/cached/bard.svg","current portrait emblem preserved");
+Console.WriteLine($"PASS: {passed} item level and portrait protocol checks");
+
+Equal(RecordPresentation.ItemLevel("1,774.99"),"Lv.1774","item level truncated without grouping");
+Equal(RecordPresentation.ItemLevel("1700.00"),"Lv.1700","integer item level");
+Equal(RecordPresentation.ItemLevel(null),"","missing item level omitted");
+Equal(RecordPresentation.ItemLevel("NaN"),"","invalid item level omitted");
+Console.WriteLine($"PASS: {passed} record presentation checks");

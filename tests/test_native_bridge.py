@@ -86,6 +86,33 @@ class NativeBridgeTests(unittest.TestCase):
         self.assertFalse(result['configured'])
         self.assertFalse(self.host.lostark_api.path.exists())
 
+    def test_character_siblings_reach_record_emblems_without_repeat_calls(self):
+        from unittest.mock import Mock
+        import time
+        if os.name != 'nt': self.skipTest('Windows DPAPI')
+        api = Mock()
+        api.characters.siblings.return_value = [dict(CharacterName='캐릭터', CharacterClassName='바드', ItemAvgLevel='1,774.16'),
+                                                dict(CharacterName='다른캐릭터', CharacterClassName='도화가')]
+        with patch('beatrice.character_catalog.LostArkClient.from_saved_key',return_value=api), \
+             patch.object(self.host.catalog,'emblem_path',return_value=Path(self.folder.name)/'bard.svg'):
+            self.seed()
+            self.host.command(dict(type='lostark_api_save',key='dummy-profile-key'))
+            deadline=time.monotonic()+2
+            while not self.host.character_catalog.settled and time.monotonic()<deadline: time.sleep(.001)
+            self.host.drain_commands()
+            self.host.snapshot();self.host.snapshot()
+            latest=next(v for v in reversed(self.messages) if v['type']=='snapshot')
+            self.assertEqual(latest['records'][0]['characterClass'],'바드')
+            self.assertEqual(latest['records'][0]['itemLevel'],'1,774.16')
+            self.host.profile['character']='다른캐릭터'
+            self.host.snapshot()
+            latest=next(v for v in reversed(self.messages) if v['type']=='snapshot')
+            self.assertEqual(latest['profile']['characterClass'],'도화가')
+            self.assertTrue(latest['profile']['characterEmblem'].endswith('bard.svg'))
+            self.assertTrue(latest['records'][0]['characterEmblem'].endswith('bard.svg'))
+            api.characters.siblings.assert_called_once_with('캐릭터')
+            api.characters.profile.assert_not_called()
+
     def seed(self):
         row = dict(characterName='캐릭터', dungeonName='던전', difficulty='하드', gate=1,
                    state='완료', observedAt='2026-10-07T12:00:00+00:00')

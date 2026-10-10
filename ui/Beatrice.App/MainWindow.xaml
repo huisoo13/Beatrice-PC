@@ -79,7 +79,7 @@
      <Grid x:Name="CharacterProfile" Margin="8,4" ColumnSpacing="8" MinHeight="48">
        <Grid.ColumnDefinitions><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
        <Grid Width="40" Height="40">
-        <Image Width="40" Height="40" Source="ms-appx:///Assets/profile-placeholder.svg" AutomationProperties.Name="캐릭터 이미지"/>
+        <Image x:Name="ProfilePortrait" Width="40" Height="40" Source="ms-appx:///Assets/profile-placeholder.svg" AutomationProperties.Name="캐릭터 이미지"/>
         <Ellipse x:Name="ProfileStatusDot" Width="14" Height="14" StrokeThickness="3" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
        </Grid>
        <StackPanel x:Name="CharacterInfo" Grid.Column="1" Spacing="1" Margin="0,0,4,0" VerticalAlignment="Center"/>

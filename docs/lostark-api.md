@@ -124,3 +124,11 @@ API 오류들은 `LostArkError`를 상속하고 `status`에 HTTP 상태 코드�
 - [API 변경 이력](https://developer-lostark.game.onstove.com/changelog)
 
 공식 문서의 응답 필드와 경로가 바뀌면 최신 명세를 우선합니다. 위 구조와 사용법은 이 저장소의 구현 기준입니다.
+
+## 관문 기록의 캐릭터 캐시
+
+앱은 `CharacterCatalog`(`beatrice/character_catalog.py`)를 통해 `characters.siblings(name)` 응답의 모든 캐릭터 정보를 저장합니다. 캐릭터명별 `profile`(원본 응답 필드)과 `fetchedAt`을 `%LOCALAPPDATA%/BeatricePC/lostark/characters.json`에 보관하며 `BEATRICE_DATA_DIR`가 있으면 해당 경로를 사용합니다. 성공한 캐릭터는 기록·주간 이동·앱 재시작 시 재조회하지 않습니다. 다른 계정이나 새 캐릭터만 추가 조회합니다.
+
+`ensure(names)`는 이름을 중복 제거하고 비동기 조회를 시작하며 `poll()`이 응답을 저장합니다. `decorate(records, catalog.emblem_path)`는 캐릭터의 직업·검증된 공용 SVG·ItemAvgLevel을 표시 데이터에 추가합니다. 관문 기록에서는 아이템 레벨 표시를 생략하지만 캐시 원본 필드는 유지하며, `character_view(name, catalog.emblem_path)`는 현재 캐릭터의 하단 이미지용 직업 문양을 제공합니다. 현재 캐릭터는 기록이 없어도 조회 대상에 포함합니다. `credentials_changed()`는 키 변경 시 실패 대기를 해제하고 진행 중 응답을 폐기합니다. `stop()`과 `settled`로 종료를 관리합니다. API 키 초기화는 캐릭터 캐시를 지우지 않습니다.
+
+직업은 정확히 일치하는 공용 엠블럼을 사용합니다. 문양이 없거나 API 키·네트워크가 준비되지 않아도 기록 목록은 정상 표시됩니다. 저장된 정보의 자동 TTL 갱신은 수행하지 않으므로 기존 캐릭터의 서버·아이템 레벨 등은 최초 조회 시점 값입니다.
