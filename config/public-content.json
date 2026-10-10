@@ -2,5 +2,8 @@
   "rootFolderID": "1DACO6WmH4qjsVfCyYoSrW-bRCiUz5pLz",
   "jsonFolderName": "JSON",
   "fileName": "ContentJSON.json",
-  "refreshSeconds": 3600
+  "refreshSeconds": 3600,
+  "emblemFileName": "EmblemJSON.json",
+  "imagesFolderName": "Images",
+  "emblemBaseUrl": "https://cdn-lostark.game.onstove.com"
 }

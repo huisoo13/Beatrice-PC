@@ -5,6 +5,7 @@ import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from beatrice.public_assets import PublicAssetCache
 from beatrice.public_content import ContentCache, ContentError, PublicContentClient, load_api_key, load_settings
 
 
@@ -25,6 +26,20 @@ def main():
     if again['content'] != content:
         raise ContentError('재조회 중 공용 데이터가 변경되었습니다.')
     print('PASS: 변경 여부 재확인 및 캐시 재사용. 원격 파일은 변경하지 않았습니다.', flush=True)
+    assets = PublicAssetCache(ROOT / 'outputs/public-content-check', settings)
+    bundle = assets.prepare(client)
+    assets.save(bundle)
+    if assets.load() != bundle:
+        raise ContentError('문양·이미지 보관 검증 실패')
+    again = assets.prepare(client)
+    if again['downloadedFiles'] != 0 or again.get('downloadedEmblems', 0) != 0:
+        raise ContentError('변경 없는 문양·이미지가 다시 다운로드되었습니다.')
+    print(f"PASS: 문양 SVG {len(bundle.get('emblems', {}))}개 / Drive 이미지 {len(bundle['images'])}개 보관 및 재사용", flush=True)
+    if assets.emblem_path('워로드', bundle) is None:
+        raise ContentError('직업명으로 SVG 캐시를 찾지 못했습니다.')
+    print('PASS: 직업명으로 로컬 SVG 경로 조회', flush=True)
+    for job, message in bundle.get('emblemErrors', {}).items():
+        print(f"WARN: {job} | {bundle['emblem']['content'][job]} | {message}", flush=True)
 
 
 if __name__ == '__main__':

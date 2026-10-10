@@ -70,6 +70,13 @@ def load_settings(root):
             raise ValueError()
         if not all(isinstance(value[k], str) and value[k] for k in ('jsonFolderName', 'fileName')):
             raise ValueError()
+        value.setdefault('emblemFileName', 'EmblemJSON.json')
+        value.setdefault('imagesFolderName', 'Images')
+        value.setdefault('emblemBaseUrl', 'https://cdn-lostark.game.onstove.com')
+        if not isinstance(value['emblemBaseUrl'], str) or value['emblemBaseUrl'].rstrip('/') != 'https://cdn-lostark.game.onstove.com':
+            raise ValueError()
+        if not all(isinstance(value[k], str) and value[k] for k in ('emblemFileName', 'imagesFolderName')):
+            raise ValueError()
         if type(value['refreshSeconds']) is not int or value['refreshSeconds'] < 60:
             raise ValueError()
         return value
