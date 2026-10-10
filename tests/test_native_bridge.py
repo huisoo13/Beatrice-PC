@@ -61,6 +61,31 @@ class NativeBridgeTests(unittest.TestCase):
         self.patch.stop()
         self.folder.cleanup()
 
+    def test_lostark_api_command_persists_key_without_exposing_it(self):
+        import json
+        from beatrice.lostark_api import LostArkApiKey
+        if os.name != 'nt': self.skipTest('Windows DPAPI')
+        self.host.command(dict(type='lostark_api_save', key='dummy-bridge-key'))
+        result = next(v for v in reversed(self.messages) if v['type'] == 'lostark_api_saved')
+        self.assertTrue(result['success'])
+        self.assertTrue(result['configured'])
+        self.assertNotIn('dummy-bridge-key', json.dumps(self.messages))
+        self.assertEqual(LostArkApiKey(self.folder.name).load(), 'dummy-bridge-key')
+        self.host.command(dict(type='lostark_api_save', key=''))
+        result = next(v for v in reversed(self.messages) if v['type'] == 'lostark_api_saved')
+        self.assertFalse(result['success'])
+        self.assertTrue(result['configured'])
+        self.assertEqual(LostArkApiKey(self.folder.name).load(), 'dummy-bridge-key')
+
+    def test_lostark_api_clear_command_removes_saved_key(self):
+        self.host.lostark_api.path.write_bytes(b'encrypted-dummy')
+        self.host.lostark_api.configured = True
+        self.host.command(dict(type='lostark_api_clear'))
+        result = next(v for v in reversed(self.messages) if v['type'] == 'lostark_api_cleared')
+        self.assertTrue(result['success'])
+        self.assertFalse(result['configured'])
+        self.assertFalse(self.host.lostark_api.path.exists())
+
     def seed(self):
         row = dict(characterName='캐릭터', dungeonName='던전', difficulty='하드', gate=1,
                    state='완료', observedAt='2026-10-07T12:00:00+00:00')

@@ -18,6 +18,7 @@ from PySide6.QtCore import QCoreApplication, QObject, QTimer, QLockFile
 from . import engine_worker as engine
 from .storage import Store
 from .weekly import open_week, week_start
+from .lostark_api import LostArkApiKey
 from .account_service import GoogleAccount
 from .drive_service import PersonalDrive
 from .content_match import ContentMatcher, record_detail
@@ -121,6 +122,7 @@ class Host(QObject):
         self.maintenance_action = None
         self.maintenance_settled = False
         self.preview_sent = None
+        self.lostark_api = LostArkApiKey(engine.DATA)
         self.account = GoogleAccount(engine.ROOT, engine.DATA)
         self.drive = PersonalDrive(engine.ROOT, engine.DATA, self.account, self.store)
         self.startup_step = 0
@@ -250,6 +252,7 @@ class Host(QObject):
                      catalogRefreshAvailableAt=self.catalog_refresh_available_at,
                      busy=self.maintenance or self.restarting or self.drive.busy or self.account.busy or (not self.initialized and not self.error),
                      google=self.account.view(),
+                     lostArkApi=self.lostark_api.view(),
                      drive=dict(self.drive.view(), available=self.drive.available and self.can_change_records()),
                      restarting=self.restarting,
                      catalogBusy=self.catalog_pending is not None,
@@ -286,6 +289,14 @@ class Host(QObject):
             self.snapshot()
         elif kind == 'delete' and self.can_change_records():
             self.pause_for('delete')
+        elif kind == 'lostark_api_save':
+            success = self.lostark_api.save(value.get('key'))
+            self.emit(dict(type='lostark_api_saved', success=success, **self.lostark_api.view()))
+            self.snapshot()
+        elif kind == 'lostark_api_clear':
+            success = self.lostark_api.clear()
+            self.emit(dict(type='lostark_api_cleared', success=success, **self.lostark_api.view()))
+            self.snapshot()
         elif kind == 'google_cancel':
             self.account.cancel()
             self.snapshot()

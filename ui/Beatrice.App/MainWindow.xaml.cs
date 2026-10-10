@@ -105,14 +105,6 @@ public partial class MainWindow : Window
         settingsButton.Template = (ControlTemplate)Root.Resources["BareSettingsButton"];
         ProfileSettings.Children.Add(settingsButton);
         UpdateSettingsButton();
-        var driveMenu = new Button { Width = 52, Height = 52, Content = new Image {
-            Width = 20, Height = 20, Source = new SvgImageSource(new Uri("ms-appx:///Assets/icons/cloud-accent.svg"))
-        }};
-        AutomationProperties.SetName(driveMenu,"Google Drive 설정"); ToolTipService.SetToolTip(driveMenu,"Google Drive 설정");
-        driveMenu.Click += (_, _) => SettingsContent.Children.Last().StartBringIntoView();
-        driveMenu.Background = Brush("accentTint"); driveMenu.BorderBrush = Brush("accent");
-        SettingsNavigation.Children.Add(Text("설정",20,bold:true));
-        SettingsNavigation.Children.Add(driveMenu);
         var closeSettings = new Button { Width = 44, Height = 36, Template = (ControlTemplate)Root.Resources["BareSettingsButton"], Content = new Image { Width = 28, Height = 28, Source = new SvgImageSource(new Uri("ms-appx:///Assets/icons/x-muted.svg")) } };
         AutomationProperties.SetName(closeSettings,"설정 닫기"); ToolTipService.SetToolTip(closeSettings,"설정 닫기");
         closeSettings.Click += (_, _) => DismissSettings(); SettingsCloseHost.Children.Add(closeSettings);
@@ -145,7 +137,7 @@ public partial class MainWindow : Window
             if (closing) return;
             closing = true; recordWeekTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
             if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
-            try { await engine.StopAsync().ConfigureAwait(false); }
+            try { await SaveLostArkApiKey(); await engine.StopAsync().ConfigureAwait(false); }
             catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
             DispatcherQueue.TryEnqueue(() => { try { Application.Current.Exit(); } catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-exit-error.log"),error.ToString()); } });
         };
@@ -184,7 +176,8 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("메인 분류 선택 유지 및 반복 클릭 상태 보존 실패");
             }
             await ValidateWeeklyRecordInteractions();
-            var views = new[]{"records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "empty"};
+            await ValidateSettingsTextNavigation();
+            var views = new[]{"records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-public", "settings-records", "settings-api", "settings-api-focused", "settings-api-filled", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty"};
             foreach (var view in views)
             {
                 if (view.EndsWith("640")) AppWindow.Resize(new Windows.Graphics.SizeInt32(640,1000));
@@ -208,7 +201,11 @@ public partial class MainWindow : Window
                 if (view == "drive-restore") detailTask = ShowDrivePreview(JsonSerializer.SerializeToElement(new { previewId = "review-preview", email = "preview@example.com", createdTime = "2026-10-08T03:00:00Z", completedCount = 8, omittedCount = 0, localCount = records.Count }));
                 if (view == "empty") { records.Clear(); RebuildRecords(); }
                 if (view.StartsWith("settings")) ToggleSettings();
-                if (view.StartsWith("settings-drive")) SettingsContent.Children.Last().StartBringIntoView();
+                if (view.StartsWith("settings")) ShowSettingsSection(view.StartsWith("settings-drive") ? "Google Drive" : view.StartsWith("settings-api") ? "로스트아크" : view == "settings-public" ? "공용 데이터" : view == "settings-records" ? "기록 관리" : "게임 클라이언트");
+                if (view == "settings-api-focused" || view == "settings-api-filled") {
+                    if (view == "settings-api-filled") lostArkApiInput!.Password = "dummy-preview-key";
+                    lostArkApiInput!.Focus(FocusState.Programmatic);
+                }
                 await Task.Delay(400);
                 if (view.StartsWith("settings-drive"))
                 {
@@ -235,7 +232,7 @@ public partial class MainWindow : Window
                     if (!PageViewport.IsEnabled || settingsOpen || settingsButton?.FocusState == FocusState.Unfocused) throw new InvalidOperationException("설정 닫기 후 포커스 복구 실패");
                 }
             }
-            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: weekly record navigation and Wednesday 06:00 boundary; preserved selected week; Pretendard and 20px titles; repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
+            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: weekly record navigation and Wednesday 06:00 boundary; preserved selected week; Pretendard and 20px titles; separate settings pages and repeated selection preservation; repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
         }
         catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"capture-error.txt"),error.ToString()); }
         finally { Application.Current.Exit(); }
@@ -328,11 +325,10 @@ public partial class MainWindow : Window
         foreach (var button in TopNavigation.Children.OfType<Button>()) button.Width = button.Height = 48;
         var settingsInset = small ? 28 : compact ? 36 : 84;
         SettingsPanel.Margin = new Thickness(settingsInset,small ? 16 : 48,settingsInset,small ? 16 : 48);
-        SettingsMenuColumn.Width = new GridLength(small ? 64 : compact ? 112 : 208);
+        SettingsMenuColumn.Width = new GridLength(small ? 120 : compact ? 176 : 208);
         SettingsMenuSurface.Padding = new Thickness(small ? 8 : 16,24,small ? 8 : 16,24);
         SettingsScroll.Padding = compact ? new Thickness(16) : new Thickness(32,16,32,32);
-        foreach (var button in SettingsNavigation.Children.OfType<Button>()) button.Width = small ? 48 : 52;
-        if (SettingsNavigation.Children.FirstOrDefault() is TextBlock settingsLabel) settingsLabel.FontSize = small ? 14 : 20;
+        if (SettingsNavigation.Children.FirstOrDefault() is TextBlock settingsLabel) settingsLabel.FontSize = 20;
         Page.Margin = small ? new Thickness(16,24,16,160) : new Thickness(16,32,16,40);
         if (Page.Children.FirstOrDefault() is StackPanel heading && heading.Children.FirstOrDefault() is TextBlock title) title.FontSize = 20;
         if (SettingsContent.Children.FirstOrDefault() is TextBlock settingsTitle) settingsTitle.FontSize = 20;
@@ -341,8 +337,7 @@ public partial class MainWindow : Window
     }
     private void ShowSettings()
     {
-        SettingsContent.Children.Clear();
-        SettingsContent.Children.Add(Text("설정",20,bold:true));
+        SettingsContent.Children.Clear(); settingsSections.Clear();
         var clientSection = Section("게임 클라이언트");
         clientSelector = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "게임 실행 대기", MinHeight = 44, FontFamily = new FontFamily(font), FontSize = 14 };
         AutomationProperties.SetName(clientSelector,"분석할 게임 클라이언트");
@@ -360,13 +355,14 @@ public partial class MainWindow : Window
         catalogRefresh = Action("공용 데이터 갱신",async (_, _) => await Send(new { type = "catalog_refresh" })); catalogSection.Children.Add(catalogRefresh);
         var recordSection = Section("기록 관리");
         deleteButton = Action("기록 전체 삭제",async (_, _) => await ConfirmDelete()); recordSection.Children.Add(deleteButton);
-        AddDriveSettings();
+        AddDriveSettings(); AddLostArkApiSettings();
+        BuildSettingsNavigation();
         UpdateSettingsState();
     }
     private StackPanel Section(string title)
     {
         var section = new StackPanel { Spacing = 12, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
-        section.Children.Add(Text(title,20,bold:true)); SettingsContent.Children.Add(section); return section;
+        section.Children.Add(Text(title,20,bold:true)); settingsSections[title] = section; return section;
     }
     private void ToggleSettings()
     {
@@ -377,11 +373,13 @@ public partial class MainWindow : Window
         PageViewport.IsEnabled = false;
         SetBackgroundEnabled(false);
         UpdateSettingsButton(); Adapt();
-        clientSelector?.Focus(FocusState.Programmatic);
+        if (selectedSettingsSection == "게임 클라이언트") clientSelector?.Focus(FocusState.Programmatic);
+        else if (settingsMenuItems.TryGetValue(selectedSettingsSection,out var selectedMenu)) selectedMenu.Focus(FocusState.Programmatic);
     }
     private bool DismissSettings(bool restoreFocus = true)
     {
         if (!settingsOpen) return false;
+        if (selectedSettingsSection == "로스트아크") _ = SaveLostArkApiKey();
         settingsOpen = false; SettingsPresenter.Visibility = Visibility.Collapsed;
         PageViewport.IsEnabled = true;
         SetBackgroundEnabled(true);
@@ -408,7 +406,7 @@ public partial class MainWindow : Window
     private void ShowAssets()
     {
         Page.Children.Add(Text("에셋 검토",20,bold:true));
-        Page.Children.Add(Text("맑은 고딕 · 12 / 14 / 16 / 20 / 24 / 32 · Regular / Semibold / Bold",16,"muted"));
+        Page.Children.Add(Text("Pretendard · 12 / 14 / 16 / 20 · Regular / SemiBold",16,"muted"));
         foreach (var color in colors.Where(c => c.Key != "accentTint"))
         {
             var swatch = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
@@ -438,6 +436,7 @@ public partial class MainWindow : Window
     {
         if (closing) return;
         var kind = value.GetProperty("type").GetString();
+        if (kind is "lostark_api_saved" or "lostark_api_cleared") { ReceiveLostArkApiResult(value); return; }
         if (kind == "error") { SetFailure(value.GetProperty("message").GetString()!); return; }
         if (kind == "catalog") {
             var catalog = value.GetProperty("rows").Clone();
@@ -497,6 +496,7 @@ public partial class MainWindow : Window
         if (value.TryGetProperty("catalogRefreshAvailableAt",out var available) && available.TryGetDouble(out var deadline)) rewardRefreshAvailableAt = DateTimeOffset.FromUnixTimeMilliseconds((long)(deadline*1000));
         UpdateRewardRefresh();
         if (currentPage == "rewards" && !catalogBusy && (rewardData.ValueKind != JsonValueKind.Array || previousCatalog != catalogMessage)) _ = RequestRewards();
+        if (value.TryGetProperty("lostArkApi",out var apiState)) lostArkApi = apiState.Clone();
         if (value.TryGetProperty("google",out var googleState)) google = googleState.Clone();
         if (value.TryGetProperty("drive",out var driveState)) drive = driveState.Clone();
         UpdateSettingsState();
@@ -522,7 +522,7 @@ public partial class MainWindow : Window
     }
     private void UpdateSettingsState()
     {
-        UpdateDriveSettings();
+        UpdateDriveSettings(); UpdateLostArkApiSettings();
         if (catalogStatus is not null) catalogStatus.Text = catalogMessage;
         if (engineStatus is not null) engineStatus.Text = statusMessage;
         if (clientSelector is not null) clientSelector.IsEnabled = !busy;

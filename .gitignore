@@ -37,3 +37,7 @@ google_drive_api_key.txt
 # Presentation test build outputs
 ui/Beatrice.Presentation.Tests/bin/
 ui/Beatrice.Presentation.Tests/obj/
+
+# Local encrypted Lost Ark API credential
+lostark-api-key.bin
+lostark-api-key.tmp

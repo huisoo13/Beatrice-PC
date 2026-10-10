@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-10: [로스트아크 API 모듈과 사용법](docs/lostark-api.md). 앱에 저장된 키를 사용하는 공통 통신과 캐릭터·전투정보 조회를 제공합니다. 필요한 기능은 `beatrice.lostark.LostArkClient`에서 호출합니다.
+
 2026-10-09: 사용자 실게임 테스트 완료 보고를 반영했습니다. [EX 하드 인식 보강](docs/62-exhard-gate-panel.md)과 [단일·다관문 완료 배너 재확인](docs/63-completion-gate-recheck.md)에 변경 내용·검증 근거·미적용 보완 사항을 정리했습니다.
 
 2026-10-08 완료 로직: [완료 배너 → 관문 재확인](docs/63-completion-gate-recheck.md). 관문이 있는 콘텐츠는 배너만으로 저장하지 않고 완료 아이콘을 반복 확인합니다. 종탑 진단 841개 재생에서 조기 2관문 저장 차단·실제 완료 저장 확인, Python 테스트 346개 통과. 앱 재시작 후 적용됩니다.
