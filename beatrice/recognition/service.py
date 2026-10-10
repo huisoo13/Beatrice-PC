@@ -57,8 +57,7 @@ class RecognitionService:
             return
         if self.capture_pause is None:
             character.reset_name_cache();dungeon_observer.reset()
-            tracker.last=None;tracker.counts={f:0 for f in tracker.counts}
-            tracker.replacement=None;tracker.replacement_since=None
+            tracker.capture_interrupted()
             coordinator.capture_interrupted()
         if self.capture_pause!=reason:self.events.status(generation,reason)
         self.capture_pause=reason

@@ -1,6 +1,6 @@
 """이벤트, 동기화 대기, 관문 체크포인트를 한 트랜잭션으로 저장합니다."""
 import json
-from contextlib import nullcontext
+from contextlib import nullcontext, contextmanager, closing
 import sqlite3
 from pathlib import Path
 from .record_identity import record_id, existing_time, stamp_local
@@ -14,77 +14,8 @@ class Store:
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.execute('PRAGMA journal_mode=WAL')
         self.db.execute('PRAGMA busy_timeout=5000')
-        version = self.db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (0, 1, 2, 3, 4):
-            raise ValueError('지원하지 않는 DB 버전')
-        self.db.executescript('''
-        CREATE TABLE IF NOT EXISTS sessions (
-            character_key TEXT NOT NULL, session_id TEXT NOT NULL,
-            settings TEXT NOT NULL, checkpoint TEXT,
-            PRIMARY KEY(character_key, session_id));
-        CREATE TABLE IF NOT EXISTS events (
-            event_id TEXT PRIMARY KEY, character_key TEXT NOT NULL,
-            character_name TEXT NOT NULL, session_id TEXT NOT NULL,
-            gate INTEGER NOT NULL CHECK(gate > 0), observed_at TEXT NOT NULL,
-            confirmed_at TEXT NOT NULL, saved_at TEXT NOT NULL,
-            schema_version INTEGER NOT NULL, payload TEXT NOT NULL,
-            UNIQUE(character_key, session_id, gate),
-            FOREIGN KEY(character_key, session_id) REFERENCES sessions(character_key, session_id));
-        CREATE TABLE IF NOT EXISTS outbox (
-            event_id TEXT PRIMARY KEY REFERENCES events(event_id),
-            status TEXT NOT NULL CHECK(status IN ('pending','test_only','uploaded')),
-            attempts INTEGER NOT NULL DEFAULT 0);
-        CREATE TABLE IF NOT EXISTS pending_segments (
-            segment_id TEXT PRIMARY KEY, context TEXT, checkpoint TEXT,
-            status TEXT NOT NULL DEFAULT 'unresolved');
-        CREATE TABLE IF NOT EXISTS pending_events (
-            event_id TEXT PRIMARY KEY, segment_id TEXT NOT NULL REFERENCES pending_segments(segment_id),
-            payload TEXT NOT NULL, resolved_event_id TEXT);
-        CREATE TABLE IF NOT EXISTS gate_states (
-            owner TEXT NOT NULL, dungeon_key TEXT NOT NULL, gate INTEGER NOT NULL CHECK(gate>0),
-            payload TEXT NOT NULL, PRIMARY KEY(owner,dungeon_key,gate));
-        CREATE TABLE IF NOT EXISTS completion_history (
-            record_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS weekly_repeat (
-            id INTEGER PRIMARY KEY CHECK(id=1), period_start TEXT NOT NULL);
-        INSERT OR IGNORE INTO weekly_repeat VALUES(1,'');
-        CREATE TABLE IF NOT EXISTS drive_changes (
-            id INTEGER PRIMARY KEY CHECK(id=1), epoch TEXT NOT NULL, revision INTEGER NOT NULL);
-        INSERT OR IGNORE INTO drive_changes VALUES(1,lower(hex(randomblob(16))),0);
-        CREATE TABLE IF NOT EXISTS drive_uploads (
-            account TEXT PRIMARY KEY, epoch TEXT NOT NULL, revision INTEGER NOT NULL);
-        ''')
-        if version<3:
-            from .dungeon import key
-            with self.db:
-                for payload,settings in self.db.execute('SELECT payload,settings FROM events JOIN sessions USING(character_key,session_id) ORDER BY confirmed_at'):
-                    event=json.loads(payload)
-                    if not event.get('dungeonName'):continue
-                    event.update(state='완료',recordType='gate_state',expectedGates=json.loads(settings)['expectedGates'],evidenceType='legacy_completion')
-                    self.db.execute('INSERT OR IGNORE INTO gate_states VALUES (?,?,?,?)',
-                        (event['characterKey'],key(event['dungeonName']),event['gate'],json.dumps(event,ensure_ascii=False)))
-                self.db.execute('PRAGMA user_version=3')
-        if version<4:
-            with self.db:
-                self.db.execute("DELETE FROM gate_states WHERE json_extract(payload,'$.state') IS NOT '완료'")
-                self.db.execute('PRAGMA user_version=4')
-        self.db.executescript('''
-        CREATE TRIGGER IF NOT EXISTS completion_only_insert BEFORE INSERT ON gate_states
-        WHEN json_extract(NEW.payload,'$.state') IS NOT '완료'
-        BEGIN SELECT RAISE(ABORT,'Only completed gates may be stored'); END;
-        CREATE TRIGGER IF NOT EXISTS completion_only_update BEFORE UPDATE ON gate_states
-        WHEN json_extract(NEW.payload,'$.state') IS NOT '완료'
-        BEGIN SELECT RAISE(ABORT,'Only completed gates may be stored'); END;
-        ''')
-        # Add metadata without changing record contents or scheduling an upload.
-        with self.db:
-            for owner,dungeon,gate,payload in self.db.execute('SELECT owner,dungeon_key,gate,payload FROM gate_states').fetchall():
-                row=json.loads(payload)
-                if row.get('characterName') and row.get('dungeonName') and ('recordID' not in row or 'updatedAt' not in row):
-                    row['recordID']=record_id(row['characterName'],row['dungeonName'],0 if row.get('completionScope')=='raid' else gate)
-                    row['updatedAt']=existing_time(row)
-                    self.db.execute('UPDATE gate_states SET payload=? WHERE owner=? AND dungeon_key=? AND gate=?',
-                        (json.dumps(row,ensure_ascii=False),owner,dungeon,gate))
+        from .storage_schema import initialize_schema
+        initialize_schema(self.db)
 
         # Preserve existing completions independently of weekly recognition checkpoints.
         with self.db:
@@ -281,12 +212,98 @@ class Store:
         self.db.execute('UPDATE drive_changes SET epoch=lower(hex(randomblob(16))),revision=0 WHERE id=1')
         self.db.execute('DELETE FROM drive_uploads')
 
-    def clear_all(self):
+    def clear_all(self, transactional=True):
         """분석 작업자가 정지한 뒤 호출합니다. 모델/설정은 보존합니다."""
-        with self.db:
+        with self.transaction() if transactional else nullcontext():
             for table in ("gate_states", "completion_history", "outbox", "pending_events", "events", "pending_segments", "sessions"):
                 self.db.execute(f"DELETE FROM {table}")
             self.reset_drive_queue()
+
+
+    @contextmanager
+    def transaction(self, snapshot=False):
+        """Keep a multi-operation write or read snapshot on this connection."""
+        with self.db:
+            if snapshot:
+                self.db.execute('BEGIN')
+            yield
+
+    def backup_to(self, path):
+        with closing(sqlite3.connect(path)) as destination:
+            self.db.backup(destination)
+
+    def resolve_pending(self, segment, mappings):
+        """Called inside the character-confirmation transaction."""
+        self.db.executemany('UPDATE pending_events SET resolved_event_id=? WHERE event_id=?', mappings)
+        self.db.execute("UPDATE pending_segments SET status='resolved' WHERE segment_id=?", (segment,))
+
+    def assign_pending_character(self, previous_owner, character_key, character_name):
+        from .dungeon import key
+        with self.transaction():
+            pending = self.state_records(previous_owner) if previous_owner.startswith('pending:') else []
+            for group in {key(r['dungeonName']) for r in pending}:
+                rows = [dict(r, characterKey=character_key, characterName=character_name)
+                        for r in pending if key(r['dungeonName']) == group]
+                known = self.state_records(character_key, group)
+                expected = max(r.get('expectedGates') or r['gate'] for r in rows)
+                if max((r.get('expectedGates', r['gate']) for r in known), default=0) > expected:
+                    continue
+                self.save_completions(character_key, group, rows, expected, transactional=False)
+                self.db.execute('DELETE FROM gate_states WHERE owner=? AND dungeon_key=?', (previous_owner, group))
+
+    def import_completion(self, owner, dungeon, row):
+        """Preserve history and the latest weekly checkpoint in the caller's transaction."""
+        changed = self.remember_completion(row)
+        if existing_time(row) >= self.repeat_start():
+            self.db.execute("""INSERT INTO gate_states VALUES (?,?,?,?)
+                ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
+                WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
+                (owner, dungeon, row['gate'], json.dumps(row, ensure_ascii=False)))
+        return changed
+
+    def replace_history(self, rows):
+        from .dungeon import key
+        with self.transaction():
+            self.clear_all(transactional=False)
+            for row in rows:
+                self.import_completion(row['characterKey'], key(row['dungeonName']), row)
+
+    def recover_weekly_history(self, data, now=None):
+        from .weekly import week_start
+        with self.transaction():
+            self.db.execute('CREATE TABLE IF NOT EXISTS imported_weekly_sources (path TEXT PRIMARY KEY)')
+            self.db.execute('CREATE TABLE IF NOT EXISTS history_export_initialized (id INTEGER PRIMARY KEY CHECK(id=1))')
+            first_history_export = self.db.execute('SELECT 1 FROM history_export_initialized').fetchone() is None
+            imported = {r[0] for r in self.db.execute('SELECT path FROM imported_weekly_sources')}
+            changed = False
+            for source in sorted((Path(data)/'weekly-records').glob('*.sqlite3')):
+                name = str(source.resolve())
+                if name in imported:
+                    continue
+                with closing(sqlite3.connect(source.resolve().as_uri()+'?mode=ro',uri=True)) as old:
+                    for payload, in old.execute('SELECT payload FROM gate_states'):
+                        row=json.loads(payload)
+                        if not row.get('recordID'):
+                            from .record_identity import record_id
+                            if not row.get('characterName') or not row.get('dungeonName'):
+                                continue
+                            row=dict(row,recordID=record_id(row['characterName'],row['dungeonName'],0 if row.get('completionScope')=='raid' else row['gate']),updatedAt=existing_time(row))
+                        changed = self.remember_completion(row) or changed
+                        if existing_time(row) >= week_start(now):
+                            from .dungeon import key
+                            owner = row.get('characterKey') or 'name:' + row['characterName']
+                            self.db.execute("""INSERT INTO gate_states VALUES(?,?,?,?)
+                                ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
+                                WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
+                                (owner,key(row['dungeonName']),row['gate'],json.dumps(row,ensure_ascii=False)))
+                self.db.execute('INSERT INTO imported_weekly_sources VALUES(?)', (name,))
+            publish_legacy = first_history_export and any(
+                r.get('state')=='완료' and r.get('characterName') and r.get('dungeonName') and r.get('difficulty')
+                and not r.get('isTest') and r.get('timeBasis')!='synthetic_test'
+                for r in self.history_records())
+            if changed or publish_legacy:
+                self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+            self.db.execute('INSERT OR IGNORE INTO history_export_initialized VALUES(1)')
 
     def close(self):
         self.db.close()

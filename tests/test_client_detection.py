@@ -27,7 +27,7 @@ class ClientDetectionTests(unittest.TestCase):
         self.search=patch.object(engine,'find_clients',return_value=[]);self.find=self.search.start();self.addCleanup(self.search.stop)
         self.active=patch.object(engine,'client_active',return_value=True);self.active.start();self.addCleanup(self.active.stop)
         self.worker=Worker();self.messages=[];self.host=Host(self.app,self.messages.append,lambda:self.worker)
-        self.host.start();self.host.next_check=float('inf');self.host.ready([])
+        self.host.start();self.host.catalog.next_check=float('inf');self.host.ready([])
         self.client=Client(100,200,'LOSTARK')
         self.addCleanup(self.cleanup)
     def cleanup(self):

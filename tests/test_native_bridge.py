@@ -42,7 +42,7 @@ class NativeBridgeTests(unittest.TestCase):
             self.workers.append(worker)
             return worker
         self.host = Host(self.app, self.messages.append, factory)
-        self.host.next_check = float('inf')
+        self.host.catalog.next_check = float('inf')
         self.host.start()
 
     def tearDown(self):
@@ -116,7 +116,7 @@ class NativeBridgeTests(unittest.TestCase):
             self.assertEqual(len(self.messages[-1]['records']),1)
 
     def test_startup_waits_for_catalog_after_worker_ready(self):
-        self.host.settings = {'refreshSeconds': 300}
+        self.host.catalog.settings = {'refreshSeconds': 300}
         self.ready()
         self.assertFalse(self.messages[-1]['startupReady'])
         self.assertEqual(self.messages[-1]['startupStep'], 2)
@@ -124,51 +124,51 @@ class NativeBridgeTests(unittest.TestCase):
     def test_startup_catalog_failure_preserves_cache_and_opens_main(self):
         import queue
         for cached in (None, {'checkedAt': '2026-10-07T15:00:00+00:00', 'content': {}}):
-            self.host.settings = {'refreshSeconds': 300}
-            self.host.cached = cached
-            self.host.startup_catalog_finished = False
+            self.host.catalog.settings = {'refreshSeconds': 300}
+            self.host.catalog.cached = cached
+            self.host.catalog.startup_finished = False
             self.ready()
             results = queue.Queue()
             results.put((None, 'offline'))
-            self.host.catalog_pending = threading.Event(), results
+            self.host.catalog.pending = threading.Event(), results
             self.host.tick()
-            self.assertIs(self.host.cached, cached)
+            self.assertIs(self.host.catalog.cached, cached)
             self.assertTrue(self.messages[-1]['startupReady'])
             self.assertEqual(self.messages[-1]['startupStep'], 3)
 
     def test_startup_missing_credentials_does_not_block_main(self):
         from beatrice.public_content import ContentError
-        self.host.settings = {'refreshSeconds': 300}
+        self.host.catalog.settings = {'refreshSeconds': 300}
         self.ready()
-        with patch('beatrice.native_bridge.load_api_key', side_effect=ContentError('missing')):
+        with patch('beatrice.catalog_service.load_api_key', side_effect=ContentError('missing')):
             self.host.refresh_catalog()
         self.assertTrue(self.messages[-1]['startupReady'])
 
     def test_manual_catalog_refresh_has_persisted_five_minute_cooldown(self):
         self.ready()
-        self.host.settings = {'refreshSeconds': 300}
+        self.host.catalog.settings = {'refreshSeconds': 300}
         with patch('beatrice.native_bridge.time.time', return_value=1000), patch.object(self.host, 'refresh_catalog') as refresh:
             self.host.command({'type': 'catalog_refresh'})
             self.host.command({'type': 'catalog_refresh'})
             refresh.assert_called_once()
-        self.assertEqual(self.host.catalog_refresh_available_at, 1300)
+        self.assertEqual(self.host.catalog.refresh_available_at, 1300)
         import json
-        saved = json.loads(self.host.catalog_cooldown_path.read_text(encoding='utf-8'))
+        saved = json.loads(self.host.catalog.cooldown_path.read_text(encoding='utf-8'))
         self.assertEqual(saved['availableAt'], 1300)
         with patch('beatrice.native_bridge.time.time', return_value=1300), patch.object(self.host, 'refresh_catalog') as refresh:
             self.host.command({'type': 'catalog_refresh'})
             refresh.assert_called_once()
-        self.assertEqual(self.host.catalog_refresh_available_at, 1600)
+        self.assertEqual(self.host.catalog.refresh_available_at, 1600)
 
     def test_catalog_snapshot_reports_last_successful_update(self):
-        self.host.cached = {'checkedAt': '2026-10-07T15:00:00+00:00', 'content': {}}
-        self.host.catalog_message = '갱신 실패'
+        self.host.catalog.cached = {'checkedAt': '2026-10-07T15:00:00+00:00', 'content': {}}
+        self.host.catalog.message = '갱신 실패'
         self.host.snapshot()
         self.assertEqual(self.messages[-1]['catalogLastUpdated'], '2026-10-07T15:00:00+00:00')
 
     def test_catalog_thread_waits_until_models_are_initialized(self):
-        self.host.next_check = 0
-        with patch('beatrice.native_bridge.load_api_key') as api_key:
+        self.host.catalog.next_check = 0
+        with patch('beatrice.catalog_service.load_api_key') as api_key:
             self.host.refresh_catalog()
             self.host.tick()
             api_key.assert_not_called()
@@ -439,13 +439,13 @@ class NativeBridgeTests(unittest.TestCase):
         import queue
         self.ready()
         cached=dict(checkedAt='2026-10-08T00:00:00Z',content={'던전':{'하드':{'1관문':{'gold':100,'fee':20,'bound_percentage':0.2}}}})
-        self.host.cached=cached
+        self.host.catalog.cached=cached
         replies=queue.Queue();replies.put((None,'offline'))
-        self.host.catalog_pending=threading.Event(),replies
-        self.host.tick();self.assertIs(self.host.cached,cached)
+        self.host.catalog.pending=threading.Event(),replies
+        self.host.tick();self.assertIs(self.host.catalog.cached,cached)
         self.host.command(dict(type='catalog'))
         self.assertEqual(self.messages[-1]['rows'][0]['gold'],100)
-        with patch('beatrice.native_bridge.load_api_key',side_effect=ValueError('unused')) as key:
+        with patch('beatrice.catalog_service.load_api_key',side_effect=ValueError('unused')) as key:
             self.host.command(dict(type='shutdown'));self.host.tick();key.assert_not_called()
         self.workers[-1].finish()
 

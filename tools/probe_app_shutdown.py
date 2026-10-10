@@ -28,7 +28,7 @@ def main():
     app=EventLoop()
     with tempfile.TemporaryDirectory() as folder,ExitStack() as stack:
         stack.enter_context(patch.object(engine,'DATA',Path(folder)))
-        stack.enter_context(patch('beatrice.native_bridge.load_settings',side_effect=ContentError('probe: network disabled')))
+        stack.enter_context(patch('beatrice.catalog_service.load_settings',side_effect=ContentError('probe: network disabled')))
         stack.enter_context(patch.object(recognition_service,'ProcessWatch',side_effect=watch))
         stack.enter_context(patch('beatrice.obs_capture.ObsCapture',TrackedCapture))
         for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',

@@ -25,3 +25,20 @@ Equal(RecordPresentation.Sentence("카멘","에키드나","노말",""),"카멘�
 Equal(RecordPresentation.Sentence("후이수","에키드나","하드","2관문"),"후이수가 에키드나 하드 2관문을 클리어했습니다.","gate log");
 Equal(RecordPresentation.Sentence("후이수","에키드나","",""),"후이수가 에키드나를 클리어했습니다.","dungeon only");
 Console.WriteLine($"PASS: {passed} weekly boundary, Korean time, parsing, particle, and gateless log checks");
+
+// Parsed messages must survive disposal of their input document.
+EngineSnapshot parsedSnapshot;
+using (var message = System.Text.Json.JsonDocument.Parse("""
+{"status":"ready","busy":false,"catalogBusy":false,"profile":{"character":"캐릭터","message":"플레이 중","active":true},
+ "records":[{"character":"캐릭터","dungeon":"던전","mode":"하드","gate":"1관문","date":"2026.10.08 12:00","detail":{"gold":100}}],
+ "clients":[{"hwnd":123,"pid":42,"title":"game"}],"selected":123,"catalogStatus":"cached",
+ "catalogLastUpdated":"2026-10-08T00:00:00Z","catalogRefreshAvailableAt":1000,"google":{"email":"example"}}
+""")) parsedSnapshot = EngineSnapshot.Parse(message.RootElement);
+Equal(parsedSnapshot.Profile.CharacterState,"playing","legacy active profile fallback");
+Equal(parsedSnapshot.Profile.Dungeon,null,"missing dungeon is hidden");
+Equal(parsedSnapshot.Records[0].Detail.GetProperty("gold").GetInt32(),100,"detail outlives JSON document");
+Equal(parsedSnapshot.Clients[0].GetProperty("pid").GetInt32(),42,"clients outlive JSON document");
+Equal(parsedSnapshot.Google!.Value.GetProperty("email").GetString(),"example","settings outlive JSON document");
+Equal(parsedSnapshot.Drive.HasValue,false,"optional drive state");
+Equal(parsedSnapshot.CatalogRefreshAvailableAt,DateTimeOffset.FromUnixTimeSeconds(1000),"catalog deadline");
+Console.WriteLine($"PASS: {passed} presentation and engine protocol checks");

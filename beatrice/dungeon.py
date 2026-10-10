@@ -181,6 +181,12 @@ class DungeonTracker:
         self.absence_since=None;self.transition_until=None
         self.candidates={f:None for f in FIELDS};self.counts={f:0 for f in FIELDS}
 
+    def capture_interrupted(self):
+        self.last = None
+        self.counts = {field: 0 for field in FIELDS}
+        self.replacement = None
+        self.replacement_since = None
+
     def update(self,seconds,observation):
         if not math.isfinite(seconds) or (self.last is not None and seconds<=self.last):
             raise ValueError('관측 시각은 유한하고 증가해야 합니다.')

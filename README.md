@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-10: [모듈 경계 정리](docs/module-boundaries.md). 공용 데이터 갱신·화면 표시 변환·DB 스키마와 저장소 API·기록/보상표 UI·엔진 메시지 모델·추적기 중단 처리·평가 계산을 분리했습니다. Python 테스트 409개, 표시·프로토콜 검사 45개, UI 자동 검증과 실제 모델/OBS 시작·종료 검사를 통과했습니다.
+
 2026-10-10: [실시간 인식 모듈과 사용법](docs/recognition-module.md). OBS 생명주기·YOLO/OCR 파이프라인을 `beatrice.recognition`으로 분리했습니다. 앱 작업자는 Python 스레드·콜백 연결만 담당하고, 모델·완료 판단·기록 형식은 유지합니다. Qt 의존성을 제거했으며 전체 테스트 400개와 내장 OBS의 메인·스플래시 종료 검사를 통과했습니다.
 
 2026-10-10: [로스트아크 API 모듈과 사용법](docs/lostark-api.md). 앱에 저장된 키를 사용하는 공통 통신과 캐릭터·전투정보 조회를 제공합니다. 필요한 기능은 `beatrice.lostark.LostArkClient`에서 호출합니다.
@@ -117,6 +119,95 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 최신 OCR: 던전명은 목록 제한 없이 읽고, 실시간 표시는 관문 UI와 난이도 표기를 함께 확인합니다. 난이도/모드 표기는 노말·하드·헬·익스트림·싱글 모드·매칭 모드를 지원합니다. 긴 제목은 넓은 영역에서 공백을 포함한 글자 줄을 추려 읽습니다. 캐릭터명은 PaddleOCR로 레벨을 포함한 줄을 읽고 레벨만 제거합니다. 변경 팝업만 열거나 취소하면 기존 캐릭터를 유지합니다. 팝업 직후 오른쪽 아래 로딩 아이콘과 대기 문구를 함께 관측하면 재확인 상태로 전환하며, 로딩 중 기존 초상화는 재확정하지 않습니다. 맵 이동과 캡처 중단만으로 캐릭터를 초기화하지 않습니다. 실제 미학습 이름과 다양한 전환 경로는 추가 검증이 필요합니다. [기존 검증 기록](docs/19-dungeon-ocr.md).
 
 최신 변경: [캐릭터 미확정 이벤트의 SQLite 임시 저장과 사후 확정](docs/18-deferred-events.md).
+
+## 모듈 구조
+
+최종 갱신: 2026-10-10. 주요 실행 모듈과 관련 파일을 표시합니다.
+모듈의 추가·삭제·이동, 책임 또는 연결 관계를 변경할 때 이 구조와 설명을 함께 갱신합니다.
+각 모듈의 API와 검증 근거는 [모듈 경계 정리](docs/module-boundaries.md)를 참고하세요.
+
+```text
+Beatrice-PC/
+├─ beatrice/
+│  ├─ native_bridge.py            # Host: 앱 제어·명령 처리·모듈 연결
+│  ├─ engine_worker.py            # 인식 서비스의 스레드·이벤트 어댑터
+│  │
+│  ├─ catalog_service.py          # 공용 데이터 갱신·취소·갱신 주기
+│  ├─ public_content.py           # 데이터 조회·검증·캐시
+│  ├─ content_match.py            # 콘텐츠 매칭
+│  ├─ native_presentation.py      # 화면 표시용 데이터 변환
+│  │
+│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 저장
+│  ├─ storage_schema.py           # DB 스키마·이전 데이터 변환
+│  ├─ weekly.py                   # 주간 기준·저장소 열기
+│  ├─ drive_data.py               # 공유 JSON·내보내기·복원
+│  │
+│  ├─ recognition/               # 실시간 인식
+│  │  ├─ __init__.py              # 공개 진입점
+│  │  ├─ service.py               # 캡처·인식 실행 생명주기
+│  │  └─ pipeline.py              # 프레임별 YOLO·OCR 분석
+│  ├─ character_vision.py         # 캐릭터 영역 OCR
+│  ├─ dungeon_observer.py         # 던전 영역 관측
+│  ├─ character.py               # 캐릭터 상태 추적·중단 처리
+│  ├─ dungeon.py                 # 던전 OCR·상태 추적·중단 처리
+│  ├─ completion_banner.py       # 완료 배너 추적·중단 처리
+│  ├─ live.py                    # 관측 결과·완료 판단·기록 연결
+│  ├─ state_session.py           # 완료 기록 세션
+│  ├─ deferred_session.py        # 캐릭터 미확정 기록 세션
+│  │
+│  ├─ drive/                     # Google Drive API
+│  │  ├─ __init__.py              # 공개 진입점
+│  │  ├─ client.py               # 공통 통신
+│  │  ├─ files.py                # 파일 작업
+│  │  ├─ folders.py              # 폴더 작업
+│  │  └─ errors.py               # 오류 정의
+│  ├─ account_service.py         # Google 계정 작업 관리
+│  ├─ google_auth.py             # 인증·토큰 보관
+│  ├─ drive_service.py           # 개인 기록 업로드·복원 작업 관리
+│  ├─ google_drive.py            # 개인 기록용 Drive 어댑터
+│  │
+│  ├─ lostark/                   # 로스트아크 API
+│  │  ├─ __init__.py              # 공개 진입점
+│  │  ├─ client.py               # 공통 통신·호출 제한
+│  │  ├─ characters.py           # 캐릭터 조회
+│  │  ├─ armory.py               # 전투정보 조회
+│  │  └─ errors.py               # 오류 정의
+│  └─ lostark_api.py             # 앱 API 키 저장·조회
+│
+├─ ui/Beatrice.App/
+│  ├─ MainWindow.xaml.cs         # 창 생명주기·화면 전환·연결
+│  ├─ MainWindow.Records.cs      # 기록 화면 연결
+│  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
+│  ├─ RecordsView.cs             # 기록 화면·주간 탐색·타이머
+│  ├─ RewardsView.cs             # 보상표·선택 상태·갱신 표시
+│  ├─ ViewTheme.cs               # 공통 글꼴·색상·리소스
+│  ├─ EngineMessages.cs          # 엔진 메시지 모델·JSON 해석
+│  ├─ EngineClient.cs            # Python 엔진 프로세스·통신
+│  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장
+│
+└─ tools/
+   ├─ evaluation_geometry.py     # 공통 IoU 계산
+   ├─ check_training_predictions.py
+   ├─ check_login_holdout.py
+   └─ evaluate_ui_bootstrap.py
+```
+
+주요 연결 관계:
+
+```text
+MainWindow
+├─ EngineClient → Host(native_bridge)
+│                 ├─ CatalogService → 공용 데이터·캐시·매칭
+│                 ├─ native_presentation → 화면 표시 데이터
+│                 ├─ Store → 스키마·트랜잭션·기록 저장
+│                 ├─ GoogleAccount / PersonalDrive → 인증·Drive API
+│                 └─ Worker → RecognitionService
+│                             ├─ RecognitionPipeline → YOLO·OCR
+│                             └─ LiveCoordinator → StateSession → Store
+├─ RecordsView
+└─ RewardsView
+   └─ 두 화면이 ViewTheme 공유
+```
 
 ## 현재 구현
 

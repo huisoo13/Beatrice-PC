@@ -2,9 +2,10 @@
 import argparse,json
 from pathlib import Path
 
-def iou(a,b):
-    area=max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1]))
-    return area/((a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-area)
+if __package__:
+    from .evaluation_geometry import iou
+else:
+    from evaluation_geometry import iou
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('report',type=Path);a=p.parse_args()

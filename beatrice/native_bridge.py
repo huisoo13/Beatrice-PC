@@ -16,91 +16,12 @@ from pathlib import Path
 from .thread_events import EventLoop
 from .instance_lock import InstanceLock
 from . import engine_worker as engine
-from .storage import Store
 from .weekly import open_week, week_start
 from .lostark_api import LostArkApiKey
 from .account_service import GoogleAccount
 from .drive_service import PersonalDrive
-from .content_match import ContentMatcher, record_detail
-from .public_content import ContentCache, ContentError, PublicContentClient, load_settings, load_api_key
-
-
-def record_view(row, cached=None):
-    """Retain the stored matching decision and expose completed records only."""
-    when = datetime.fromisoformat(row['observedAt']).astimezone().strftime('%Y.%m.%d %H:%M')
-    detail = record_detail(row, cached)
-    if row.get('ocrOriginal'): detail['ocrOriginal'] = row['ocrOriginal']
-    return dict(character=row.get('characterName') or '캐릭터 확인 대기',
-                dungeon=row.get('dungeonName') or '확인 대기', mode=row.get('difficulty') or '확인 대기',
-                gate=row.get('gateName') or ('레이드 전체' if row.get('completionScope') == 'raid' else f"{row['gate']}관문"),
-                date=when, observedAt=row['observedAt'], detail=detail)
-
-
-def empty_profile():
-    return dict(character='캐릭터 확인 대기', message='캐릭터 미설정', active=False, characterState='unset')
-
-
-def character_view(identity):
-    status = identity.get('status')
-    allowed = bool(identity.get('recordingAllowed') and identity.get('currentName'))
-    name = identity.get('currentName') if allowed else identity.get('pendingName') or identity.get('previewName') or identity.get('currentName')
-    if status in ('switching', 'initial_login_loading', 'initial_login_selection'):
-        name = identity.get('pendingName') or name
-        message = '캐릭터 변경 중' if status == 'switching' else '캐릭터 선택 중'
-        state = 'selecting'
-    elif allowed: message, state = '플레이 중', 'playing'
-    elif status == 'awaiting_current_confirmation' and name: message, state = '캐릭터 확인 중', 'selecting'
-    else: message, state = '캐릭터 미설정', 'unset'
-    return dict(character=name or '캐릭터 확인 대기', message=message, active=state == 'playing', characterState=state)
-
-
-def progress_unit(value):
-    dungeon = value.get('dungeon', {})
-    if dungeon.get('raidKind') == 'gateless': return '레이드 전체'
-    result = value.get('result', {})
-    states = result.get('observedStates', result.get('stableStates')) or []
-    gate = next((i for i, state in enumerate(states, 1) if state == '진행중'), None)
-    return f'{gate}관문' if gate else ''
-
-
-def observation_view(value, matcher=None):
-    profile = character_view(value.get('identity', {}))
-    dungeon = value.get('dungeon', {})
-    name, difficulty = dungeon.get('dungeonName'), dungeon.get('difficulty')
-    if matcher: name, difficulty = matcher.display_context(name, difficulty)
-    visible = bool(name and dungeon.get('contextStatus') in ('ocr_verified', 'ocr_held', 'ocr_partial'))
-    profile.update(dungeon=name if visible else None,
-        dungeonSubtitle=' · '.join(filter(None, [difficulty, progress_unit(value)])) if visible else '',
-        dungeonState='진행 중', diagnostics=value.get('recordingStatus', ''))
-    return profile
-
-
-class DungeonFooter:
-    """Display-only retention; never supplies context to completion recording."""
-    def __init__(self):
-        self.context = None
-        self.unit = ''
-        self.last_panel_seen = None
-
-    def update(self, value, now):
-        dungeon = value.get('dungeon', {})
-        panel = dungeon.get('raidPanelVisible', dungeon.get('currentRaidPanel', False))
-        if panel: self.last_panel_seen = now
-        if dungeon.get('dungeonName') and dungeon.get('contextStatus') in ('ocr_verified', 'ocr_held', 'ocr_partial'):
-            pair = dungeon.get('dungeonName'), dungeon.get('difficulty')
-            previous = (self.context.get('dungeonName'), self.context.get('difficulty')) if self.context else None
-            if pair != previous: self.unit = ''
-            current_unit = progress_unit(value)
-            if dungeon.get('contextStatus') != 'ocr_held' or (panel and current_unit): self.unit = current_unit
-            self.context = dict(dungeonName=pair[0], difficulty=pair[1])
-            # A held context received as the first observation starts one bounded grace period.
-            if self.last_panel_seen is None: self.last_panel_seen = now
-
-    def view(self, matcher, now):
-        if not self.context or self.last_panel_seen is None or now-self.last_panel_seen >= 30:
-            return dict(dungeon=None, dungeonSubtitle='', dungeonState='진행 중')
-        name, difficulty = matcher.display_context(self.context['dungeonName'], self.context['difficulty'])
-        return dict(dungeon=name, dungeonSubtitle=' · '.join(filter(None, [difficulty, self.unit])), dungeonState='진행 중')
+from .native_presentation import record_view, empty_profile, character_view, progress_unit, observation_view, DungeonFooter
+from .catalog_service import CatalogService
 
 
 class Host:
@@ -125,32 +46,13 @@ class Host:
         self.account = GoogleAccount(engine.ROOT, engine.DATA)
         self.drive = PersonalDrive(engine.ROOT, engine.DATA, self.account, self.store)
         self.startup_step = 0
-        self.startup_catalog_finished = False
         self.error = ''
         self.status = '모델을 준비하는 중…'
         self.profile = empty_profile()
         self.footer = DungeonFooter()
-        self.cached = self.cache = self.settings = None
-        self.catalog_message = '공용 데이터 · 확인 대기'
-        self.catalog_pending = None
-        self.catalog_jobs = []
-        self.catalog_refresh_available_at = 0.0
-        self.catalog_cooldown_path = Path(engine.DATA) / 'public-content' / 'manual-refresh.json'
-        try:
-            saved = json.loads(self.catalog_cooldown_path.read_text(encoding='utf-8'))
-            self.catalog_refresh_available_at = max(0.0, float(saved.get('availableAt', 0)))
-        except (OSError, ValueError, TypeError, AttributeError): pass
-        self.next_check = 0
+        self.catalog = CatalogService(engine.ROOT, engine.DATA)
         self.last_snapshot = None
         self.commands = queue.Queue()
-        try:
-            self.settings = load_settings(engine.ROOT)
-            self.cache = ContentCache(engine.DATA, self.settings)
-            self.cached = self.cache.load()
-            if self.cached: self.catalog_message = '공용 데이터 · 로컬 보관본'
-        except ContentError as error:
-            self.catalog_message = str(error)
-        self.matcher = ContentMatcher(self.cached)
         self.command_timer = app.call_later(.05,self.drain_commands,repeat=True)
         self.timer = app.call_later(1,self.tick,repeat=True)
 
@@ -181,7 +83,7 @@ class Host:
         if self.closing or self.restarting: return
         self.initialized = True
         self.startup_step = 2
-        if not self.settings: self.startup_catalog_finished = True
+        if not self.catalog.settings: self.catalog.startup_finished = True
         self.error = ''
         self.generation, self.client = self.worker.requested()
         self.clients = clients
@@ -217,7 +119,7 @@ class Host:
         now = time.monotonic()
         self.footer.update(value, now)
         self.profile = character_view(value.get('identity', {}))
-        self.profile.update(self.footer.view(self.matcher, now))
+        self.profile.update(self.footer.view(self.catalog.matcher, now))
         self.status = value.get('recordingStatus', '분석 중')
         self.snapshot()
 
@@ -239,22 +141,22 @@ class Host:
 
     def snapshot(self):
         if self.closed: return
-        records = [record_view(row, self.cached) for row in self.store.history_records() if row['state'] == '완료']
+        records = [record_view(row, self.catalog.cached) for row in self.store.history_records() if row['state'] == '완료']
         records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp(), reverse=True)
         value = dict(type='snapshot', status=self.status, error=self.error, profile=self.profile,
                      records=records, clients=[asdict(client) for client in self.clients],
                      selected=self.client.hwnd if self.client else 0,
-                     catalogStatus=self.catalog_message,
-                     catalogLastUpdated=(self.cached or {}).get('checkedAt', ''),
-                     catalogRefreshAvailableAt=self.catalog_refresh_available_at,
+                     catalogStatus=self.catalog.message,
+                     catalogLastUpdated=(self.catalog.cached or {}).get('checkedAt', ''),
+                     catalogRefreshAvailableAt=self.catalog.refresh_available_at,
                      busy=self.maintenance or self.restarting or self.drive.busy or self.account.busy or (not self.initialized and not self.error),
                      google=self.account.view(),
                      lostArkApi=self.lostark_api.view(),
                      drive=dict(self.drive.view(), available=self.drive.available and self.can_change_records()),
                      restarting=self.restarting,
-                     catalogBusy=self.catalog_pending is not None,
-                     startupStep=0 if self.restarting else 3 if self.initialized and self.startup_catalog_finished else self.startup_step,
-                     startupReady=self.initialized and self.startup_catalog_finished and not self.restarting)
+                     catalogBusy=self.catalog.pending is not None,
+                     startupStep=0 if self.restarting else 3 if self.initialized and self.catalog.startup_finished else self.startup_step,
+                     startupReady=self.initialized and self.catalog.startup_finished and not self.restarting)
         serialized = json.dumps(value, ensure_ascii=False)
         if serialized != self.last_snapshot:
             self.last_snapshot = serialized
@@ -319,24 +221,13 @@ class Host:
                     and self.drive.resolve(value.get('previewId'), value.get('apply') is True)):
                 self.resume_analysis()
         elif kind == 'catalog_refresh':
-            if (self.initialized and self.settings and not self.catalog_pending and not self.restarting
-                    and not self.maintenance and time.time() >= self.catalog_refresh_available_at):
-                self.catalog_refresh_available_at = time.time() + 300
-                try:
-                    self.catalog_cooldown_path.parent.mkdir(parents=True, exist_ok=True)
-                    temporary = self.catalog_cooldown_path.with_suffix('.tmp')
-                    temporary.write_text(json.dumps(dict(availableAt=self.catalog_refresh_available_at)), encoding='utf-8')
-                    temporary.replace(self.catalog_cooldown_path)
-                except OSError: pass
+            if (self.initialized and self.catalog.settings and not self.catalog.pending and not self.restarting
+                    and not self.maintenance and time.time() >= self.catalog.refresh_available_at):
+                self.catalog.reserve_manual_refresh()
                 self.refresh_catalog()
             self.snapshot()
         elif kind == 'catalog':
-            rows = []
-            for dungeon, modes in (self.cached or {}).get('content', {}).items():
-                for mode, gates in modes.items():
-                    for gate, values in gates.items():
-                        rows.append(dict(dungeon=dungeon, mode=mode, gate=gate, **values))
-            self.emit(dict(type='catalog', rows=rows))
+            self.emit(dict(type='catalog', rows=self.catalog.rows()))
 
     def can_change_records(self):
         return self.initialized and not (self.maintenance or self.restarting or self.error or self.drive.busy or self.account.busy)
@@ -407,7 +298,7 @@ class Host:
 
     def finish_shutdown(self):
         if (self.closed or not self.worker_done or not self.account.settled or not self.drive.settled
-                or any(job.is_alive() for job in self.catalog_jobs)): return
+                or not self.catalog.settled): return
         self.closed = True
         self.timer.stop()
         self.command_timer.stop()
@@ -416,50 +307,20 @@ class Host:
         self.app.quit()
 
     def stop_catalog(self):
-        if self.catalog_pending:
-            self.catalog_pending[0].set()
-            self.catalog_pending = None
+        self.catalog.stop()
 
     def refresh_catalog(self):
-        # Finish model startup before scheduling the independent catalog check.
-        if not self.initialized or self.catalog_pending or not self.settings or self.closing or self.restarting: return
-        self.next_check = time.monotonic() + self.settings['refreshSeconds']
-        try: api_key = load_api_key(engine.ROOT)
-        except ContentError as error:
-            self.catalog_message = str(error) + (' · 마지막 정상 데이터 사용 중' if self.cached else '')
-            self.startup_catalog_finished = True
-            self.snapshot()
+        if not self.initialized or self.closing or self.restarting:
             return
-        cancel, results = threading.Event(), queue.Queue()
-        settings, cached = self.settings, self.cached
-        def run():
-            try: results.put((PublicContentClient(api_key, settings, cancel).refresh(cached), None))
-            except Exception as error: results.put((None, str(error)))
-        self.catalog_pending = cancel, results
-        self.catalog_message = '공용 데이터 변경 확인 중…'
-        job = threading.Thread(target=run, daemon=True, name='PublicContent')
-        self.catalog_jobs = [old for old in self.catalog_jobs if old.is_alive()]
-        self.catalog_jobs.append(job)
-        job.start()
+        self.catalog.refresh()
         self.snapshot()
 
     def tick(self):
         if self.closing or self.restarting: return
-        if self.catalog_pending:
-            try: result, error = self.catalog_pending[1].get_nowait()
-            except queue.Empty: pass
-            else:
-                self.catalog_pending = None
-                self.startup_catalog_finished = True
-                if error: self.catalog_message = error + (' · 마지막 정상 데이터 사용 중' if self.cached else '')
-                else:
-                    try:
-                        self.cache.save(result)
-                        self.cached = result
-                        self.matcher = ContentMatcher(result)
-                        self.catalog_message = '공용 데이터 · 최신 확인 ' + datetime.now().strftime('%H:%M')
-                    except (OSError, ContentError): self.catalog_message = '공용 데이터를 보관하지 못했습니다.'
-        elif self.initialized and time.monotonic() >= self.next_check: self.refresh_catalog()
+        if self.catalog.pending:
+            self.catalog.poll()
+        elif self.initialized and time.monotonic() >= self.catalog.next_check:
+            self.refresh_catalog()
         if self.initialized and self.pids and not self.maintenance and (self.client is None or not engine.client_alive(self.client)):
             self.refresh_clients()
         if self.initialized and not self.maintenance:
@@ -467,7 +328,7 @@ class Host:
                 self.pause_for('weekly')
             elif self.week_start >= week_start():
                 self.drive.check_auto_upload()
-        self.profile.update(self.footer.view(self.matcher, time.monotonic()))
+        self.profile.update(self.footer.view(self.catalog.matcher, time.monotonic()))
         self.snapshot()
 
     def finished(self):
@@ -485,8 +346,8 @@ class Host:
             self.generation = 0
             self.initialized = False
             self.startup_step = 0
-            self.startup_catalog_finished = False
-            self.next_check = 0
+            self.catalog.startup_finished = False
+            self.catalog.next_check = 0
             self.error = ''
             self.last_snapshot = None
             self.start()

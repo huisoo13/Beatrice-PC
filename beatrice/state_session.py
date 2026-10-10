@@ -16,6 +16,11 @@ class StateSession:
         self.character=None;self.tracker=None;self.pending_tracker=None;self.run=None
         return self.token
 
+    def capture_interrupted(self):
+        for tracker in (self.tracker, self.pending_tracker):
+            if tracker is not None:
+                tracker.clear_candidate()
+
     def prepare_pending_run(self,session_id,expected_gates,*args,**kwargs):
         self.run=session_id
         self.pending_tracker=GateTracker(session_id,expected_gates,max_sample_gap=5,snapshot_mode=True)
@@ -23,18 +28,7 @@ class StateSession:
     def confirm_character(self,character_key,character_name,session_id,expected_gates,*args,**kwargs):
         previous_owner=self.owner;self.owner=character_key
         try:
-            with self.store.db:
-                pending=self.store.state_records(previous_owner) if previous_owner.startswith('pending:') else []
-                groups={key(r['dungeonName']) for r in pending}
-                for group in groups:
-                    rows=[dict(r,characterKey=character_key,characterName=character_name) for r in pending if key(r['dungeonName'])==group]
-                    known=self.store.state_records(character_key,group)
-                    expected=max(r.get('expectedGates') or r['gate'] for r in rows)
-                    if max((r.get('expectedGates',r['gate']) for r in known),default=0)>expected:
-                        # 이름 확정 전에 잡힌 짧은 배열은 기존 전체 기록을 대체하지 않습니다.
-                        continue
-                    self.store.save_completions(character_key,group,rows,expected,transactional=False)
-                    self.store.db.execute('DELETE FROM gate_states WHERE owner=? AND dungeon_key=?',(previous_owner,group))
+            self.store.assign_pending_character(previous_owner, character_key, character_name)
         except Exception:
             self.owner=previous_owner;raise
         self.character=dict(key=character_key,name=character_name)

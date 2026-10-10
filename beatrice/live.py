@@ -21,11 +21,9 @@ class LiveCoordinator:
         """Keep confirmed state; unavailable capture cannot count as an observation."""
         self.candidate=None;self.count=0
         self.gate_recheck=None
-        self.identity.candidate=None;self.identity.count=0
-        self.identity.recovery_count=0;self.identity.login_count=0;self.identity.login_recovery=0
-        self.banner.count=0;self.banner.last=None
-        for tracker in (self.session.tracker,self.session.pending_tracker):
-            if tracker is not None:tracker.clear_candidate()
+        self.identity.capture_interrupted()
+        self.banner.capture_interrupted()
+        self.session.capture_interrupted()
     def update(self,at,character,boxes,dungeon):
         identity=self.identity.update(at.timestamp(),character)
         suspended=any(a['type']=='suspend' for a in identity['actions'])

@@ -39,6 +39,13 @@ class CharacterTracker:
         self.login_seen_at=None
         self.login_card=None
 
+    def capture_interrupted(self):
+        self.candidate = None
+        self.count = 0
+        self.recovery_count = 0
+        self.login_count = 0
+        self.login_recovery = 0
+
     def update(self, seconds, observation):
         if not math.isfinite(seconds) or (self.last_time is not None and seconds <= self.last_time):
             raise ValueError('관측 시각은 유한한 값이며 증가해야 합니다.')

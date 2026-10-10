@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private Button? settingsButton;
     private Button? maximizeButton;
     private string currentPage = "records";
-    private sealed record Raid(string Character, string Dungeon, string Mode, string Gate, string Date, JsonElement Detail);
     private readonly List<Raid> records = new();
     private readonly EngineClient engine = new();
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
@@ -49,6 +48,12 @@ public partial class MainWindow : Window
         colors["accentTint"] = tokens.RootElement.GetProperty("derivedColors").GetProperty("accentTint").GetString()!;
         font = tokens.RootElement.GetProperty("font").GetProperty("regularSource").GetString()!;
         semiboldFont = tokens.RootElement.GetProperty("font").GetProperty("semiboldSource").GetString()!;
+        var viewTheme = new ViewTheme(font, semiboldFont, Root.Resources, Brush, Text);
+        recordsView = new RecordsView(Page, viewTheme,
+            () => demo ? new DateTime(2026,10,8,23,0,0) : RecordPresentation.KoreaNow(DateTimeOffset.UtcNow),
+            ShowRecordDetail, () => PageViewport.ChangeView(null,0,null,true));
+        recordsView.Changed += () => { if (mainContentLoaded) RebuildRecords(); };
+        rewardsView = new RewardsView(Page, viewTheme, RefreshRewards);
         Root.Background = Brush("hover"); Rail.Background = Brush("sidebar");
         SecondarySidebar.Background = Brush("sidebar");
         var sidebarDivider = Brush("border"); sidebarDivider.Opacity = .45; Rail.BorderBrush = sidebarDivider;
@@ -135,7 +140,7 @@ public partial class MainWindow : Window
         AppWindow.Closing += async (_, args) => {
             args.Cancel = true;
             if (closing) return;
-            closing = true; recordWeekTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
+            closing = true; recordsView.Dispose(); rewardCooldownTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
             if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
             try { await SaveLostArkApiKey(); await engine.StopAsync().ConfigureAwait(false); }
             catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
@@ -453,18 +458,19 @@ public partial class MainWindow : Window
         }
         UpdateSplash(value);
         if (!mainContentLoaded) { pendingSnapshot = value.Clone(); return; }
-        statusMessage = value.GetProperty("status").GetString()!;
-        busy = value.GetProperty("busy").GetBoolean(); catalogBusy = value.GetProperty("catalogBusy").GetBoolean();
+        var snapshot = EngineSnapshot.Parse(value);
+        statusMessage = snapshot.Status;
+        busy = snapshot.Busy; catalogBusy = snapshot.CatalogBusy;
         if (appStatus is not null) { appStatus.Text = statusMessage; ToolTipService.SetToolTip(appStatus,statusMessage); }
-        var profile = value.GetProperty("profile");
-        if (characterName is not null) { characterName.Text = profile.GetProperty("character").GetString()!; ToolTipService.SetToolTip(characterName,characterName.Text); }
-        if (characterStatus is not null) { characterStatus.Text = profile.GetProperty("message").GetString()!; ToolTipService.SetToolTip(characterStatus,characterStatus.Text); }
-        var characterState = profile.TryGetProperty("characterState", out var stateValue) ? stateValue.GetString() : profile.GetProperty("active").GetBoolean() ? "playing" : "unset";
+        var profile = snapshot.Profile;
+        if (characterName is not null) { characterName.Text = profile.Character; ToolTipService.SetToolTip(characterName,characterName.Text); }
+        if (characterStatus is not null) { characterStatus.Text = profile.Message; ToolTipService.SetToolTip(characterStatus,characterStatus.Text); }
+        var characterState = profile.CharacterState;
         var characterColor = characterState == "playing" ? "success" : characterState == "selecting" ? "warning" : "danger";
         ProfileStatusDot.Fill = Brush(characterColor);
         if (characterStatus is not null) characterStatus.Foreground = Brush(characterColor);
         DetectedDungeonContent.Children.Clear();
-        var dungeon = profile.TryGetProperty("dungeon",out var name) ? name.GetString() : null;
+        var dungeon = profile.Dungeon;
         DetectedDungeon.Visibility = string.IsNullOrEmpty(dungeon) ? Visibility.Collapsed : Visibility.Visible;
         if (!string.IsNullOrEmpty(dungeon))
         {
@@ -474,31 +480,30 @@ public partial class MainWindow : Window
             var title = new StackPanel { Spacing = 1 };
             var dungeonTitle = Text(dungeon,14,bold:true); dungeonTitle.TextWrapping = TextWrapping.NoWrap; dungeonTitle.TextTrimming = TextTrimming.CharacterEllipsis;
             ToolTipService.SetToolTip(dungeonTitle,dungeon); title.Children.Add(dungeonTitle);
-            title.Children.Add(Text(profile.GetProperty("dungeonSubtitle").GetString()!,12,"muted")); grid.Children.Add(title);
-            var state = Text(profile.GetProperty("dungeonState").GetString()!,12,"accent",true); state.VerticalAlignment = VerticalAlignment.Center;
+            title.Children.Add(Text(profile.DungeonSubtitle,12,"muted")); grid.Children.Add(title);
+            var state = Text(profile.DungeonState,12,"accent",true); state.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(state,1); grid.Children.Add(state); DetectedDungeonContent.Children.Add(grid);
         }
-        var recordJson = value.GetProperty("records").GetRawText();
+        var recordJson = snapshot.RecordsJson;
         if (recordJson != lastRecords)
         {
             lastRecords = recordJson; records.Clear();
-            foreach (var row in value.GetProperty("records").EnumerateArray())
-                records.Add(new Raid(row.GetProperty("character").GetString()!,row.GetProperty("dungeon").GetString()!,row.GetProperty("mode").GetString()!,row.GetProperty("gate").GetString()!,row.GetProperty("date").GetString()!,row.GetProperty("detail").Clone()));
+            records.AddRange(snapshot.Records);
             RebuildRecords();
         }
-        var clientJson = value.GetProperty("clients").GetRawText();
-        var selected = value.GetProperty("selected").GetInt64();
-        clients = value.GetProperty("clients").Clone();
+        var clientJson = snapshot.Clients.GetRawText();
+        var selected = snapshot.Selected;
+        clients = snapshot.Clients;
         if (clientJson != lastClients || selected != selectedClient) { lastClients = clientJson; selectedClient = selected; UpdateClients(); }
         var previousCatalog = catalogMessage;
-        catalogMessage = value.GetProperty("catalogStatus").GetString()!;
-        if (value.TryGetProperty("catalogLastUpdated",out var updated) && DateTimeOffset.TryParse(updated.GetString(),out var lastUpdated)) lastRewardUpdate = lastUpdated;
-        if (value.TryGetProperty("catalogRefreshAvailableAt",out var available) && available.TryGetDouble(out var deadline)) rewardRefreshAvailableAt = DateTimeOffset.FromUnixTimeMilliseconds((long)(deadline*1000));
+        catalogMessage = snapshot.CatalogStatus;
+        if (snapshot.CatalogLastUpdated is DateTimeOffset lastUpdated) lastRewardUpdate = lastUpdated;
+        if (snapshot.CatalogRefreshAvailableAt is DateTimeOffset deadline) rewardRefreshAvailableAt = deadline;
         UpdateRewardRefresh();
         if (currentPage == "rewards" && !catalogBusy && (rewardData.ValueKind != JsonValueKind.Array || previousCatalog != catalogMessage)) _ = RequestRewards();
-        if (value.TryGetProperty("lostArkApi",out var apiState)) lostArkApi = apiState.Clone();
-        if (value.TryGetProperty("google",out var googleState)) google = googleState.Clone();
-        if (value.TryGetProperty("drive",out var driveState)) drive = driveState.Clone();
+        if (snapshot.LostArkApi is JsonElement lostArkApiState) lostArkApi = lostArkApiState;
+        if (snapshot.Google is JsonElement googleState) google = googleState;
+        if (snapshot.Drive is JsonElement driveState) drive = driveState;
         UpdateSettingsState();
         if (startupCheck && value.TryGetProperty("startupReady", out var startupReady) && startupReady.GetBoolean())
         {

@@ -7,6 +7,10 @@ class CompletionBanner:
         self.active=False;self.target=None;self.count=0;self.consumed=False
         self.missing=0;self.last=None;self.scene=None
 
+    def capture_interrupted(self):
+        self.count = 0
+        self.last = None
+
     def update(self,seconds,visible,eligible,target,scene=None):
         if not visible:
             self.count=0

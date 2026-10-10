@@ -1,11 +1,9 @@
 """Shared PC/iOS JSON contract and transactional local restore."""
 from collections import defaultdict
-from contextlib import closing
 from datetime import datetime, timezone
 import json
 import re
 from pathlib import Path
-import sqlite3
 import uuid
 
 from .dungeon import key
@@ -101,8 +99,7 @@ def encode_records(records):
 
 def export_snapshot(store):
     """Read rows and completion revision from the same SQLite snapshot."""
-    with store.db:
-        store.db.execute('BEGIN')
+    with store.transaction(snapshot=True):
         revision = store.drive_revision()
         records, omitted = export_records(store)
     return records, omitted, revision
@@ -133,27 +130,19 @@ def restore_records(store, records, backup_directory):
     directory.mkdir(parents=True, exist_ok=True)
     backup = directory / (now.strftime('%Y%m%dT%H%M%S') + '-' + uuid.uuid4().hex + '.sqlite3')
     # SQLite backup includes WAL data, unlike copying the .sqlite3 file.
-    with closing(sqlite3.connect(backup)) as destination:
-        store.db.backup(destination)
+    store.backup_to(backup)
     grouped = defaultdict(list)
     for row in records:
         if row['state']=='완료':grouped[(row['characterName'], key(row['dungeonName']))].append(row)
     at = now.isoformat()
-    with store.db:
-        for table in ('gate_states', 'completion_history', 'outbox', 'pending_events', 'events', 'pending_segments', 'sessions'):
-            store.db.execute(f'DELETE FROM {table}')
-        store.reset_drive_queue()
-        for (character, dungeon), rows in grouped.items():
-            owner = 'name:' + character
-            for row in rows:
-                value = dict(row, gate=row['gate'] or 1, characterKey=owner,
-                             expectedGates=0, recordType='gate_state',
-                             observedAt=at, confirmedAt=at, savedAt=at, completedAt=None,
-                             evidenceType='drive_import', timeBasis='drive_import',
-                             completionScope='raid' if row['gate'] == 0 else 'gate')
-                store.remember_completion(value)
-                if existing_time(value) >= store.repeat_start():
-                    store.db.execute("""INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
-                        WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
-                                     (owner, dungeon, value['gate'], json.dumps(value, ensure_ascii=False)))
+    imported = []
+    for (character, dungeon), rows in grouped.items():
+        owner = 'name:' + character
+        for row in rows:
+            imported.append(dict(row, gate=row['gate'] or 1, characterKey=owner,
+                expectedGates=0, recordType='gate_state',
+                observedAt=at, confirmedAt=at, savedAt=at, completedAt=None,
+                evidenceType='drive_import', timeBasis='drive_import',
+                completionScope='raid' if row['gate'] == 0 else 'gate'))
+    store.replace_history(imported)
     return backup

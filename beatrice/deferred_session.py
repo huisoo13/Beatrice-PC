@@ -87,7 +87,7 @@ class DeferredRecordingSession(RecordingSession):
         if time_basis not in ('live_capture','recording_start_plus_offset','synthetic_test') or (time_basis=='synthetic_test' and not is_test):
             raise ValueError('시각 기준을 확인해주세요.')
         inserted=[]
-        with self.store.db:
+        with self.store.transaction():
             previous=self.store.load(key,session_id,settings,transactional=False)
             restored=GateTracker(session_id,expected_gates)
             if previous:
@@ -112,8 +112,7 @@ class DeferredRecordingSession(RecordingSession):
                     segmentID=segment)
                 final.append(event);mappings.append((event_id,pending['eventID']))
             inserted=self.store.commit(key,session_id,checkpoint(selected),final,transactional=False)
-            self.store.db.executemany('UPDATE pending_events SET resolved_event_id=? WHERE event_id=?',mappings)
-            self.store.db.execute("UPDATE pending_segments SET status='resolved' WHERE segment_id=?",(segment,))
+            self.store.resolve_pending(segment, mappings)
         self.character=dict(key=key,name=name,session=session_id)
         self.settings=settings;self.tracker=selected
         self.token=str(uuid.uuid4())
