@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-10: [실시간 인식 모듈과 사용법](docs/recognition-module.md). OBS 생명주기·YOLO/OCR 파이프라인을 `beatrice.recognition`으로 분리했습니다. 앱 작업자는 Python 스레드·콜백 연결만 담당하고, 모델·완료 판단·기록 형식은 유지합니다. Qt 의존성을 제거했으며 전체 테스트 400개와 내장 OBS의 메인·스플래시 종료 검사를 통과했습니다.
+
 2026-10-10: [로스트아크 API 모듈과 사용법](docs/lostark-api.md). 앱에 저장된 키를 사용하는 공통 통신과 캐릭터·전투정보 조회를 제공합니다. 필요한 기능은 `beatrice.lostark.LostArkClient`에서 호출합니다.
 
 2026-10-10: [Google Drive API 모듈과 사용법](docs/drive-api.md). 개인 기록과 공용 데이터가 공통 통신 모듈을 사용하며, 기록 저장·백업·캐시 정책은 기존 어댑터가 담당합니다.
@@ -14,7 +16,7 @@
 
 2026-10-08: [완료 이력 보존과 주간 중복 방지 실게임 검증](docs/60-weekly-history-verification.md). 주간 반복 상태만 수요일 오전 6시(한국 시간)에 초기화하고 전체 이력은 화면·PC.json에 유지합니다. 이전 주 세르카 기록 이후 새 완료 저장, 같은 주 4막 하드의 실제 중복 차단을 확인했습니다. Python 테스트 342개 통과.
 
-2026-10-08: [Qt 화면 제거와 WinUI 기능 이전](docs/59-native-drive-migration.md). Google 로그인·개인 Drive 기능을 UI 독립 Python 서비스로 옮기고 WinUI 설정에 연결했습니다. 기존 SQLite·JSON·DPAPI 로그인 정보를 유지하며, Qt는 분석 작업자의 Core 신호·스레드에만 사용합니다.
+2026-10-08: [Qt 화면 제거와 WinUI 기능 이전](docs/59-native-drive-migration.md). Google 로그인·개인 Drive 기능을 UI 독립 Python 서비스로 옮기고 WinUI 설정에 연결했습니다. 기존 SQLite·JSON·DPAPI 로그인 정보를 유지하며, 당시 남아 있던 Qt Core 신호·스레드는 2026-10-10 Python 스레드·큐로 교체했습니다.
 
 UI 에셋과 디자인 자료의 Git 관리 기준은 [디자인 자료 관리](design/README.md)를 참고합니다. 로컬 스킬 설치본·이전 시안·생성된 검토 이미지는 제외하고, 앱 소스·실행 에셋·최종 지침은 포함합니다.
 

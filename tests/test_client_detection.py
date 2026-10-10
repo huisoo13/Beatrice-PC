@@ -4,24 +4,23 @@ import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from PySide6.QtCore import QCoreApplication,QObject,Signal
+from beatrice.thread_events import Event,EventLoop
 from beatrice import engine_worker as engine
 from beatrice.game_window import Client
 from beatrice.native_bridge import Host
 
-class Worker(QObject):
-    progress=Signal(str);ready=Signal(list);observation=Signal(dict);process_changed=Signal(object)
-    status=Signal(int,str);failed=Signal(str);settled=Signal(int);finished=Signal()
+class Worker:
     def __init__(self):
-        super().__init__();self.stop_event=threading.Event();self.running=False;self.selection=(0,None)
+        for name in ('progress','ready','observation','process_changed','status','failed','settled','finished'):setattr(self,name,Event());self.stop_event=threading.Event();self.running=False;self.selection=(0,None)
+    def join(self,timeout=None):pass
     def start(self):self.running=True
     def requested(self):return self.selection
     def select(self,generation,client):self.selection=(generation,client)
-    def isRunning(self):return self.running
+    def is_alive(self):return self.running
 
 class ClientDetectionTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):cls.app=QCoreApplication.instance() or QCoreApplication([])
+    def setUpClass(cls):cls.app=EventLoop()
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.data=patch.object(engine,'DATA',Path(self.tmp.name));self.data.start();self.addCleanup(self.data.stop)

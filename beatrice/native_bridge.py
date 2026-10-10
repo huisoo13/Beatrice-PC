@@ -1,7 +1,6 @@
 """Headless analysis host for the WinUI desktop (UTF-8 JSON lines over pipes).
 
-Qt is used only for the existing worker's signals; no QWidget is created.
-All Store access and commands run on the QCoreApplication thread.
+Worker events are queued onto the owner thread; Store and commands stay there.
 """
 import json
 import faulthandler
@@ -14,7 +13,8 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QCoreApplication, QObject, QTimer, QLockFile
+from .thread_events import EventLoop
+from .instance_lock import InstanceLock
 from . import engine_worker as engine
 from .storage import Store
 from .weekly import open_week, week_start
@@ -103,10 +103,9 @@ class DungeonFooter:
         return dict(dungeon=name, dungeonSubtitle=' · '.join(filter(None, [difficulty, self.unit])), dungeonState='진행 중')
 
 
-class Host(QObject):
+class Host:
 
     def __init__(self, app, emit, worker_factory=engine.Worker):
-        super().__init__()
         self.app, self.emit, self.worker_factory = app, emit, worker_factory
         self.store = open_week(engine.DATA)
         self.week_start = self.store.repeat_start()
@@ -152,26 +151,24 @@ class Host(QObject):
         except ContentError as error:
             self.catalog_message = str(error)
         self.matcher = ContentMatcher(self.cached)
-        self.command_timer = QTimer(self)
-        self.command_timer.timeout.connect(self.drain_commands)
-        self.command_timer.start(50)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.tick)
-        self.timer.start(1000)
+        self.command_timer = app.call_later(.05,self.drain_commands,repeat=True)
+        self.timer = app.call_later(1,self.tick,repeat=True)
 
     def start(self):
         self.worker_done = False
         self.worker = self.worker_factory()
-        self.worker.progress.connect(self.progress)
-        self.worker.ready.connect(self.ready)
-        self.worker.observation.connect(self.observation)
-        self.worker.process_changed.connect(self.process_changed)
-        self.worker.status.connect(self.worker_status)
-        self.worker.failed.connect(self.failed)
-        self.worker.settled.connect(self.settled)
-        self.worker.finished.connect(self.finished)
+        worker=self.worker
+        for name in ('progress','ready','observation','process_changed','status','failed','settled','finished'):
+            handler=self.worker_status if name=='status' else getattr(self,name)
+            def receive(*args,handler=handler,worker=worker):
+                self.app.dispatch(self.worker_event,worker,handler,args)
+            getattr(worker,name).connect(receive)
         self.worker.start()
         self.snapshot()
+
+    def worker_event(self,worker,handler,args):
+        # A restarted worker's queued callbacks cannot affect the new session.
+        if worker is self.worker and not self.closed:handler(*args)
 
     def progress(self, message):
         with (engine.DATA/'startup-progress.log').open('a',encoding='utf-8') as log:
@@ -272,7 +269,7 @@ class Host(QObject):
             self.drive.shutdown()
             self.stop_catalog()
             self.worker.stop_event.set()
-            if not self.worker.isRunning(): self.finished()
+            if not self.worker.is_alive(): self.finished()
         elif kind == 'restart' and not self.maintenance and not self.restarting and not self.drive.busy and not self.account.busy:
             self.restarting = True
             self.error = ''
@@ -282,7 +279,7 @@ class Host(QObject):
             self.footer = DungeonFooter()
             self.worker.stop_event.set()
             self.snapshot()
-            if not self.worker.isRunning(): self.finished()
+            if not self.worker.is_alive(): self.finished()
         elif kind == 'select' and self.initialized and not (self.maintenance or self.restarting or self.error or self.drive.busy or self.account.busy):
             chosen = next((c for c in self.clients if c.hwnd == value.get('hwnd')), None)
             if chosen: self.select(chosen)
@@ -474,12 +471,13 @@ class Host(QObject):
         self.snapshot()
 
     def finished(self):
+        self.worker.join()
         self.worker_done = True
         if self.closing:
             self.finish_shutdown()
         elif self.restarting:
             if self.account.session is None: self.account.restored = False
-            self.worker.deleteLater()
+            self.worker.join()
             self.restarting = False
             self.pids = None
             self.clients = []
@@ -518,47 +516,52 @@ def main(worker_factory=None):
             with wire_lock: wire.write(json.dumps(value, ensure_ascii=False, allow_nan=False) + '\n')
         except (BrokenPipeError, OSError):
             if host is not None: host.commands.put(dict(type='shutdown'))
-    app = QCoreApplication([])
-    lock = QLockFile(str(engine.DATA / 'app.lock'))
-    if not lock.tryLock(0):
+    app = EventLoop()
+    lock = InstanceLock(engine.DATA / 'app.lock')
+    if not lock.acquire():
         emit(dict(type='error', message='Beatrice가 이미 실행 중입니다.'))
+        faulthandler.cancel_dump_traceback_later()
+        startup_trace.close()
         return 2
-    try: host = Host(app, emit, worker_factory or engine.Worker)
-    except Exception as error:
-        emit(dict(type='error', message=str(error)))
-        return 1
-    if worker_factory is None:
-        # Import native numerical runtimes before the Qt event loop and threads.
-        # Cold first imports inside the worker can block indefinitely on Windows.
-        try:
-            host.progress('1 / 3 · 분석 라이브러리를 준비하는 중…')
-            import numpy
-            import cv2
-            import ultralytics
-            host.progress('1 / 3 · OCR 라이브러리를 준비하는 중…')
-            import paddleocr
-        except Exception as error:
-            host.failed(str(error))
-            host.store.close()
-            return 1
-    startup_check = '--engine-startup-check' in sys.argv
-    if startup_check:
-        # Developer check uses an isolated data directory and never binds a game.
-        engine.find_clients = lambda *_: []
-    def read():
-        try:
-            for line in sys.stdin:
-                try:
-                    value = json.loads(line)
-                    if isinstance(value, dict): host.commands.put(value)
-                except (ValueError, TypeError): emit(dict(type='error', message='잘못된 앱 명령입니다.'))
-        finally: host.commands.put(dict(type='shutdown'))
-    threading.Thread(target=read, daemon=True, name='WinUICommands').start()
-    host.start()
-    host.worker.ready.connect(lambda _: faulthandler.cancel_dump_traceback_later())
-    host.worker.failed.connect(lambda _: faulthandler.cancel_dump_traceback_later())
     try:
-        return app.exec()
+        try: host = Host(app, emit, worker_factory or engine.Worker)
+        except Exception as error:
+            emit(dict(type='error', message=str(error)))
+            return 1
+        if worker_factory is None:
+            # Import native numerical runtimes before the event loop and threads.
+            # Cold first imports inside the worker can block indefinitely on Windows.
+            try:
+                host.progress('1 / 3 · 분석 라이브러리를 준비하는 중…')
+                import numpy
+                import cv2
+                import ultralytics
+                host.progress('1 / 3 · OCR 라이브러리를 준비하는 중…')
+                import paddleocr
+            except Exception as error:
+                host.failed(str(error))
+                host.store.close()
+                return 1
+        startup_check = '--engine-startup-check' in sys.argv
+        if startup_check:
+            # Developer check uses an isolated data directory and never binds a game.
+            engine.find_clients = lambda *_: []
+            from .recognition import service as recognition_service
+            recognition_service.find_clients = lambda *_: []
+        def read():
+            try:
+                for line in sys.stdin:
+                    try:
+                        value = json.loads(line)
+                        if isinstance(value, dict): host.commands.put(value)
+                    except (ValueError, TypeError): emit(dict(type='error', message='잘못된 앱 명령입니다.'))
+            finally: host.commands.put(dict(type='shutdown'))
+        threading.Thread(target=read, daemon=True, name='WinUICommands').start()
+        host.start()
+        host.worker.ready.connect(lambda _: faulthandler.cancel_dump_traceback_later())
+        host.worker.failed.connect(lambda _: faulthandler.cancel_dump_traceback_later())
+        return app.run()
     finally:
         faulthandler.cancel_dump_traceback_later()
         startup_trace.close()
+        lock.release()

@@ -14,7 +14,7 @@ site=runtime/'Lib/site-packages';site.mkdir(parents=True,exist_ok=True)
 wheel_manifest=[]
 for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
     if wheel.name.startswith(('torch-','torchvision-')) and not wheel.name.startswith(('torch-2.8.0-','torchvision-0.23.0-')):continue
-    if wheel.name.lower().startswith('easyocr-'):continue
+    if wheel.name.lower().startswith(('easyocr-','pyside6','shiboken6')):continue
     # contrib가 필요한 PaddleOCR와 다른 OpenCV 의존성은 동일 cv2 바이너리를 공유합니다.
     skip_cv=wheel.name.startswith(('opencv_python-','opencv_python_headless-'))
     with zipfile.ZipFile(wheel) as z:
@@ -28,9 +28,14 @@ for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
             else:relative=Path(name)
             target=site/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read(name))
     wheel_manifest.append(dict(file=wheel.name,sha256=hashlib.sha256(wheel.read_bytes()).hexdigest()))
-# App-local VC runtime: Qt 공식 휠에서 제공하는 런타임을 Python 실행 파일 옆에 배치합니다.
-for pattern in ('msvcp140*.dll','vcruntime140*.dll','concrt140.dll'):
-    for dll in (site/'PySide6').glob(pattern):shutil.copy2(dll,runtime/dll.name)
+# Resolve the app-local VC runtime from the embedded Python archive, bundled
+# numerical wheels or explicitly prepared build/vc-runtime files, without Qt.
+for source in (site,native_ui,ROOT/'build/vc-runtime'):
+    for pattern in ('msvcp140*.dll','vcruntime140*.dll','concrt140.dll'):
+        for dll in sorted(source.rglob(pattern)):
+            if not (runtime/dll.name).exists():shutil.copy2(dll,runtime/dll.name)
+for name in ('msvcp140.dll','vcruntime140.dll'):
+    if not (runtime/name).is_file():raise ValueError('배포용 VC 런타임 누락: '+name+' · build/vc-runtime에 준비해주세요.')
 (runtime/'python312._pth').write_text('python312.zip\n.\nLib/site-packages\n..\nimport site\n')
 for folder in ('beatrice','config'):
     shutil.copytree(ROOT/folder,stage/folder,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))

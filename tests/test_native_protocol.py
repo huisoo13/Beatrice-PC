@@ -13,7 +13,7 @@ class NativeProtocolTests(unittest.TestCase):
     def test_utf8_pipes_restart_delete_and_graceful_eof(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:
-            env = dict(os.environ, BEATRICE_DATA_DIR=directory, PYTHONIOENCODING='utf-8', QT_QPA_PLATFORM='offscreen')
+            env = dict(os.environ, BEATRICE_DATA_DIR=directory, PYTHONIOENCODING='utf-8')
             child = subprocess.Popen([sys.executable, str(root/'tests/support/native_fixture_engine.py')],
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      text=True, encoding='utf-8', env=env, cwd=root)
@@ -101,7 +101,7 @@ class NativeProtocolTests(unittest.TestCase):
                 child.stdout.close();child.stderr.close();reader.join(timeout=1)
 
 
-    def test_engine_import_does_not_load_qt_widgets(self):
+    def test_engine_import_does_not_load_qt(self):
         root=Path(__file__).resolve().parents[1]
-        result=subprocess.run([sys.executable,'-c',"import sys; import beatrice.native_bridge; assert 'PySide6.QtWidgets' not in sys.modules"],cwd=root,capture_output=True,text=True,timeout=10)
+        result=subprocess.run([sys.executable,'-c',"import sys; import beatrice.native_bridge; assert not any(m.startswith(('PySide6','shiboken6')) for m in sys.modules)"],cwd=root,capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)

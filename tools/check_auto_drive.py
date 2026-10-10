@@ -10,7 +10,6 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 from beatrice.google_auth import AuthError, TokenStore, drive_access_token
 from beatrice.google_drive import DriveClient, DriveError, API

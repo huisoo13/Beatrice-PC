@@ -1,34 +1,25 @@
 """Protocol/controller regression tests. No models, OBS, game or network are started."""
 import os
-os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtCore import QCoreApplication
+from beatrice.thread_events import Event,EventLoop
 from beatrice import engine_worker as engine
 from beatrice.game_window import Client
 from beatrice.native_bridge import Host, DungeonFooter, observation_view, record_view
 
 
-class FakeWorker(QObject):
-    progress = Signal(str)
-    ready = Signal(list)
-    observation = Signal(dict)
-    process_changed = Signal(object)
-    status = Signal(int, str)
-    failed = Signal(str)
-    settled = Signal(int)
-    finished = Signal()
+class FakeWorker:
     def __init__(self):
-        super().__init__()
+        for name in ('progress','ready','observation','process_changed','status','failed','settled','finished'):setattr(self,name,Event())
         self.stop_event = threading.Event()
         self.running = False
         self.command = (0, None)
+    def join(self,timeout=None):pass
     def start(self): self.running = True
-    def isRunning(self): return self.running
+    def is_alive(self): return self.running
     def select(self, generation, client): self.command = generation, client
     def requested(self): return self.command
     def finish(self):
@@ -38,7 +29,7 @@ class FakeWorker(QObject):
 
 class NativeBridgeTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls): cls.app = QCoreApplication.instance() or QCoreApplication([])
+    def setUpClass(cls): cls.app = EventLoop()
 
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
@@ -60,6 +51,15 @@ class NativeBridgeTests(unittest.TestCase):
         if not self.host.closing: self.host.store.close()
         self.patch.stop()
         self.folder.cleanup()
+
+    def test_old_worker_queued_callback_is_ignored_after_restart(self):
+        worker=self.host.worker
+        thread=threading.Thread(target=lambda:worker.progress.emit('old queued progress'))
+        thread.start();thread.join()
+        self.host.worker=FakeWorker()
+        before=self.host.status
+        self.app.drain()
+        self.assertEqual(self.host.status,before)
 
     def test_lostark_api_command_persists_key_without_exposing_it(self):
         import json

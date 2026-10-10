@@ -1,5 +1,4 @@
 import os
-os.environ.setdefault('QT_QPA_PLATFORM','offscreen')
 
 import tempfile
 import threading
@@ -7,14 +6,12 @@ import unittest
 from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import Mock,patch
-from PySide6.QtCore import QCoreApplication
 from beatrice import engine_worker as engine
+from beatrice.recognition import service as recognition_service
 from beatrice.game_window import Client
 
 
 class StartupCaptureTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):cls.app=QCoreApplication.instance() or QCoreApplication([])
 
     def run_startup(self,clients,replace=False):
         worker=engine.Worker();events=[]
@@ -37,10 +34,10 @@ class StartupCaptureTests(unittest.TestCase):
         failures=[];worker.failed.connect(failures.append)
         with tempfile.TemporaryDirectory() as folder,ExitStack() as stack:
             stack.enter_context(patch.object(engine,'DATA',Path(folder)))
-            stack.enter_context(patch.object(engine,'ProcessWatch',return_value=watch))
-            stack.enter_context(patch.object(engine,'find_clients',side_effect=lambda pids:events.append('game_query') or clients))
-            stack.enter_context(patch.object(engine,'client_active',return_value=True))
-            stack.enter_context(patch.object(engine,'client_alive',return_value=True))
+            stack.enter_context(patch.object(recognition_service,'ProcessWatch',return_value=watch))
+            stack.enter_context(patch.object(recognition_service,'find_clients',side_effect=lambda pids:events.append('game_query') or clients))
+            stack.enter_context(patch.object(recognition_service,'client_active',return_value=True))
+            stack.enter_context(patch.object(recognition_service,'client_alive',return_value=True))
             for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',
                          'live.LiveCoordinator','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
                          'completion_overlay.CompletionOverlayDetector','completion_diagnostic.CompletionDiagnostic',

@@ -7,7 +7,8 @@ from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from PySide6.QtCore import QCoreApplication,QTimer
+from beatrice.thread_events import EventLoop
+from beatrice.recognition import service as recognition_service
 from beatrice import engine_worker as engine
 from beatrice.native_bridge import Host
 from beatrice.obs_capture import ObsCapture
@@ -24,11 +25,11 @@ def main():
         def _start(self):super()._start();children.append(self.process)
     def watch(callback):
         result=ProcessWatch(callback,snapshot=lambda:frozenset());watches.append(result);return result
-    app=QCoreApplication.instance() or QCoreApplication([])
+    app=EventLoop()
     with tempfile.TemporaryDirectory() as folder,ExitStack() as stack:
         stack.enter_context(patch.object(engine,'DATA',Path(folder)))
         stack.enter_context(patch('beatrice.native_bridge.load_settings',side_effect=ContentError('probe: network disabled')))
-        stack.enter_context(patch.object(engine,'ProcessWatch',side_effect=watch))
+        stack.enter_context(patch.object(recognition_service,'ProcessWatch',side_effect=watch))
         stack.enter_context(patch('beatrice.obs_capture.ObsCapture',TrackedCapture))
         for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',
                      'live.LiveCoordinator','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
@@ -38,15 +39,15 @@ def main():
         host=Host(app,lambda message:None)
         host.start();host.worker.failed.connect(failures.append)
         stop=lambda:host.command(dict(type='shutdown'))
-        if mode=='main':host.worker.ready.connect(lambda clients:QTimer.singleShot(100,stop))
-        else:host.worker.progress.connect(lambda text:QTimer.singleShot(100,stop) if text.startswith('2 / 3') else None)
-        deadline=QTimer();deadline.setSingleShot(True)
+        if mode=='main':host.worker.ready.connect(lambda clients:app.dispatch(lambda:app.call_later(.1,stop)))
+        else:host.worker.progress.connect(lambda text:app.dispatch(lambda:app.call_later(.1,stop)) if text.startswith('2 / 3') else None)
         def timeout():
             failures.append('Engine shutdown timed out');stop()
-        deadline.timeout.connect(timeout);deadline.start(20000)
-        app.exec();deadline.stop()
-        if not host.worker.wait(5000):raise RuntimeError('Analysis worker survived shutdown')
-        result=dict(mode=mode,passed=not failures,errors=failures,workerRunning=host.worker.isRunning(),
+        deadline=app.call_later(20,timeout)
+        app.run();deadline.stop()
+        host.worker.join(5)
+        if host.worker.is_alive():raise RuntimeError('Analysis worker survived shutdown')
+        result=dict(mode=mode,passed=not failures,errors=failures,workerRunning=host.worker.is_alive(),
                     children=[dict(pid=p.pid,exitCode=p.poll()) for p in children],
                     watcherAlive=any(w.is_alive() for w in watches),
                     statusThreadAlive=any(c.status_thread and c.status_thread.is_alive() for c in captures),

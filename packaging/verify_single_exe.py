@@ -10,11 +10,12 @@ with exe.open('rb') as f:
  assert b'RunProgram="runtime\\\\pythonw.exe app_launcher.py"' in header
 with py7zr.SevenZipFile(archive) as z:
  names=set(z.getnames())
- required=['app_launcher.py','runtime/pythonw.exe','runtime/python.exe','runtime/python312.dll','runtime/python312._pth','beatrice/engine_worker.py','beatrice/native_bridge.py','beatrice/account_service.py','beatrice/drive_service.py','beatrice/weekly.py','native-ui/BeatricePC.exe','native-ui/BeatricePC.dll','native-ui/BeatricePC.pri','native-ui/Assets/tokens.json','models/character-regions.pt','models/dungeon-regions.pt','models/dungeon-elements.pt','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','runtime/Lib/site-packages/PySide6/plugins/platforms/qwindows.dll']
+ required=['app_launcher.py','runtime/pythonw.exe','runtime/python.exe','runtime/python312.dll','runtime/python312._pth','beatrice/engine_worker.py','beatrice/native_bridge.py','beatrice/account_service.py','beatrice/drive_service.py','beatrice/weekly.py','native-ui/BeatricePC.exe','native-ui/BeatricePC.dll','native-ui/BeatricePC.pri','native-ui/Assets/tokens.json','models/character-regions.pt','models/dungeon-regions.pt','models/dungeon-elements.pt','models/paddleocr/korean_PP-OCRv5_mobile_rec_infer/inference.pdiparams','beatrice/thread_events.py','beatrice/instance_lock.py','beatrice/recognition/service.py','beatrice/recognition/pipeline.py','runtime/msvcp140.dll','runtime/vcruntime140.dll']
  for path in required:assert path in names,path
  obsolete={'beatrice/desktop.py','beatrice/drive_ui.py','beatrice/google_login_ui.py','beatrice/public_content_ui.py','beatrice/record_detail_ui.py'}
  assert not names.intersection(obsolete),names.intersection(obsolete)
  assert not any('easyocr' in path.lower() for path in names)
+ assert not any('pyside6' in path.lower() or 'shiboken6' in path.lower() for path in names)
  assert not any('torch-2.14' in path for path in names)
  print('필수 파일 및 구성 확인:',len(names),'files',flush=True)
 with py7zr.SevenZipFile(archive) as z:
