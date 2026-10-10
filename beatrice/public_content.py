@@ -6,13 +6,12 @@ import math
 import os
 from pathlib import Path
 import re
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import quote
+from .drive import GoogleDriveClient, DriveError, DriveRateLimitError
+from .drive.client import API
+from .drive.folders import FOLDER_MIME
 
-API = 'https://www.googleapis.com/drive/v3/files'
 MAX_BYTES = 4 * 1024 * 1024
-FOLDER_MIME = 'application/vnd.google-apps.folder'
 
 
 class ContentError(Exception):
@@ -92,53 +91,44 @@ def load_api_key(root):
 class PublicContentClient:
     def __init__(self, api_key, settings, cancel, opener=None):
         self.api_key, self.settings, self.cancel = api_key, settings, cancel
-        self.opener = opener or urlopen
+        self.api = GoogleDriveClient(api_key=api_key, cancel=cancel, timeout=15, max_bytes=MAX_BYTES, opener=opener)
+
+    @property
+    def opener(self):
+        return self.api.opener
+
+    @opener.setter
+    def opener(self, value):
+        self.api.opener = value
+
+    @staticmethod
+    def _content_error(error):
+        messages = {
+            400: '공용 데이터 API 키 또는 요청 설정을 확인해주세요.',
+            403: '공용 데이터 접근이 거부되었습니다. 공유 권한과 API 키 제한을 확인해주세요.',
+            404: '공용 데이터 파일을 찾을 수 없습니다.',
+            429: '공용 데이터 요청 한도에 도달했습니다. 나중에 다시 시도해주세요.',
+        }
+        if isinstance(error, DriveRateLimitError):
+            return ContentError(messages[429])
+        return ContentError(messages.get(error.status, str(error)))
 
     def get(self, suffix='', **parameters):
-        if self.cancel.is_set():
-            raise ContentError('공용 데이터 조회를 취소했습니다.')
-        parameters['key'] = self.api_key
-        url = API + suffix + '?' + urlencode(parameters)
         try:
-            with self.opener(Request(url, headers={'Accept': 'application/json'}), timeout=15) as response:
-                result = response.read(MAX_BYTES + 1)
-                if len(result) > MAX_BYTES:
-                    raise ContentError('공용 JSON이 허용 크기(4 MiB)를 초과합니다.')
-                return result
-        except HTTPError as exc:
-            messages = {
-                400: '공용 데이터 API 키 또는 요청 설정을 확인해주세요.',
-                403: '공용 데이터 접근이 거부되었습니다. 공유 권한과 API 키 제한을 확인해주세요.',
-                404: '공용 데이터 파일을 찾을 수 없습니다.',
-                429: '공용 데이터 요청 한도에 도달했습니다. 나중에 다시 시도해주세요.',
-            }
-            raise ContentError(messages.get(exc.code, '공용 데이터 서버에 연결하지 못했습니다.')) from None
-        except (URLError, OSError):
-            # Never expose HTTP exception URLs: they contain the API key.
-            raise ContentError('공용 데이터를 읽지 못했습니다. 인터넷 연결을 확인해주세요.') from None
+            return self.api.request(suffix, params=parameters)
+        except DriveError as error:
+            raise self._content_error(error) from None
 
     def children(self, folder):
-        files, page, seen = [], None, set()
-        for _ in range(100):
-            parameters = dict(q=f"'{folder}' in parents and trashed=false", pageSize=100,
-                              fields='nextPageToken,files(id,name,mimeType,modifiedTime,md5Checksum,size,version)')
-            if page:
-                parameters['pageToken'] = page
-            result = parse_json(self.get(**parameters))
-            if not isinstance(result, dict) or not isinstance(result.get('files'), list):
-                raise ContentError('공용 폴더 목록 응답이 올바르지 않습니다.')
-            for item in result['files']:
-                if (not isinstance(item, dict) or not isinstance(item.get('name'), str)
-                        or not isinstance(item.get('id'), str) or not re.fullmatch(r'[A-Za-z0-9_-]+', item['id'])):
-                    raise ContentError('공용 파일 정보가 올바르지 않습니다.')
-            files.extend(result['files'])
-            page = result.get('nextPageToken')
-            if not page:
-                return files
-            if not isinstance(page, str) or page in seen:
-                break
-            seen.add(page)
-        raise ContentError('공용 폴더 목록이 너무 크거나 응답이 반복됩니다.')
+        try:
+            files = self.api.folders.children(folder)
+        except DriveError as error:
+            raise self._content_error(error) from None
+        for item in files:
+            if (not isinstance(item.get('name'), str)
+                    or not re.fullmatch(r'[A-Za-z0-9_-]+', item['id'])):
+                raise ContentError('공용 파일 정보가 올바르지 않습니다.')
+        return files
 
     def refresh(self, cached=None):
         folders = [f for f in self.children(self.settings['rootFolderID'])

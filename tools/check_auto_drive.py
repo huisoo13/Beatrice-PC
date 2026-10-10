@@ -27,8 +27,8 @@ def main():
     created = []
 
     class TestDrive(DriveClient):
-        def __init__(self, token, cancel):
-            super().__init__(token, cancel, namespace='integration-test')
+        def __init__(self, token, cancel, **kwargs):
+            super().__init__(token, cancel, namespace='integration-test', **kwargs)
 
         def upload(self, rows):
             metadata = super().upload(rows)
