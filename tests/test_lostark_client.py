@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 from beatrice.google_auth import AuthError
 from beatrice.lostark import (LostArkClient, LostArkAuthError, LostArkNetworkError,
                              LostArkNotFoundError, LostArkRateLimitError,
-                             LostArkResponseError)
+                             LostArkResponseError, LostArkMaintenanceError)
 from beatrice.lostark.client import _NoRedirect
 
 
@@ -172,6 +172,47 @@ class LostArkClientTests(unittest.TestCase):
         api.characters.profile('Name')
         self.assertIsNone(api.rate_limit.limit)
         self.assertIsNone(api.rate_limit.remaining)
+
+    def test_503_is_maintenance_and_blocks_other_endpoints_until_retry(self):
+        api = self.client()
+        failure = HTTPError('https://official.test', 503, 'private-key', {}, io.BytesIO(b'<html>private-key</html>'))
+        api._opener.open.side_effect = failure
+        with patch('beatrice.lostark.client.time.time', return_value=1000):
+            with self.assertRaises(LostArkMaintenanceError) as caught:
+                api.characters.siblings('Name')
+            self.assertEqual(caught.exception.status, 503)
+            self.assertEqual(caught.exception.retry_after, 300)
+            self.assertNotIn('private-key', str(caught.exception))
+            self.assertTrue(failure.fp.closed)
+            with self.assertRaises(LostArkMaintenanceError):
+                api.news.events()
+            self.assertEqual(api._opener.open.call_count, 1)
+        api._opener.open.side_effect = None
+        api._opener.open.return_value = Response(b'[]')
+        with patch('beatrice.lostark.client.time.time', return_value=1300):
+            self.assertEqual(api.news.events(), [])
+        self.assertEqual(api._opener.open.call_count, 2)
+
+    def test_maintenance_retry_after_seconds_date_and_invalid_headers(self):
+        cases = [('900', 900), ('0', 300), ('bad', 300),
+                 ('Thu, 01 Jan 1970 00:30:00 GMT', 800)]
+        for header, expected in cases:
+            with self.subTest(header=header):
+                api = self.client()
+                api._opener.open.side_effect = HTTPError('https://official.test', 503, '', {'Retry-After': header}, io.BytesIO())
+                with patch('beatrice.lostark.client.time.time', return_value=1000):
+                    with self.assertRaises(LostArkMaintenanceError) as caught:
+                        api.characters.profile('Name')
+                self.assertEqual(caught.exception.retry_after, expected)
+
+    def test_other_server_errors_are_not_called_maintenance(self):
+        for status in (500, 502, 504):
+            with self.subTest(status=status):
+                api = self.client()
+                api._opener.open.side_effect = HTTPError('https://official.test', status, '', {}, io.BytesIO())
+                with self.assertRaises(LostArkResponseError) as caught:
+                    api.characters.profile('Name')
+                self.assertEqual(caught.exception.status, status)
 
     def test_redirects_are_rejected(self):
         self.assertIsNone(_NoRedirect().redirect_request(None,None,302,'',{},'https://other.test'))

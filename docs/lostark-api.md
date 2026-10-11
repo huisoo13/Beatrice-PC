@@ -77,7 +77,7 @@ notices = api.request("GET", "/news/notices", params={"type": "공지"})
 
 ```python
 from beatrice.lostark import (
-    LostArkAuthError, LostArkRateLimitError, LostArkError,
+    LostArkAuthError, LostArkRateLimitError, LostArkMaintenanceError, LostArkError,
 )
 
 try:
@@ -86,6 +86,8 @@ except LostArkAuthError as error:
     print(str(error))  # 키 등록·변경 안내에 사용
 except LostArkRateLimitError as error:
     print("다음 조회까지 대기할 초:", error.retry_after)
+except LostArkMaintenanceError as error:
+    print("점검·서비스 중단. 캐시를 유지하고 나중에 조회:", error.retry_after)
 except LostArkError as error:
     print(str(error), error.status)
 ```
@@ -96,10 +98,15 @@ except LostArkError as error:
 | `LostArkRateLimitError` | HTTP 429 또는 이 클라이언트가 알고 있는 잔여 횟수 소진. `retry_after`는 재시도까지의 초 |
 | `LostArkNotFoundError` | HTTP 404 |
 | `LostArkNetworkError` | 연결·타임아웃·응답 스트림 통신 실패 |
+| `LostArkMaintenanceError` | HTTP 503: 점검 또는 일시적인 서비스 중단. `retry_after`는 재시도까지의 초 |
 | `LostArkResponseError` | 다른 HTTP 오류 또는 정상 상태 코드에서 JSON 해석 실패 |
 | `ValueError` | 잘못된 캐릭터명, 경로, 메서드, timeout 등 호출 인자 오류 |
 
 API 오류들은 `LostArkError`를 상속하고 `status`에 HTTP 상태 코드를 제공합니다. 로컬 오류는 status가 None입니다. 오류 메시지에 키나 서버의 원문 오류 본문을 포함하지 않습니다.
+
+2026-10-11: 공식 [점검 중 요청 안내](https://developer-lostark.game.onstove.com/usage-guide)에 따라 HTTP 503을 `LostArkMaintenanceError`로 분류합니다. 503은 일시적인 서비스 중단에도 사용되므로 점검 확정으로 단정하지 않습니다. 500/502/504는 기존 응답 오류로 유지합니다. HTML 점검 페이지의 본문을 파싱하거나 출력하지 않습니다.
+
+클라이언트는 503 이후 최소 300초 동안 모든 엔드포인트의 추가 전송을 보류합니다. Retry-After의 초 또는 HTTP 날짜가 더 긴 대기를 지정하면 그 시간을 따릅니다. 없거나 잘못된 헤더는 300초로 처리합니다. 대기 중에도 동일한 전용 오류를 전달하며 자동 sleep·재시도는 없습니다. `CharacterCatalog`는 `maintenance` 케이스로 전체 캐릭터 조회를 보류하고 정상 캐시와 기존 표시를 유지합니다. 캐시가 없는 캐릭터의 정보는 비어 있으며, 대기 만료 후 필요할 때 재조회합니다. 해당 캐릭터의 재시도 시각은 저장하지만 클라이언트와 전체 조회 보류 상태는 프로세스 내 상태입니다. 키 등록 검증은 기존 키를 유지하고 점검·서비스 중단 안내를 표시하며 사용자가 다시 검증합니다.
 
 공식 제한은 클라이언트당 분당 100회입니다. 최근 응답의 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`은 `api.rate_limit.limit`, `.remaining`, `.reset_at`에서 확인합니다. reset_at은 Unix 초입니다. 429의 숫자 Retry-After와 reset_at을 참고하며, 대기 시점을 알 수 없으면 60초로 처리합니다. 남은 횟수가 0이면 해당 시점까지 추가 전송을 막습니다. 자동 sleep이나 자동 재시도는 하지 않습니다. 앱의 작업자/스케줄러에서 재호출 시점을 결정하세요.
 

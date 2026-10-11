@@ -1,6 +1,7 @@
 """Synchronous, UI-independent Lost Ark transport using the standard library."""
 import json
 import math
+from email.utils import parsedate_to_datetime
 from http.client import HTTPException
 import os
 import threading
@@ -14,7 +15,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from ..google_auth import AuthError
 from ..lostark_api import LostArkApiKey
 from .errors import (LostArkAuthError, LostArkNetworkError, LostArkNotFoundError,
-                     LostArkRateLimitError, LostArkResponseError)
+                     LostArkRateLimitError, LostArkResponseError, LostArkMaintenanceError)
 
 BASE_URL = 'https://developer-lostark.game.onstove.com'
 
@@ -40,6 +41,16 @@ def _integer(headers, name):
         return None
 
 
+def _maintenance_retry(headers):
+    seconds = _integer(headers, 'Retry-After')
+    if seconds is None:
+        try:
+            seconds = math.ceil(parsedate_to_datetime(headers.get('Retry-After')).timestamp() - time.time())
+        except (TypeError, ValueError, OverflowError, AttributeError):
+            seconds = 300
+    return max(300, seconds)
+
+
 class LostArkClient:
     """Reuse one client across feature groups. No requests during construction."""
     def __init__(self, key=None, *, key_provider=None, timeout=15):
@@ -55,6 +66,7 @@ class LostArkClient:
         self._lock = threading.Lock()
         self.rate_limit = RateLimit()
         self._blocked_until = 0
+        self._maintenance_until = 0
         from .characters import CharactersApi
         from .armory import ArmoryApi
         from .news import NewsApi
@@ -116,6 +128,9 @@ class LostArkClient:
         query = '?' + urlencode(params, doseq=True) if params else ''
         data = json.dumps(body, ensure_ascii=False, allow_nan=False).encode('utf-8') if body is not None else None
         with self._lock:
+            maintenance_wait = self._maintenance_until - time.time()
+            if maintenance_wait > 0:
+                raise LostArkMaintenanceError(retry_after=math.ceil(maintenance_wait))
             wait = self._blocked_until - time.time()
             if wait > 0:
                 raise LostArkRateLimitError(retry_after=math.ceil(wait))
@@ -135,7 +150,11 @@ class LostArkClient:
             except HTTPError as error:
                 status = error.code
                 self._read_limits(error.headers or {}, limited=status == 429)
+                maintenance_retry = _maintenance_retry(error.headers or {}) if status == 503 else None
                 error.close()
+                if status == 503:
+                    self._maintenance_until = time.time() + maintenance_retry
+                    raise LostArkMaintenanceError(retry_after=maintenance_retry) from None
                 if status in (401, 403):
                     raise LostArkAuthError('로스트아크 API 인증이 거부되었습니다. 저장된 키를 확인해주세요.', status=status) from None
                 if status == 429:

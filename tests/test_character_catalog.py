@@ -6,7 +6,7 @@ import time
 import unittest
 from unittest.mock import Mock
 from beatrice.character_catalog import CharacterCatalog
-from beatrice.lostark import LostArkAuthError, LostArkNetworkError
+from beatrice.lostark import LostArkAuthError, LostArkNetworkError, LostArkMaintenanceError
 
 
 def entry(name, job):
@@ -88,6 +88,31 @@ class CharacterCatalogTests(unittest.TestCase):
         self.now += 2
         self.create().ensure(['없는캐릭'])
         self.api.characters.siblings.assert_called_once()
+
+    def test_maintenance_keeps_cache_blocks_all_names_and_recovers(self):
+        self.service.characters = {'본캐': dict(profile=entry('본캐', '바드'), fetchedAt='cached')}
+        self.api.characters.siblings.side_effect = LostArkMaintenanceError(retry_after=900)
+        self.service.ensure(['새캐릭']); self.finish()
+        self.assertEqual(self.service.retry_at['새캐릭'], 1900)
+        self.assertEqual(self.service.blocked_until, 1900)
+        resolver = lambda job: Path(self.folder.name) / 'class.svg'
+        self.assertEqual(self.service.character_view('본캐', resolver)['characterClass'], '바드')
+        missing = self.service.character_view('새캐릭', resolver)
+        self.assertEqual(missing['characterClass'], '')
+        self.assertIsNone(missing['characterEmblem'])
+        self.now = 1500
+        self.service.ensure(['다른캐릭', '새캐릭'])
+        self.api.characters.siblings.assert_called_once()
+        restarted = self.create()
+        restarted.ensure(['새캐릭'])
+        self.api.characters.siblings.assert_called_once()
+        self.assertIn('본캐', restarted.characters)
+        self.now = 1900
+        self.api.characters.siblings.side_effect = None
+        self.api.characters.siblings.return_value = [entry('새캐릭', '도화가')]
+        self.service.ensure(['새캐릭']); self.finish()
+        self.assertEqual(self.service.character_view('새캐릭', resolver)['characterClass'], '도화가')
+        self.assertNotIn('새캐릭', self.service.retry_at)
 
     def test_cancelled_result_is_not_saved(self):
         started, release=threading.Event(),threading.Event()

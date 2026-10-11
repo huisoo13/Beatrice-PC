@@ -191,11 +191,11 @@ Beatrice-PC/
 │  │
 │  ├─ lostark/                   # 로스트아크 API
 │  │  ├─ __init__.py              # 공개 진입점
-│  │  ├─ client.py               # 공통 통신·호출 제한
+│  │  ├─ client.py               # 공통 통신·호출 제한·503 점검 대기
 │  │  ├─ characters.py           # 캐릭터 조회
 │  │  ├─ armory.py               # 전투정보 조회
 │  │  ├─ news.py                 # 뉴스 이벤트 조회·키 검증 요청
-│  │  └─ errors.py               # 오류 정의
+│  │  └─ errors.py               # 인증·호출 제한·점검(503) 등 공개 오류
 │  ├─ lostark_api.py             # 앱 API 키 암호화 저장·조회
 │  └─ lostark_registration.py    # 뉴스 API 비동기 검증·성공 후 등록·종료 취소
 │
@@ -239,6 +239,8 @@ Beatrice-PC/
 ```
 
 주요 연결 관계:
+
+로스트아크 HTTP 503은 `LostArkMaintenanceError`로 구분합니다. 공통 클라이언트는 최소 5분(더 긴 Retry-After는 존중) 동안 추가 전송을 보류하며, CharacterCatalog는 캐시를 유지하고 전체 조회를 보류합니다. LostArkRegistration은 기존 키를 유지하며 점검·서비스 중단 안내를 전달합니다. 최종 갱신: 2026-10-11.
 
 ```text
 MainWindow

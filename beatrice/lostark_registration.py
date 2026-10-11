@@ -3,7 +3,8 @@ import queue
 import threading
 
 from .lostark import LostArkClient
-from .lostark.errors import LostArkAuthError, LostArkRateLimitError, LostArkNetworkError
+from .lostark.errors import (LostArkAuthError, LostArkRateLimitError,
+                            LostArkNetworkError, LostArkMaintenanceError)
 
 
 class LostArkRegistration:
@@ -40,6 +41,8 @@ class LostArkRegistration:
                 result.put((False, 'API 키가 유효하지 않습니다. 입력한 키를 확인해주세요.'))
             except LostArkRateLimitError:
                 result.put((False, 'API 호출 제한에 도달했습니다. 잠시 후 다시 시도해주세요.'))
+            except LostArkMaintenanceError:
+                result.put((False, '로스트아크 서버 점검 또는 일시적인 서비스 중단으로 API 키를 검증할 수 없습니다. 잠시 후 다시 시도해주세요.'))
             except LostArkNetworkError:
                 result.put((False, 'API에 연결하지 못했습니다. 인터넷 연결을 확인해주세요.'))
             except Exception:

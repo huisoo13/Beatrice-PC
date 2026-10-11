@@ -25,5 +25,12 @@ class LostArkNetworkError(LostArkError):
     """Connection or timeout failure."""
 
 
+class LostArkMaintenanceError(LostArkError):
+    """HTTP 503: maintenance or temporary service unavailability."""
+    def __init__(self, *, retry_after=300):
+        super().__init__('로스트아크 서버 점검 또는 일시적인 서비스 중단으로 조회할 수 없습니다.', status=503)
+        self.retry_after = retry_after
+
+
 class LostArkResponseError(LostArkError):
     """Other HTTP errors or an invalid JSON response."""

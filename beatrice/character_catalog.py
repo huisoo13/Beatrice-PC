@@ -6,7 +6,8 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from .lostark import LostArkClient, LostArkAuthError, LostArkNotFoundError, LostArkRateLimitError
+from .lostark import (LostArkClient, LostArkAuthError, LostArkNotFoundError,
+                     LostArkRateLimitError, LostArkMaintenanceError)
 
 MAX_BYTES = 8 * 1024 * 1024
 
@@ -84,6 +85,8 @@ class CharacterCatalog:
                 results.put((None, 'auth', 300))
             except LostArkRateLimitError as error:
                 results.put((None, 'limited', max(60, error.retry_after or 60)))
+            except LostArkMaintenanceError as error:
+                results.put((None, 'maintenance', max(300, error.retry_after or 300)))
             except (LostArkNotFoundError, ValueError):
                 results.put((None, 'missing', 86400))
             except Exception:
@@ -102,7 +105,7 @@ class CharacterCatalog:
         if self.closed or cancel.is_set(): return False
         if error:
             self.retry_at[name] = self.clock() + delay
-            if error in ('auth', 'limited', 'network'): self.blocked_until = self.clock() + delay
+            if error in ('auth', 'limited', 'network', 'maintenance'): self.blocked_until = self.clock() + delay
         else:
             fetched = datetime.now(timezone.utc).isoformat()
             for character, profile in profiles.items():

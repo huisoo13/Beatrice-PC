@@ -4,7 +4,8 @@ from unittest.mock import Mock
 
 from beatrice.lostark_registration import LostArkRegistration
 from beatrice.lostark.news import NewsApi
-from beatrice.lostark.errors import LostArkAuthError, LostArkNetworkError, LostArkRateLimitError
+from beatrice.lostark.errors import (LostArkAuthError, LostArkNetworkError,
+                                    LostArkRateLimitError, LostArkMaintenanceError)
 
 
 class RegistrationTests(unittest.TestCase):
@@ -55,6 +56,18 @@ class RegistrationTests(unittest.TestCase):
         self.client.news.events.return_value = {'error': 'candidate'}
         self.registration.begin('candidate')
         self.assertFalse(self.finish()['success'])
+        self.store.save.assert_not_called()
+
+    def test_maintenance_reports_service_state_and_keeps_old_key(self):
+        self.store.view.return_value = dict(configured=True, message='')
+        self.client.news.events.side_effect = LostArkMaintenanceError()
+        self.registration.begin('candidate')
+        result = self.finish()
+        self.assertFalse(result['success'])
+        self.assertTrue(result['configured'])
+        self.assertIn('서버 점검', result['message'])
+        self.assertNotIn('유효하지', result['message'])
+        self.assertNotIn('candidate', str(result))
         self.store.save.assert_not_called()
 
     def test_duplicate_request_is_rejected(self):
