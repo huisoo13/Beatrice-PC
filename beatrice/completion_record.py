@@ -7,6 +7,7 @@ from .record_identity import existing_time,record_id,normalized_time
 
 FIELDS=('recordId','characterName','contentName','difficulty','gateNumber','expectedGates','isTest','observedAt','createdAt','updatedAt')
 META=('ocrOriginal','catalogMatch')
+OPTIONAL=('goldReward',)
 
 def utc(value):
     if value is None:return None
@@ -18,7 +19,7 @@ def canonical(row):
     """Convert old completed rows; unavailable historical facts remain unknown."""
     if 'contentName' in row and 'dungeonName' not in row:
         value=copy.deepcopy(row)
-        return {k:value[k] for k in (*FIELDS,*META) if k in value}
+        return {k:value[k] for k in (*FIELDS,*META,*OPTIONAL) if k in value}
     imported=row.get('evidenceType')=='drive_import' or row.get('timeBasis')=='drive_import'
     gate=0 if row.get('completionScope')=='raid' else row.get('gate',0)
     name=row.get('characterName');content=row.get('dungeonName')
@@ -39,6 +40,7 @@ def canonical(row):
             if match:meta['gateNumber']=int(match[1])
         if gate==0 and 'gateNumber' in meta:meta['gateNumber']=0
         value[field]=meta
+    if 'goldReward' in row:value['goldReward']=row['goldReward']
     return value
 
 def recognition_record(row):
@@ -66,8 +68,9 @@ def new_record(row,expected_gates,previous=None):
     return validate(value)
 
 def validate(row):
-    if not isinstance(row,dict) or not set(FIELDS)<=set(row) or set(row)-set(FIELDS+META):raise ValueError('완료 기록 필드를 확인해주세요.')
+    if not isinstance(row,dict) or not set(FIELDS)<=set(row) or set(row)-set(FIELDS+META+OPTIONAL):raise ValueError('완료 기록 필드를 확인해주세요.')
     value=copy.deepcopy(row)
+    if value.get('goldReward') is not None and type(value['goldReward']) is not bool:raise ValueError('goldReward는 bool 또는 null이어야 합니다.')
     for field in ('characterName','contentName','difficulty'):
         text=value[field]
         if not isinstance(text,str) or not text.strip() or len(text)>200 or any(ord(c)<32 for c in text):raise ValueError('기록 이름·난이도가 올바르지 않습니다.')

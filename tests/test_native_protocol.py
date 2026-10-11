@@ -10,6 +10,27 @@ import unittest
 
 
 class NativeProtocolTests(unittest.TestCase):
+    def test_timer_exception_stops_worker_before_unlocking(self):
+        from beatrice.instance_lock import InstanceLock
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            env = dict(os.environ, BEATRICE_DATA_DIR=directory, BEATRICE_FIXTURE_CRASH='1', PYTHONIOENCODING='utf-8')
+            child = subprocess.Popen([sys.executable, str(root/'tests/support/native_fixture_engine.py')],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     env=env, cwd=root)
+            reader = threading.Thread(target=child.stdout.read, daemon=True)
+            reader.start()
+            try:
+                self.assertNotEqual(child.wait(timeout=15), 0)
+                self.assertTrue((Path(directory)/'worker-stopped').is_file())
+                lock = InstanceLock(Path(directory)/'app.lock')
+                self.assertTrue(lock.acquire())
+                lock.release()
+            finally:
+                if child.poll() is None: child.kill(); child.wait(timeout=5)
+                child.stdin.close(); child.stdout.close(); child.stderr.close()
+                reader.join(timeout=1)
+
     def test_utf8_pipes_restart_delete_and_graceful_eof(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:

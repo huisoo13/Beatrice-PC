@@ -1,4 +1,5 @@
 using BeatricePC;
+using System.Diagnostics;
 var passed=0;
 void Equal<T>(T actual,T expected,string name){if(!EqualityComparer<T>.Default.Equals(actual,expected))throw new Exception(name+": "+actual+" != "+expected);passed++;}
 var start=new DateTime(2026,10,7,6,0,0);
@@ -60,7 +61,7 @@ Console.WriteLine($"PASS: {passed} record presentation checks");
 
 // Weekly receipts reuse completed records and cached character metadata without fetching APIs.
 System.Text.Json.JsonElement Detail(string json) { using var doc=System.Text.Json.JsonDocument.Parse(json); return doc.RootElement.Clone(); }
-var matched=Detail("""{"status":"matched","values":{"gold":10000,"fee":9000,"bound_percentage":0.2}}""");
+var matched=Detail("""{"goldReward":true,"status":"matched","values":{"gold":10000,"fee":9000,"bound_percentage":0.2}}""");
 var noMatch=Detail("""{"status":"unmatched"}""");
 Raid Sample(string who,string dungeon,string mode,string gate,string date,System.Text.Json.JsonElement? detail=null,string? job="바드",string? level="1,774.99") => new(who,dungeon,mode,gate,date,detail??matched,job,null,level);
 var receipt=WeeklySummary.Build(new[]{
@@ -84,12 +85,12 @@ Equal(receipt.Characters.Single(c => c.Name=="다른캐릭터").Dungeons[0].Gate
 Equal(WeeklySummary.GateLabel(new[]{"3관문","1관문","1관문"}),"1·3관문","missing middle gate not invented");
 Equal(WeeklySummary.GateLabel(new[]{"1관문","2관문","4관문","5관문"}),"1–2·4–5관문","multiple contiguous ranges");
 Equal(WeeklySummary.GateLabel(new[]{"레이드 전체",""}),"","gateless only");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":101,"fee":0,"bound_percentage":0.5}}""")).Gold,51m,"integer splitting conserves reward");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":1}}""")).Gold,0m,"fully bound reward");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":0}}""")).BoundGold,0m,"fully unbound reward");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"bound_percentage":2}}""")).Missing,1,"invalid ratio unknown");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":true,"status":"matched","values":{"gold":101,"fee":0,"bound_percentage":0.5}}""")).Gold,51m,"integer splitting conserves reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":true,"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":1}}""")).Gold,0m,"fully bound reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":true,"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":0}}""")).BoundGold,0m,"fully unbound reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":true,"status":"matched","values":{"gold":100,"bound_percentage":2}}""")).Missing,1,"invalid ratio unknown");
 Equal(WeeklySummary.ReadMoney(Detail("""{"status":123}""")).Missing,1,"invalid status safely unknown");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":-1,"bound_percentage":0}}""")).Missing,1,"negative reward unknown");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":true,"status":"matched","values":{"gold":-1,"bound_percentage":0}}""")).Missing,1,"negative reward unknown");
 Equal(WeeklySummary.ReadMoney(default).Missing,1,"missing detail safely unknown");
 var mixed=WeeklySummary.Build(new[]{Sample("혼합","A","하드","1관문","2026.10.08 12:00"),Sample("혼합","A","하드","2관문","2026.10.08 13:00",noMatch)},start);
 Equal(mixed.Characters[0].Dungeons[0].Money.Missing,1,"mixed known unknown dungeon marked incomplete");
@@ -105,3 +106,37 @@ Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("gold").GetString(),"C:
 Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("boundGold").GetString(),"C:/cache/bound.png","bound currency path preserved");
 Equal(parsedSnapshot.CurrencyImages.HasValue,false,"older engines need no currency image field");
 Console.WriteLine($"PASS: {passed} presentation, protocol, receipt and currency image checks");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"unmatched"}""")).Missing,0,"confirmed no gold needs no catalog");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Gold,0m,"confirmed no gold ignores catalog gold");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Missing,1,"historical unknown is excluded");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":null,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Missing,1,"null receipt is unknown");
+Console.WriteLine($"PASS: {passed} gold receipt checks");
+
+Equal(RecordPresentation.GoldReceipt(Detail("""{"goldReward":true}""")),"획득","receipt detail received");
+Equal(RecordPresentation.GoldReceipt(Detail("""{"goldReward":false}""")),"미획득","receipt detail absent");
+Equal(RecordPresentation.GoldReceipt(Detail("""{"goldReward":null}""")),"미확인","receipt detail unknown");
+Equal(RecordPresentation.GoldReceipt(default),"미확인","receipt old detail unknown");
+Console.WriteLine($"PASS: {passed} gold receipt presentation checks");
+
+if (OperatingSystem.IsWindows())
+{
+    var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+    var python = Path.Combine(root, ".venv-win", "Scripts", "python.exe");
+    using var job = new EngineProcessLifetime();
+    var startInfo = new ProcessStartInfo(python) { WorkingDirectory = root, UseShellExecute = false,
+        RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
+    startInfo.Environment["BEATRICE_ENGINE_JOB"] = job.Name;
+    startInfo.ArgumentList.Add("-u"); startInfo.ArgumentList.Add("-c");
+    startInfo.ArgumentList.Add("from beatrice.process_lifetime import join_owner_job; join_owner_job(); import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); print(p.pid,flush=True); time.sleep(60)");
+    using var parent = Process.Start(startInfo)!;
+    // Deliberately let venv spawn Python before attaching its redirector.
+    var lineTask = parent.StandardOutput.ReadLineAsync();
+    if (!lineTask.Wait(TimeSpan.FromSeconds(10))) throw new Exception("Lifetime child startup timed out");
+    var pid = int.Parse(lineTask.Result ?? throw new Exception(parent.StandardError.ReadToEnd()));
+    using var descendant = Process.GetProcessById(pid);
+    job.Attach(parent);
+    job.Dispose();
+    Equal(parent.WaitForExit(5000), true, "job closes redirector");
+    Equal(descendant.WaitForExit(5000), true, "job closes Python descendant");
+    Console.WriteLine($"PASS: {passed} including real process lifetime checks");
+}

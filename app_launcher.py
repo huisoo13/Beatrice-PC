@@ -23,6 +23,8 @@ def main():
             sys.stdout=stream;sys.stderr=stream
     try:
         if '--engine' in sys.argv:
+            from beatrice.process_lifetime import join_owner_job
+            join_owner_job()
             from beatrice.native_bridge import main as launch
             return launch()
         import subprocess

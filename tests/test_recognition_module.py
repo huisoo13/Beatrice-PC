@@ -29,6 +29,14 @@ class RecognitionPipelineTests(unittest.TestCase):
         self.pipeline.dungeon_observer.analyze.return_value=({'raidKind':'gated'},[{'state':'완료'}])
         self.pipeline.completion=Mock()
         self.pipeline.completion.analyze.return_value={'status':'verified'}
+        self.pipeline.gold_reward=Mock()
+
+    def test_gold_uses_fresh_raw_dungeon_before_context_tracking(self):
+        self.pipeline.dungeon_observer.analyze.return_value=({'raidKind':'gated','dungeonVisible':True,'currentRaidPanel':True},[{'state':'완료'}])
+        self.pipeline.gold_reward.analyze.return_value={'status':'verified','received':False,'gate':1}
+        result=self.pipeline.analyze(object(),12,confirmed_name='캐릭터')
+        self.assertIs(result.dungeon['goldReward']['received'],False)
+        self.pipeline.gold_reward.analyze.assert_called_once()
 
     def test_import_does_not_load_ui_or_models(self):
         code="import sys,json; import beatrice.recognition; print(json.dumps([m for m in sys.modules if m.startswith(('PySide6','ultralytics','paddle','cv2'))]))"

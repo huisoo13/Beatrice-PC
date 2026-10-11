@@ -1,0 +1,17 @@
+{
+  "mode": "yolo",
+  "weights": "models/gold-reward.pt",
+  "classes": [
+    "reward_panel",
+    "reward_gate_title",
+    "gold_reward_present",
+    "gold_reward_absent"
+  ],
+  "confidence": 0.7,
+  "imageSize": 640,
+  "intervalSeconds": 0.75,
+  "trainingRun": "gold-reward-context-1011",
+  "trainingManifest": "data/annotations/gold-reward-context-1011.json",
+  "parentConfig": "config/gold-reward-panel.json",
+  "modelSha256": "b66b95c1069f706d8b72ee2cdb86bde15a00eac02a2f8c566ca9142642846768"
+}

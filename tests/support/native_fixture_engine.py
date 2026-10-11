@@ -44,9 +44,16 @@ class FixtureWorker(engine.Worker):
                     identity=dict(currentName='샘플 캐릭터', recordingAllowed=True),
                     dungeon=dict(dungeonName='카멘', difficulty='하드', contextStatus='ocr_verified', currentRaidPanel=True),
                     result=dict(stableStates=['완료', '진행중']), recordingStatus='샘플 분석 중'))
+        if os.environ.get('BEATRICE_FIXTURE_CRASH') == '1':
+            (engine.DATA/'worker-stopped').write_text('stopped')
 
 
 if __name__ == '__main__':
+    if os.environ.get('BEATRICE_FIXTURE_CRASH') == '1':
+        from beatrice.native_bridge import Host
+        def crash_tick(self):
+            raise RuntimeError('fixture timer failure')
+        Host.tick = crash_tick
     engine.DATA.mkdir(parents=True, exist_ok=True)
     store = open_week(engine.DATA)
     store.save_completions('name:샘플 캐릭터', '카멘', [dict(characterName='샘플 캐릭터', dungeonName='카멘',

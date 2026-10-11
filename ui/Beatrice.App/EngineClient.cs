@@ -13,6 +13,7 @@ namespace BeatricePC;
 internal sealed class EngineClient
 {
     private Process? process;
+    private EngineProcessLifetime? lifetime;
     private readonly SemaphoreSlim writes = new(1, 1);
     private Task? stopTask;
     private bool stopping;
@@ -24,6 +25,7 @@ internal sealed class EngineClient
     {
         if (IsRunning) return;
         process?.Dispose(); process = null; stopping = false; stopTask = null;
+        lifetime?.Dispose(); lifetime = null;
         var rootArg = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("--app-root="));
         var root = rootArg is null ? FindRoot() : Path.GetFullPath(rootArg[11..]);
         var python = new[] { Path.Combine(root,"runtime","python.exe"), Path.Combine(root,".venv-win","Scripts","python.exe") }.FirstOrDefault(File.Exists);
@@ -42,7 +44,16 @@ internal sealed class EngineClient
             start.Environment["BEATRICE_DATA_DIR"] = Path.Combine(root,"outputs","native-startup-check",Guid.NewGuid().ToString("N"));
         }
         start.Environment["PYTHONIOENCODING"] = "utf-8";
-        var child = Process.Start(start) ?? throw new InvalidOperationException("분석 작업자를 시작하지 못했습니다.");
+        lifetime = new EngineProcessLifetime();
+        start.Environment["BEATRICE_ENGINE_JOB"] = lifetime.Name;
+        Process child;
+        try
+        {
+            child = Process.Start(start) ?? throw new InvalidOperationException("분석 작업자를 시작하지 못했습니다.");
+            try { lifetime.Attach(child); }
+            catch { if (!child.HasExited) child.Kill(entireProcessTree: true); child.Dispose(); throw; }
+        }
+        catch { lifetime.Dispose(); lifetime = null; throw; }
         process = child;
         _ = Task.Run(() => ReadAsync(child));
     }
@@ -87,7 +98,7 @@ internal sealed class EngineClient
     private async Task StopCoreAsync()
     {
         stopping = true;
-        if (process is null) return;
+        if (process is null) { lifetime?.Dispose(); lifetime = null; return; }
         if (!process.HasExited)
         {
             try { await SendAsync(new { type = "shutdown" }); }
@@ -97,5 +108,6 @@ internal sealed class EngineClient
             await process.WaitForExitAsync(); // OBS/model cleanup must finish before the window exits.
         }
         process.Dispose();
+        lifetime?.Dispose(); lifetime = null;
     }
 }

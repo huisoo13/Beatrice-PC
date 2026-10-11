@@ -1,5 +1,9 @@
 # Beatrice PC
 
+2026-10-11: [골드 보상 여부 인식·기록](docs/65-gold-reward-recognition.md). 관문 보상표를 전용 YOLO로 탐지하고 제목 OCR·새 완료 기록·반복 관측을 확인해 `goldReward`를 저장합니다. 주간 합계는 획득 확인된 기록의 공용 골드만 더하고, 미획득은 0, 미확인은 별도 표시합니다.
+
+2026-10-11: [던전 제목 첫 숫자 탐지 보강](docs/64-title-first-digit-training.md). 실제 1막 화면과 dim·크기 변형으로 던전 요소 YOLO를 추가 학습했습니다. 같은 플레이 OCR 56/56, 기존 요소 89/89, EX 하드 29/29를 통과했으며 OCR·공용 매칭·저장 규칙은 유지합니다. 앱 재실행 후 새 모델을 불러옵니다.
+
 2026-10-11: [완료 기록 형식·캐릭터 확정 후 탐지](docs/63-completion-record-schema.md). 캐릭터 미확정 상태에서는 던전 YOLO·OCR·관문·배너 탐지를 중지합니다. 완료 기록은 characterName·contentName·gateNumber와 세 시각으로 통일하며 DB v5·Drive JSON v4로 변환합니다. 전체 관문 수 미상은 0, 소급 귀속은 제거하고 관측 시각 기준 주간 중복 방지를 유지합니다. DB 변환 전 백업과 Drive 원본 백업을 제공합니다. 새 JSON의 OCR 원문도 field_name으로 보상을 매칭하며 기존 미매칭 기록은 정확한 보상 확인 후 ID·완료 시각을 보존해 갱신합니다. iOS 적용은 후속 작업입니다.
 
 2026-10-11: [ContentJSON 배열 구조와 이름 매칭](docs/content-catalog.md). OCR은 field_name으로 비교하고 name을 새 기록·화면·주간 현황·보상표에 사용합니다. 이전 캐시와 기록 ID·시각을 보존하며, 별칭 사이의 주간 중복 판정을 유지합니다.
@@ -40,7 +44,7 @@ UI 에셋과 디자인 자료의 Git 관리 기준은 [디자인 자료 관리](
 모델·클래스 변경 시 설정과 이 표를 함께 갱신합니다. `python tools/update_model_inventory.py`로 재생성하며 테스트로 일치 여부를 검사합니다.
 과거 작업 일지보다 이 활성 모델 표를 우선합니다.
 
-현재 YOLO **4개 / 21클래스** + 공용 PaddleOCR입니다.
+현재 YOLO **6개 / 26클래스** + 공용 PaddleOCR입니다.
 
 | 활성 모델 | 클래스 | 탐지 대상 |
 |---|---|---|
@@ -65,6 +69,11 @@ UI 에셋과 디자인 자료의 Git 관리 기준은 [디자인 자료 관리](
 | ↳ | `gateless_title` | 관문 없는 레이드 제목 |
 | `completion-overlay.pt` | `completion_overlay` | 중앙 완료 연출 |
 | ↳ | `completion_text` | N관문 돌파 / 던전 클리어 문구 영역 |
+| `gold-reward-panel.pt` | `reward_panel` | 관문 보상표 전체 |
+| `gold-reward.pt` | `reward_panel` | 관문 보상표 전체 (요소 모델에서는 미사용) |
+| ↳ | `reward_gate_title` | 보상표의 N관문 돌파 제목 |
+| ↳ | `gold_reward_present` | 골드 행이 있는 통화 보상 영역 |
+| ↳ | `gold_reward_absent` | 골드 행이 없는 통화 보상 영역 |
 
 PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니다. EasyOCR은 사용하지 않습니다.
 고정 화면 좌표나 패널 비율로 OCR 영역을 지정하지 않습니다. 모델 파일은 로컬 관리하며 Git에 포함하지 않습니다.
@@ -133,6 +142,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 ```text
 Beatrice-PC/
 ├─ beatrice/
+│  ├─ process_lifetime.py        # Python 런타임의 UI 소유 Job 참여
 │  ├─ native_bridge.py            # Host: 앱 제어·명령 처리·모듈 연결
 │  ├─ engine_worker.py            # 인식 서비스의 스레드·이벤트 어댑터
 │  │
@@ -145,7 +155,7 @@ Beatrice-PC/
 │  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
-│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 저장·보상 매칭 갱신
+│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 정정·골드 여부·보상 매칭 갱신
 │  ├─ storage_schema.py           # DB v5 스키마·이전 완료 JSON 변환
 │  ├─ completion_record.py        # 완료 JSON 검증·변환·주간 중복 규칙
 │  ├─ weekly.py                   # 주간 기준·저장소 열기
@@ -160,6 +170,8 @@ Beatrice-PC/
 │  ├─ character.py               # 캐릭터 상태 추적·중단 처리
 │  ├─ dungeon.py                 # 던전 OCR·상태 추적·중단 처리
 │  ├─ completion_banner.py       # 완료 배너 추적·중단 처리
+│  ├─ gold_reward.py             # 보상표·통화 영역 YOLO·관문 제목 OCR·dim 정규화
+│  ├─ gold_reward_session.py     # 새 완료 ID에 반복 보상 관측 연결·만료·중복 차단
 │  ├─ live.py                    # 관측 결과·완료 판단·기록 연결
 │  ├─ state_session.py           # 완료 기록 세션
 │  ├─ deferred_session.py        # 이전 오프라인 이벤트 세션 (실시간 경로 미사용)
@@ -188,7 +200,7 @@ Beatrice-PC/
 │  ├─ MainWindow.Records.cs      # 기록 화면 연결
 │  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
 │  ├─ MainWindow.WeeklySummary.cs # 주간 현황 연결·데모 검증
-│  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·골드 분리
+│  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·획득 확인 골드 분리
 │  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·주간 변경 표시
 │  ├─ RecordsView.cs             # 기록 화면·주간 탐색·RichTextBlock 문장·직업 문양
 │  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
@@ -197,10 +209,14 @@ Beatrice-PC/
 │  ├─ ViewTheme.cs               # 공통 글꼴·색상·리소스
 │  ├─ EngineMessages.cs          # 엔진 메시지 모델·JSON 해석
 │  ├─ EngineClient.cs            # Python 엔진 프로세스·통신
-│  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장·레벨 표시 형식
+│  ├─ EngineProcessLifetime.cs   # UI 소유 Job Object·자식 프로세스 종료
+│  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장·골드 여부·레벨 표시 형식
 │
 └─ tools/
    ├─ evaluation_geometry.py     # 공통 IoU 계산
+   ├─ review_title_elements.py   # 제목 첫 숫자 학습 자료·YOLO/OCR 재생 검증
+   ├─ train_gold_reward.py       # 검토한 보상표·dim·크기 변형 학습 자료 준비
+   ├─ evaluate_gold_reward.py    # 실제 보상표·같은 세션 별도 프레임·음성 평가
    ├─ check_training_predictions.py
    ├─ check_login_holdout.py
    └─ evaluate_ui_bootstrap.py
@@ -210,6 +226,8 @@ Beatrice-PC/
 
 ```text
 MainWindow
+├─ EngineClient → EngineProcessLifetime → process_lifetime.join_owner_job
+│                 └─ UI 종료 시 분석·OBS 자식 프로세스 함께 종료
 ├─ EngineClient → Host(native_bridge)
 │                 ├─ CharacterCatalog → LostArkClient.characters.siblings → 캐릭터 정보 캐시
 │                 │                      └─ CatalogService.emblem_path → 검증된 로컬 직업 SVG
@@ -221,6 +239,7 @@ MainWindow
 │                 ├─ native_presentation → 화면 표시 데이터
 │                 ├─ Store → ContentMatcher → name 저장·별칭 중복 검사
 │                 │          ├─ refresh_catalog_matches → 미매칭 보상·Drive 전송 예약
+│                 │          ├─ correct_completion / set_gold_reward → ID·완료 시각 보존 수정
 │                 │          ├─ completion_record → 완료 JSON·관측 시각의 주간 판정
 │                 │          └─ storage_schema → 변환·트랜잭션·기록 ID·시각 보존
 │                 ├─ GoogleAccount / PersonalDrive → 인증·Drive API
@@ -228,7 +247,9 @@ MainWindow
 │                             ├─ RecognitionPipeline.analyze_character → 캐릭터 YOLO·OCR
 │                             ├─ LiveCoordinator.observe_character → 확정 여부
 │                             ├─ 확정 시 analyze_dungeon → 던전 YOLO·OCR·관문·배너
+│                             │                            └─ GoldRewardDetector → 보상표·관문·골드 여부
 │                             └─ LiveCoordinator → StateSession → Store
+│                                                └─ GoldRewardSession → Store.set_gold_reward
 ├─ RecordsView
 ├─ WeeklySummaryView → WeeklySummary → name으로 통일된 Raid 표시 데이터
 │                                    └─ RecordPresentation → 수요일 06시 구분

@@ -1,0 +1,12 @@
+{
+  "mode": "yolo",
+  "weights": "models/gold-reward-panel.pt",
+  "classes": [
+    "reward_panel"
+  ],
+  "confidence": 0.7,
+  "imageSize": 960,
+  "trainingRun": "gold-reward-panel-1011",
+  "trainingManifest": "data/annotations/gold-reward-panel-1011.json",
+  "modelSha256": "7bb8a50250d30d6354866dcd537931402ac274248e508d394d8c80be5855b396"
+}

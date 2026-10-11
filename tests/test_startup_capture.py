@@ -40,7 +40,7 @@ class StartupCaptureTests(unittest.TestCase):
             stack.enter_context(patch.object(recognition_service,'client_alive',return_value=True))
             for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',
                          'live.LiveCoordinator','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
-                         'completion_overlay.CompletionOverlayDetector','completion_diagnostic.CompletionDiagnostic',
+                         'completion_overlay.CompletionOverlayDetector','gold_reward.GoldRewardDetector','completion_diagnostic.CompletionDiagnostic',
                          'recognition_diagnostic.RecognitionDiagnostic'):
                 stack.enter_context(patch('beatrice.'+name))
             factory=stack.enter_context(patch('beatrice.obs_capture.ObsCapture',return_value=capture))

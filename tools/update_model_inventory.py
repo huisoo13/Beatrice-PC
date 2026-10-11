@@ -13,11 +13,13 @@ DESCRIPTIONS={
     'gate_panel':'전체 관문 아이콘 영역','dungeon_name':'던전 이름','difficulty':'난이도',
     'gate_in_progress':'진행 중 관문 아이콘','gate_completed':'완료 관문 아이콘',
     'gate_not_started':'진행 전 관문 아이콘','gateless_title':'관문 없는 레이드 제목',
-    'completion_overlay':'중앙 완료 연출','completion_text':'N관문 돌파 / 던전 클리어 문구 영역'}
+    'completion_overlay':'중앙 완료 연출','completion_text':'N관문 돌파 / 던전 클리어 문구 영역',
+    'reward_panel':'관문 보상표 전체','reward_gate_title':'보상표의 N관문 돌파 제목',
+    'gold_reward_present':'골드 행이 있는 통화 보상 영역','gold_reward_absent':'골드 행이 없는 통화 보상 영역'}
 
 def inventory():
     configs=[json.loads((ROOT/f'config/{name}.json').read_text(encoding='utf-8')) for name in
-             ('character-regions','dungeon-regions','dungeon-elements','completion-overlay')]
+             ('character-regions','dungeon-regions','dungeon-elements','completion-overlay','gold-reward-panel','gold-reward')]
     lines=['<!-- MODEL-INVENTORY:START -->','## 현재 모델·클래스 빠른 확인','',
            '모델·클래스 변경 시 설정과 이 표를 함께 갱신합니다. `python tools/update_model_inventory.py`로 재생성하며 테스트로 일치 여부를 검사합니다.',
            '과거 작업 일지보다 이 활성 모델 표를 우선합니다.','',
@@ -26,7 +28,9 @@ def inventory():
     for config in configs:
         for i,name in enumerate(config['classes']):
             model=f"`{Path(config['weights']).name}`" if i==0 else '↳'
-            lines.append(f'| {model} | `{name}` | {DESCRIPTIONS[name]} |')
+            description=DESCRIPTIONS[name]
+            if config.get('parentConfig') and name=='reward_panel':description+=' (요소 모델에서는 미사용)'
+            lines.append(f'| {model} | `{name}` | {description} |')
     lines+=['','PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니다. EasyOCR은 사용하지 않습니다.',
             '고정 화면 좌표나 패널 비율로 OCR 영역을 지정하지 않습니다. 모델 파일은 로컬 관리하며 Git에 포함하지 않습니다.',
             '<!-- MODEL-INVENTORY:END -->']

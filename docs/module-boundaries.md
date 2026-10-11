@@ -1,5 +1,7 @@
 # 모듈 경계 정리 (최종 갱신: 2026-10-11)
 
+제목 첫 숫자 탐지 보강(2026-10-11): `tools/review_title_elements.py`는 검토된 학습 라벨·dim/크기 변형 자료 준비와 실제 YOLO/OCR 재생을 소유하고, 기존 `tools/train_dungeon_panel.py`로 학습한다. 실행 중 인식 모듈·공용 매칭·Store의 경계는 유지한다. 상세 자료와 검증 범위는 [제목 숫자 학습](64-title-first-digit-training.md)을 참고한다.
+
 앱 제어, 화면 표시, SQLite 저장, 캡처 중단 처리, 오프라인 평가 계산의 책임을 분리했습니다.
 화면용 통신 형식과 관문 아이콘·배너 판단은 유지합니다. 완료 DB와 Drive 형식은 [완료 기록 계약](63-completion-record-schema.md)에 따라 갱신하며, 캐릭터 확정 이후에만 던전 모델을 실행합니다. 주간 구분은 수요일 오전 6시 한국 시간입니다.
 
@@ -7,6 +9,8 @@
 
 | 역할 | 모듈 | 호출부의 책임 |
 | --- | --- | --- |
+| 골드 보상 관측 | `beatrice/gold_reward.py`의 `GoldRewardDetector` | `analyze(frame, seconds)`는 부모 전용 YOLO로 보상표를, 요소 YOLO로 실제 탐지 crop의 관문 제목·통화 영역을 찾는다. 제목 OCR과 명시적 획득/미획득 클래스가 맞으면 verified를 반환한다. 0.75초 제한·dim 정규화를 소유하고 저장소·UI에는 의존하지 않는다. `config/gold-reward.json`과 그 parentConfig인 `config/gold-reward-panel.json`을 사용한다. |
+| 보상과 완료 연결 | `beatrice/gold_reward_session.py`의 `GoldRewardSession` | `register(rows, at)`는 이번 실행에서 새 저장된 ID만 등록한다. `observe(at, name, dungeon, boxes)`는 같은 캐릭터·던전·난이도·완료 관문과 두 번의 fresh 관측을 확인해 Store API로 갱신한다. 120초 만료와 `reset()`을 소유한다. LiveCoordinator는 호출 순서만 연결한다. |
 | 계정 캐릭터 캐시 | `beatrice/character_catalog.py`의 `CharacterCatalog` | `ensure(names)`는 저장되지 않은 캐릭터의 계정 목록을 비동기로 조회합니다. `poll()`이 전체 응답을 원자적으로 저장하고 `decorate(records, emblem_path)`가 캐시와 공용 엠블럼을 연결합니다. Host는 호출·종료 순서만 담당합니다. SQL이나 UI에 의존하지 않습니다. |
 | 공용 던전 스키마·보상 인덱스 | `beatrice/content_catalog.py`의 `ContentCatalog` | 신규 배열과 이전 객체를 검증하고 보상표 rows를 제공한다. HTTP·SQL·UI에 의존하지 않는다. |
 | 던전 이름·기록 별칭 | `beatrice/content_match.py`의 `ContentMatcher` | OCR은 field_name에 비교해 name을 제공한다. Store는 record_candidates로 중복을 검사하고 native_presentation은 display_record_context와 record_detail로 현재 이름·보상을 표시한다. |
@@ -29,6 +33,9 @@
 MainWindow는 창 생명주기·화면 전환·설정과 엔진 연결을, Host는 작업자 및 로그인·Drive·유지보수의 실행 순서를 계속 관리합니다.
 
 ## 저장소 API
+
+- `correct_completion(record_id, content_name, matcher, expected_updated_at=...)`: 검토한 OCR 제목을 정확히 재매칭하며 ID·관측·생성 시각과 OCR 원문을 보존한다. 수정 시각 충돌과 주간 중복을 차단하고 체크포인트를 재연결한다.
+- `set_gold_reward(record_id, received)`: 이미 저장된 완료에 bool 결과만 연결한다. 미확인에서 확정으로 한 번 갱신하며 같은 결과는 no-op, 반대 결과는 거부한다. 이력·체크포인트·Drive revision을 원자적으로 변경한다.
 
 - `transaction(snapshot=True)`: 읽기 결과와 Drive revision을 같은 SQLite 스냅샷에서 조회합니다.
 - `backup_to(path)`: WAL을 포함한 SQLite 백업을 생성합니다.
@@ -97,3 +104,11 @@ Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약
 - EngineSnapshot이 선택적인 currencyImages를 복제해 메시지 수명을 보장하고, WeeklySummaryView가 이미지를 금액 왼쪽에 총합 16px·간격 4px, 나머지 14px·간격 2px로 표시합니다. 같은 경로는 BitmapImage를 공유하며 경로 갱신 시 화면을 다시 표시합니다. 이미지 누락·로딩 실패는 금액 텍스트를 유지합니다.
 
 - 주간 현황 금액 폰트는 공통 ViewTheme의 Pretendard를 재사용합니다. 화면별 별도 폰트 생성자 연결은 없습니다.
+
+## 엔진 프로세스 수명 (2026-10-11)
+
+`EngineClient`는 `EngineProcessLifetime`의 UI 소유 Windows Job에 분석 프로세스를 연결합니다. `app_launcher --engine`은 모델 import 전에 `process_lifetime.join_owner_job()`을 호출하여 venv redirector가 Job 연결 전에 생성한 실제 Python도 같은 Job에 참여시킵니다. OBS 자식은 Job을 상속합니다. Job 핸들은 상속하지 않으며 UI가 종료되면 남은 자식들을 종료합니다. 정상 종료는 기존 shutdown·OBS 정리 완료 순서를 유지합니다.
+
+`native_bridge.main`은 이벤트 루프 예외에서도 Host의 shutdown API로 작업자를 중지하고 join한 뒤 instance lock을 해제합니다. 작업자가 캡처를 유지한 채 중복 실행 제한만 풀리는 상황을 방지합니다. 다른 앱이나 설치된 OBS 프로세스를 종료하지 않습니다.
+
+OBS stderr는 ObsCapture의 상태 수신 스트림에서 로그와 오류 메시지로 변환합니다. 파이프 연결 실패 및 예외 종료 검증은 [OBS 잔여 프로세스 수정](66-obs-orphan-process-fix.md)을 참고하세요.

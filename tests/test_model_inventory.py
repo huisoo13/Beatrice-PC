@@ -9,7 +9,7 @@ class ModelInventoryTests(unittest.TestCase):
         readme=(ROOT/'README.md').read_text(encoding='utf-8')
         block=readme.split('<!-- MODEL-INVENTORY:START -->')[1].split('<!-- MODEL-INVENTORY:END -->')[0]
         total=0
-        for config in ('character-regions','dungeon-regions','dungeon-elements','completion-overlay'):
+        for config in ('character-regions','dungeon-regions','dungeon-elements','completion-overlay','gold-reward-panel','gold-reward'):
             doc=json.loads((ROOT/f'config/{config}.json').read_text(encoding='utf-8'))
             listed=[];active=False
             for line in block.splitlines():
@@ -19,4 +19,4 @@ class ModelInventoryTests(unittest.TestCase):
                 if active:listed.append(cells[2].strip('`'))
             self.assertEqual(listed,doc['classes'],config)
             total+=len(doc['classes'])
-        self.assertIn(f'4개 / {total}클래스',block)
+        self.assertIn(f'6개 / {total}클래스',block)

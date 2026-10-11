@@ -10,6 +10,7 @@ def record_view(row, cached=None, *, matcher=None):
     when = datetime.fromisoformat(row['observedAt']).astimezone().strftime('%Y.%m.%d %H:%M') if row.get('observedAt') else '완료 시각 미상'
     matcher = ContentMatcher(cached) if matcher is None else matcher
     detail = record_detail(row, cached, matcher=matcher)
+    detail['goldReward']=row.get('goldReward')
     dungeon, mode = matcher.display_record_context(row)
     if row.get('ocrOriginal'): detail['ocrOriginal'] = row['ocrOriginal']
     return dict(character=row.get('characterName') or '캐릭터 확인 대기',

@@ -42,6 +42,14 @@ class FrameProtocolTests(unittest.TestCase):
             self.assertEqual(runtime_path(),owned.resolve())
 
 class ObsCaptureTests(unittest.TestCase):
+    def test_pipe_failure_is_visible_in_capture_status_and_logged(self):
+        capture=ObsCapture(None,Path('.'))
+        line="warning: [game-capture] init_pipe: failed to start pipe\n"
+        capture.log=io.BytesIO()
+        capture.process=SimpleNamespace(stdout=[line])
+        capture._status(capture.process)
+        self.assertIn('파이프 생성 실패',capture.message)
+        self.assertEqual(capture.log.getvalue(),line.encode('utf-8'))
     def setUp(self):
         self.capture=ObsCapture(Client(123,456,'LOSTARK'),Path('.'))
         self.capture.process=SimpleNamespace(poll=lambda:None)

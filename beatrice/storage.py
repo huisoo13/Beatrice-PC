@@ -214,6 +214,62 @@ class Store:
     def drive_revision(self):
         return self.db.execute('SELECT epoch,revision FROM drive_changes WHERE id=1').fetchone()
 
+    def correct_completion(self, record_id, content_name, matcher, *, expected_updated_at):
+        """Correct a reviewed OCR title without replacing identity or completion times."""
+        from .dungeon import key
+        from datetime import datetime,timedelta,timezone
+        with self.db:
+            if not self.db.in_transaction:self.db.execute('BEGIN IMMEDIATE')
+            found=self.db.execute('SELECT payload FROM completion_history WHERE record_id=?',(record_id,)).fetchone()
+            if found is None:raise ValueError('정정할 완료 기록이 없습니다.')
+            previous=json.loads(found[0])
+            if previous['updatedAt']!=expected_updated_at:raise ValueError('기록이 변경되었습니다. 다시 확인해주세요.')
+            row=dict(previous)
+            row.pop('catalogMatch',None)
+            row['contentName']=content_name
+            row['ocrOriginal']=dict(contentName=content_name,difficulty=row['difficulty'],gateNumber=row['gateNumber'])
+            row=matcher.record(row)
+            if row.get('catalogMatch',{}).get('status')!='matched':raise ValueError('정정한 제목의 정확한 공용 매칭이 필요합니다.')
+            # Keep the actual original OCR for audit and old-runtime alias lockout.
+            if 'ocrOriginal' in previous:row['ocrOriginal']=previous['ocrOriginal']
+            names={key(row['contentName']),key(row['catalogMatch']['fieldName'])}
+            for other in self.history_records():
+                if other['recordId']==record_id or other['characterName']!=row['characterName'] or other['isTest']!=row['isTest'] or other['gateNumber']!=row['gateNumber']:continue
+                if period(row) is not None and period(other)==period(row) and names.intersection({key(other['contentName']),*(key(n) for n in matcher.record_candidates(other))}):
+                    raise ValueError('같은 주간에 정정 대상 관문 기록이 이미 있습니다.')
+            old=datetime.fromisoformat(previous['updatedAt'].replace('Z','+00:00'))
+            row['updatedAt']=max(datetime.now(timezone.utc),old+timedelta(milliseconds=1)).isoformat(timespec='milliseconds').replace('+00:00','Z')
+            row=validate(row);encoded=json.dumps(row,ensure_ascii=False)
+            checkpoint=self.db.execute("SELECT owner,dungeon_key,gate FROM gate_states WHERE json_extract(payload,'$.recordId')=?",(record_id,)).fetchall()
+            for owner,dungeon,gate in checkpoint:
+                target=self.db.execute('SELECT payload FROM gate_states WHERE owner=? AND dungeon_key=? AND gate=?',(owner,key(row['contentName']),gate)).fetchone()
+                if target and json.loads(target[0])['recordId']!=record_id:raise ValueError('정정 대상 체크포인트가 이미 있습니다.')
+                self.db.execute('DELETE FROM gate_states WHERE owner=? AND dungeon_key=? AND gate=?',(owner,dungeon,gate))
+                self.db.execute('INSERT INTO gate_states VALUES(?,?,?,?)',(owner,key(row['contentName']),gate,encoded))
+            self.db.execute('UPDATE completion_history SET payload=? WHERE record_id=?',(encoded,record_id))
+            if not row['isTest']:self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+        return row
+
+    def set_gold_reward(self, record_id, received):
+        """Attach verified receipt once; repeated runs cannot replace a known result."""
+        from datetime import datetime,timedelta,timezone
+        if type(received) is not bool:raise ValueError('확인된 골드 보상 여부가 필요합니다.')
+        with self.db:
+            if not self.db.in_transaction:self.db.execute('BEGIN IMMEDIATE')
+            found=self.db.execute('SELECT payload FROM completion_history WHERE record_id=?',(record_id,)).fetchone()
+            if found is None:raise ValueError('보상을 연결할 완료 기록이 없습니다.')
+            previous=json.loads(found[0])
+            if previous.get('goldReward') is not None:
+                if previous['goldReward']!=received:raise ValueError('확정된 골드 보상 결과는 덮어쓸 수 없습니다.')
+                return previous
+            old=datetime.fromisoformat(previous['updatedAt'].replace('Z','+00:00'))
+            row=validate(dict(previous,goldReward=received,updatedAt=max(datetime.now(timezone.utc),old+timedelta(milliseconds=1)).isoformat(timespec='milliseconds').replace('+00:00','Z')))
+            encoded=json.dumps(row,ensure_ascii=False)
+            self.db.execute('UPDATE completion_history SET payload=? WHERE record_id=?',(encoded,record_id))
+            self.db.execute("UPDATE gate_states SET payload=? WHERE json_extract(payload,'$.recordId')=?",(encoded,record_id))
+            if not row['isTest']:self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+        return row
+
     def drive_pending(self,account):
         row=self.db.execute('''SELECT c.epoch,c.revision FROM drive_changes c
             LEFT JOIN drive_uploads u ON u.account=? AND u.epoch=c.epoch

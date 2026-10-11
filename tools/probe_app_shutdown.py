@@ -32,7 +32,7 @@ def main():
         stack.enter_context(patch.object(recognition_service,'ProcessWatch',side_effect=watch))
         stack.enter_context(patch('beatrice.obs_capture.ObsCapture',TrackedCapture))
         for name in ('character_vision.CharacterVision','dungeon.DungeonOCR','dungeon.DungeonTracker',
-                     'live.LiveCoordinator','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
+                     'live.LiveCoordinator','gold_reward.GoldRewardDetector','ui_regions.UIRegionDetector','dungeon_observer.DungeonObserver',
                      'completion_overlay.CompletionOverlayDetector','completion_diagnostic.CompletionDiagnostic',
                      'recognition_diagnostic.RecognitionDiagnostic'):
             stack.enter_context(patch('beatrice.'+name))

@@ -9,6 +9,7 @@ class CompletionDiagnostic:
     def __init__(self,directory):
         self.directory=Path(directory)/(datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid.uuid4().hex[:8])
         self.sequence=0;self.previous=None
+        self.gold_previous={}
 
     def record(self,frame,report):
         import cv2
@@ -16,6 +17,9 @@ class CompletionDiagnostic:
         decision=result.get('completionDecision',{})
         observation=decision.get('observation',{})
         dungeon=report.get('dungeon',{})
+        gold=dungeon.get('goldReward') or {}
+        if gold.get('status')=='not_requested':gold=self.gold_previous
+        else:self.gold_previous=gold
         def text(value):
             return value.get('text') if isinstance(value,dict) else value
         compact=dict(observedAt=report.get('observedAt'),sequence=self.sequence,
@@ -27,8 +31,9 @@ class CompletionDiagnostic:
             dungeon=text(dungeon.get('dungeonName')),difficulty=text(dungeon.get('difficulty')),
             gates=[b.get('state') for b in report.get('gates',[])],
             completion=observation,reason=decision.get('reason'),targetGate=decision.get('gate'),
+            goldReward={k:gold.get(k) for k in ('status','gate','received')},
             changedRecords=result.get('changedRecords',[]))
-        signature=json.dumps({k:compact[k] for k in ('character','characterStatus','pendingCharacter','loginSignals','dungeon','difficulty','gates','reason','targetGate')},sort_keys=True,ensure_ascii=False)
+        signature=json.dumps({k:compact[k] for k in ('character','characterStatus','pendingCharacter','loginSignals','dungeon','difficulty','gates','reason','targetGate','goldReward')},sort_keys=True,ensure_ascii=False)
         self.directory.mkdir(parents=True,exist_ok=True)
         if signature!=self.previous or compact['changedRecords']:
             filename=f'event-{self.sequence:08d}.jpg'

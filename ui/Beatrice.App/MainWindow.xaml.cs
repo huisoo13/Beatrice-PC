@@ -562,10 +562,11 @@ public partial class MainWindow : Window
         var content = new StackPanel { Spacing = 16 };
         content.Children.Add(Text(raid.Dungeon,20,bold:true));
         content.Children.Add(Text(string.Join(" · ",new[]{raid.Mode,RecordPresentation.Gate(raid.Gate)}.Where(v => !string.IsNullOrWhiteSpace(v))) + "\n" + raid.Character + " · " + raid.Date,14,"muted"));
+        content.Children.Add(Text("골드 보상  " + RecordPresentation.GoldReceipt(raid.Detail),16));
         if (raid.Detail.GetProperty("status").GetString() == "matched")
         {
             var values = raid.Detail.GetProperty("values");
-            content.Children.Add(Text($"골드  {values.GetProperty("gold").GetInt64():N0}\n비용  {values.GetProperty("fee").GetInt64():N0}\n귀속 비율  {values.GetProperty("bound_percentage").GetDouble()*100:0.##}%",16));
+            content.Children.Add(Text($"기본 골드  {values.GetProperty("gold").GetInt64():N0}\n비용  {values.GetProperty("fee").GetInt64():N0}\n귀속 비율  {values.GetProperty("bound_percentage").GetDouble()*100:0.##}%",16));
             content.Children.Add(Text(raid.Detail.GetProperty("source").GetString()!,12,"muted"));
         }
         else content.Children.Add(Text("상세 정보가 연결되지 않았습니다. 공용 데이터에서 일치하는 항목을 확인해주세요.",14,"muted"));

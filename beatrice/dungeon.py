@@ -197,7 +197,7 @@ class DungeonTracker:
         result=dict(sourceSeconds=seconds,engine=observation.get('engine'),ocr=observation.get('ocr',{}),preview={})
         result['diagnosticStatus']=observation.get('diagnosticStatus','text_unverified')
         result['regionSource']=observation.get('regionSource')
-        for field in ('raidKind','currentRaidPanel','raidPanelVisible','completionOverlay','raidBounds'):
+        for field in ('raidKind','currentRaidPanel','raidPanelVisible','completionOverlay','raidBounds','goldReward'):
             result[field]=observation.get(field)
         for field in FIELDS:
             value=observation.get(field)

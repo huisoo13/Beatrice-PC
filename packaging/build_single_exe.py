@@ -65,7 +65,10 @@ if active_config['mode']=='yolo':
     model_configs=([json.loads((ROOT/active_config[role]).read_text(encoding='utf-8')) for role in ('characterConfig','dungeonConfig')]
                    if active_config.get('architecture')=='split' else [active_config])
     model_configs.append(json.loads((ROOT/'config/completion-overlay.json').read_text(encoding='utf-8')))
+    model_configs.append(json.loads((ROOT/'config/gold-reward.json').read_text(encoding='utf-8')))
     for model_config in model_configs:
+        if model_config.get('parentConfig'):
+            model_configs.append(json.loads((ROOT/model_config['parentConfig']).read_text(encoding='utf-8')))
         if model_config.get('elementConfig'):
             model_configs.append(json.loads((ROOT/model_config['elementConfig']).read_text(encoding='utf-8')))
         paths=[model_config['weights']]

@@ -437,6 +437,14 @@ def main(worker_factory=None):
         host.worker.failed.connect(lambda _: faulthandler.cancel_dump_traceback_later())
         return app.run()
     finally:
+        # A timer/record exception must not release the instance lock while the
+        # non-daemon analysis worker still owns the game's OBS capture pipe.
+        if host is not None and not host.closed:
+            host.command(dict(type='shutdown'))
+            if host.worker.is_alive(): host.worker.join()
+            host.timer.stop()
+            host.command_timer.stop()
+            if not host.closed: host.store.close()
         faulthandler.cancel_dump_traceback_later()
         startup_trace.close()
         lock.release()

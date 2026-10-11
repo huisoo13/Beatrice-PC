@@ -13,11 +13,11 @@
   "confidence": 0.7,
   "imageSize": 512,
   "nmsIou": 0.4,
-  "trainingRun": "dungeon-elements-exhard-final-1008",
-  "trainingManifest": "data/annotations/dungeon-elements-exhard-reinforced-1008.json",
+  "trainingRun": "dungeon-elements-title-tight-1011",
+  "trainingManifest": "data/annotations/dungeon-elements-title-1011.json",
   "classConfidence": {
     "gateless_title": 0.65,
     "dungeon_name": 0.45
   },
-  "modelSha256": "00a6b58fb40caff4a0582040ca75e60ff95e3eb8976350854be3afc9dd1f75b7"
+  "modelSha256": "d841231be45c5294fb607be0b1a9e1c6c808bef960079b8ba0dae92a19a77434"
 }

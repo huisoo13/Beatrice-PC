@@ -101,7 +101,9 @@ class ObsCapture:
                             self.active_revision=self.target_revision;self.binding_ready.set()
             except (ValueError,TypeError):
                 if self.log is not None:self.log.write(line.encode('utf-8'))
-                if 'could not open process' in line:
+                if 'init_pipe: failed to start pipe' in line:
+                    self.message='OBS 게임 연결 파이프 생성 실패 · 이전 앱의 캡처 프로세스 또는 다른 캡처 연결 확인'
+                elif 'could not open process' in line:
                     self.message='OBS 게임 접근 거부 · 앱/게임 실행 권한 또는 게임 보안 차단 확인'
                 elif 'inject' in line.lower() and ('failed' in line.lower() or 'error' in line.lower()):
                     self.message='OBS 게임 캡처 연결 실패 · 게임 실행 권한 또는 보안 차단 확인'
@@ -119,7 +121,9 @@ class ObsCapture:
         self.log=(self.data_dir/'obs-engine.log').open('ab',buffering=0)
         command=[sys.executable,'-m','beatrice.obs_engine','--memory',tag,'--runtime',str(runtime)]
         self.process=subprocess.Popen(command,cwd=ROOT,stdin=subprocess.PIPE,stdout=subprocess.PIPE,
-            stderr=self.log,text=True,encoding='utf-8',errors='replace',creationflags=subprocess.CREATE_NO_WINDOW)
+            stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',creationflags=subprocess.CREATE_NO_WINDOW)
+        self.log.write((json.dumps(dict(event='engine_process_started',pid=self.process.pid,
+                                      parentPid=os.getpid(),memory=tag))+'\n').encode('utf-8'))
         self.status_thread=threading.Thread(target=self._status,args=(self.process,),daemon=True)
         self.status_thread.start()
 

@@ -5,6 +5,11 @@ using System.Linq;
 namespace BeatricePC;
 internal static class RecordPresentation
 {
+    internal static string GoldReceipt(System.Text.Json.JsonElement detail)
+    {
+        if(detail.ValueKind != System.Text.Json.JsonValueKind.Object || !detail.TryGetProperty("goldReward",out var value)) return "미확인";
+        return value.ValueKind switch { System.Text.Json.JsonValueKind.True => "획득", System.Text.Json.JsonValueKind.False => "미획득", _ => "미확인" };
+    }
     internal static readonly TimeSpan KoreaOffset = TimeSpan.FromHours(9);
     internal static DateTime KoreaNow(DateTimeOffset instant) => instant.ToOffset(KoreaOffset).DateTime;
     internal static DateTime WeekStart(DateTime local)

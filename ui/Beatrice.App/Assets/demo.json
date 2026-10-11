@@ -35,7 +35,8 @@
           "gold": 10000,
           "fee": 2000,
           "bound_percentage": 0.2
-        }
+        },
+        "goldReward": true
       }
     },
     {
@@ -81,7 +82,8 @@
           "gold": 10000,
           "fee": 2000,
           "bound_percentage": 0.2
-        }
+        },
+        "goldReward": true
       }
     },
     {

@@ -24,6 +24,7 @@ class RecognitionPipeline:
         from ..ui_regions import load_config,UIRegionDetector
         from ..dungeon_observer import DungeonObserver
         from ..completion_overlay import CompletionOverlayDetector
+        from ..gold_reward import GoldRewardDetector
         self.config=load_config()
         if self.config['mode']!='yolo':raise ValueError('YOLO 탐지만 지원합니다.')
         self.detector=UIRegionDetector(self.config,progress=lambda message:self.progress('1 / 3 · '+message))
@@ -34,6 +35,8 @@ class RecognitionPipeline:
         self.progress('1 / 3 · 완료 표시 모델을 불러오는 중…')
         config=json.loads((self.root/'config/completion-overlay.json').read_text(encoding='utf-8'))
         self.completion=CompletionOverlayDetector(dungeon.reader,config)
+        self.progress('1 / 3 · 골드 보상 모델을 불러오는 중…')
+        self.gold_reward=GoldRewardDetector(dungeon.reader,json.loads((self.root/'config/gold-reward.json').read_text(encoding='utf-8')))
 
     def analyze_character(self,frame,seconds,confirmed_name=None):
         regions=self.detector.locate_character(frame)
@@ -48,6 +51,8 @@ class RecognitionPipeline:
         dungeon,boxes=self.dungeon_observer.analyze(frame,regions,seconds,blocked=blocked)
         if not still_current():return None
         if not blocked and completion_enabled:dungeon['completionOverlay']=self.completion.analyze(frame)
+        if not blocked and dungeon.get('currentRaidPanel') and dungeon.get('dungeonVisible') and any(box.get('state')=='완료' for box in boxes):
+            dungeon['goldReward']=self.gold_reward.analyze(frame,seconds)
         if not still_current():return None
         return dungeon,boxes
 

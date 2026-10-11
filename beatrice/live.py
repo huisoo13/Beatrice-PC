@@ -4,6 +4,7 @@ from .dungeon import key
 from .character import CharacterTracker
 from .state_session import StateSession
 from .completion_banner import CompletionBanner
+from .gold_reward_session import GoldRewardSession
 
 class LiveCoordinator:
     def __init__(self,store,is_test=False):
@@ -12,6 +13,7 @@ class LiveCoordinator:
         self.context=None;self.context_pair=None;self.candidate=None;self.count=0
         self.banner=CompletionBanner();self.completion_context=None;self.completion_seen_at=None
         self.gate_recheck=None
+        self.gold_reward=GoldRewardSession(store)
     def confirm(self,name):
         if self.context is None:return
         run,n=self.context
@@ -24,10 +26,12 @@ class LiveCoordinator:
         self.identity.capture_interrupted()
         self.banner.capture_interrupted()
         self.session.capture_interrupted()
+        self.gold_reward.reset()
     def observe_character(self,at,character):
         identity=self.identity.update(at.timestamp(),character)
         suspended=any(a['type']=='suspend' for a in identity['actions'])
         if suspended:
+            self.gold_reward.reset()
             self.session.begin_character_change();self.context=None;self.context_pair=None;self.candidate=None;self.count=0
             self.banner.reset();self.completion_context=None;self.completion_seen_at=None
             self.gate_recheck=None
@@ -38,6 +42,7 @@ class LiveCoordinator:
     def update(self,at,character,boxes,dungeon,identity=None):
         identity=identity if identity is not None else self.observe_character(at,character)
         if not identity['recordingAllowed']:
+            self.gold_reward.reset()
             return dict(identity=identity,result=dict(events=[],changedRecords=[]),dungeon={},recordingStatus='캐릭터 확인 대기 · 던전 탐지 중지')
         suspended=any(a['type']=='suspend' for a in identity['actions'])
         frame_pair=tuple(key(dungeon[f]) for f in ('dungeonName','difficulty')) if dungeon.get('contextStatus')=='ocr_verified' else None
@@ -66,6 +71,7 @@ class LiveCoordinator:
             run=str(uuid.uuid5(uuid.NAMESPACE_URL,'beatrice-test:'+repr(signature)))
             context=(run,len(boxes))
             if self.context!=context:
+                self.gold_reward.reset()
                 if self.context is not None:self.session.begin_character_change()
                 self.completion_context=None;self.completion_seen_at=None
                 self.gate_recheck=None
@@ -87,6 +93,7 @@ class LiveCoordinator:
                       for i,f in enumerate(('dungeonName','difficulty'))) if self.context_pair else False
         different=different or bool(frame_pair and self.context_pair and frame_pair!=self.context_pair)
         if different or count_mismatch:
+            self.gold_reward.reset()
             self.completion_context=None;self.completion_seen_at=None
         # Fresh matching title/mode still identifies the raid when an icon is
         # temporarily unreadable. Reuse only its already-confirmed gate count.
@@ -147,6 +154,12 @@ class LiveCoordinator:
         elif self.banner.consumed:decision='already_consumed'
         result['gateRecheckPending']=self.gate_recheck is not None
         result['completionDecision']=dict(reason=decision,gate=gate,context=held,observation=overlay)
+        self.gold_reward.register(result.get('changedRecords',[]),at.timestamp())
+        rewards=self.gold_reward.observe(at.timestamp(),identity['currentName'],dungeon,boxes)
+        if rewards:
+            updated={row['recordId']:row for row in [*result.get('changedRecords',[]),*rewards]}
+            result['changedRecords']=list(updated.values())
+            result['goldRewardUpdates']=rewards
         if result.get('bannerCompleted'):
             status='완료 배너 확인 · '+('레이드' if held and held.get('raidKind')=='gateless' else '관문')+(' 완료 저장됨' if self.session.character else ' 완료 임시 저장 · 캐릭터 확인 대기')
         elif result.get('gateRecheckPending') and not result.get('events') and not result.get('pendingEvents'):
