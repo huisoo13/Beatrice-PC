@@ -12,7 +12,8 @@ def build(output):
     raw=ROOT/'data/raw/gold-reward-1011';raw.mkdir(parents=True,exist_ok=True)
     session=Path('C:/Users/Huisoo/AppData/Local/BeatricePC/completion-diagnostics/20261011T053841Z-92af6174')
     sources=[('gold',ROOT/'data/raw/dungeon-completion-0923/completion-230.jpg',True),
-             ('no-gold',Path('C:/Users/Huisoo/AppData/Local/Temp/codex-clipboard-4402bfe3-adff-4304-aa71-1ece48a0d1d3.png'),False)]
+             ('no-gold',Path('C:/Users/Huisoo/AppData/Local/Temp/codex-clipboard-4402bfe3-adff-4304-aa71-1ece48a0d1d3.png'),False),
+             ('final-no-gold',Path('C:/Users/Huisoo/AppData/Local/BeatricePC/completion-diagnostics/20261011T102237Z-6b11ca8d/event-00000253.jpg'),False)]
     rows=[]
     def append(path,boxes):
         rows.append(dict(path=path.relative_to(ROOT/'data/annotations').as_posix() if path.is_relative_to(ROOT/'data/annotations') else '../../'+path.relative_to(ROOT).as_posix(),split='train',sessionId='reward-reconstruction-1011',boxes=boxes))

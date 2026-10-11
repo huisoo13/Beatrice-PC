@@ -1,6 +1,6 @@
 # Beatrice PC
 
-2026-10-11: [골드 보상 여부 인식·기록](docs/65-gold-reward-recognition.md). 관문 보상표를 전용 YOLO로 탐지하고 제목 OCR·새 완료 기록·반복 관측을 확인해 `goldReward`를 저장합니다. 주간 합계는 획득 확인된 기록의 공용 골드만 더하고, 미획득은 0, 미확인은 별도 표시합니다.
+2026-10-11: [골드 보상 여부 인식·기록](docs/65-gold-reward-recognition.md). 관문 보상표를 전용 YOLO로 탐지하고 제목 OCR·새 완료 기록·반복 관측을 확인해 `goldReward`를 저장합니다. 주간 합계는 획득·미확인 기록의 공용 골드를 더하고, 미획득은 0으로 처리합니다. 최종 보상표는 현재 전체 관문 완료를 확인한 뒤 마지막 관문에 연결합니다.
 
 2026-10-11: [던전 제목 첫 숫자 탐지 보강](docs/64-title-first-digit-training.md). 실제 1막 화면과 dim·크기 변형으로 던전 요소 YOLO를 추가 학습했습니다. 같은 플레이 OCR 56/56, 기존 요소 89/89, EX 하드 29/29를 통과했으며 OCR·공용 매칭·저장 규칙은 유지합니다. 앱 재실행 후 새 모델을 불러옵니다.
 
@@ -71,7 +71,7 @@ UI 에셋과 디자인 자료의 Git 관리 기준은 [디자인 자료 관리](
 | ↳ | `completion_text` | N관문 돌파 / 던전 클리어 문구 영역 |
 | `gold-reward-panel.pt` | `reward_panel` | 관문 보상표 전체 |
 | `gold-reward.pt` | `reward_panel` | 관문 보상표 전체 (요소 모델에서는 미사용) |
-| ↳ | `reward_gate_title` | 보상표의 N관문 돌파 제목 |
+| ↳ | `reward_gate_title` | 보상표의 N관문 돌파·던전 종료 제목 |
 | ↳ | `gold_reward_present` | 골드 행이 있는 통화 보상 영역 |
 | ↳ | `gold_reward_absent` | 골드 행이 없는 통화 보상 영역 |
 
@@ -200,7 +200,7 @@ Beatrice-PC/
 │  ├─ MainWindow.Records.cs      # 기록 화면 연결
 │  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
 │  ├─ MainWindow.WeeklySummary.cs # 주간 현황 연결·데모 검증
-│  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·획득 확인 골드 분리
+│  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·미획득 제외·미확인 공용 금액 합산
 │  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·주간 변경 표시
 │  ├─ RecordsView.cs             # 기록 화면·주간 탐색·RichTextBlock 문장·직업 문양
 │  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
@@ -247,7 +247,7 @@ MainWindow
 │                             ├─ RecognitionPipeline.analyze_character → 캐릭터 YOLO·OCR
 │                             ├─ LiveCoordinator.observe_character → 확정 여부
 │                             ├─ 확정 시 analyze_dungeon → 던전 YOLO·OCR·관문·배너
-│                             │                            └─ GoldRewardDetector → 보상표·관문·골드 여부
+│                             │                            └─ GoldRewardDetector → 보상표·관문/최종 제목·골드 여부
 │                             └─ LiveCoordinator → StateSession → Store
 │                                                └─ GoldRewardSession → Store.set_gold_reward
 ├─ RecordsView

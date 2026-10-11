@@ -69,6 +69,31 @@ class GoldRewardTests(unittest.TestCase):
         self.assertEqual(self.observe(11.5,goldReward=dict(status='not_requested')),[])
         self.assertEqual(len(self.observe(12)),1)
 
+    def test_final_reward_updates_only_last_completed_gate(self):
+        row=self.store.save_completions('name:캐릭터','던전',[dict(characterName='캐릭터',dungeonName='던전',difficulty='싱글 모드',gate=2,state='완료',observedAt='2026-10-11T05:40:36Z')],2)[0]
+        self.session.register([row],10)
+        self.boxes[1]['state']='완료'
+        reward=dict(status='verified',scope='final',gate=None,received=False)
+        self.assertEqual(self.observe(11,goldReward=reward),[])
+        updated=self.observe(12,goldReward=reward)
+        self.assertEqual([r['recordId'] for r in updated],[row['recordId']])
+        self.assertIs(updated[0]['goldReward'],False)
+        first=next(r for r in self.store.history_records() if r['gateNumber']==1)
+        self.assertNotIn('goldReward',first)
+
+    def test_final_reward_cannot_guess_last_gate_from_incomplete_icons(self):
+        reward=dict(status='verified',scope='final',gate=None,received=False)
+        self.assertEqual(self.observe(11,goldReward=reward),[])
+        self.assertEqual(self.observe(12,goldReward=reward),[])
+        self.assertNotIn('goldReward',self.store.history_records()[0])
+
+    def test_final_reward_rejects_truncated_gate_array(self):
+        self.boxes=self.boxes[:1]
+        reward=dict(status='verified',scope='final',gate=None,received=False)
+        self.assertEqual(self.observe(11,goldReward=reward),[])
+        self.assertEqual(self.observe(12,goldReward=reward),[])
+        self.assertNotIn('goldReward',self.store.history_records()[0])
+
     def test_unknown_compatibility_and_invalid_flags(self):
         validate(self.row);validate(dict(self.row,goldReward=None))
         for invalid in (0,1,'false',{},[]):
@@ -128,5 +153,10 @@ class GoldDetectorTests(unittest.TestCase):
 
     def test_trade_gold_and_wrong_title_do_not_verify(self):
         elements={'reward_gate_title':region([1,1,90,20]),'gold_reward_present':region([1,30,90,80])}
-        for title in ('던전 종료','던전 클리어','골드','9관문 돌파'):
+        for title in ('던전 클리어','골드','9관문 돌파','던전 종료 예정','거래 던전 종료'):
             self.assertEqual(self.run_detector(elements,title)['status'],'unverified')
+
+    def test_dungeon_end_verifies_receipt_without_guessing_gate(self):
+        for title in ('던전 종료',"'던전 종료'",'던전 종료"','“던전 종료”'):
+            result=self.run_detector({'reward_gate_title':region([1,1,90,20]),'gold_reward_absent':region([1,30,90,80])},title)
+            self.assertEqual((result['status'],result['scope'],result['gate'],result['received']),('verified','final',None,False))

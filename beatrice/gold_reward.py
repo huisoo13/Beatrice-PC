@@ -1,5 +1,8 @@
 """Learned reward panel interpretation, independent of completion and persistence."""
 import json
+import math
+import re
+import unicodedata
 from .ui_regions import UIRegionDetector,get_box,contained,ROOT
 from .completion_overlay import parse_completion
 
@@ -42,8 +45,11 @@ class GoldRewardDetector:
         values=self.reader.recognize(normalized)
         result['raw']=[dict(text=v[1],confidence=float(v[2])) for v in values]
         if len(values)!=1:return result
-        parsed=parse_completion(values[0][1],float(values[0][2]))
-        if not parsed or parsed['kind']!='gate_breakthrough' or not 1<=parsed['gate']<=8:return result
+        text=re.sub(r'\s+','',unicodedata.normalize('NFKC',values[0][1])).strip("'\"‘’“”")
+        score=float(values[0][2])
+        final=math.isfinite(score) and score>=.8 and text=='던전종료'
+        parsed=parse_completion(values[0][1],score)
+        if not final and (not parsed or parsed['kind']!='gate_breakthrough' or not 1<=parsed['gate']<=8):return result
         kind='gold_reward_present' if present else 'gold_reward_absent'
-        result.update(status='verified',gate=parsed['gate'],received=present is not None,confidence=found[kind]['confidence'])
+        result.update(status='verified',gate=None if final else parsed['gate'],scope='final' if final else 'gate',received=present is not None,confidence=found[kind]['confidence'])
         return result

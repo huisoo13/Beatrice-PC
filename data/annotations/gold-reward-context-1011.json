@@ -3392,6 +3392,1698 @@
       ]
     },
     {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            148,
+            52,
+            366,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            25,
+            590,
+            450,
+            733
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            208,
+            82,
+            426,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            85,
+            620,
+            510,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            82,
+            386,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            620,
+            470,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            188,
+            82,
+            406,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            65,
+            620,
+            490,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-1-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            32,
+            386,
+            78
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            570,
+            470,
+            713
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            148,
+            52,
+            366,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            25,
+            590,
+            450,
+            733
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            208,
+            82,
+            426,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            85,
+            620,
+            510,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            82,
+            386,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            620,
+            470,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            188,
+            82,
+            406,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            65,
+            620,
+            490,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.75-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            32,
+            386,
+            78
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            570,
+            470,
+            713
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            148,
+            52,
+            366,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            25,
+            590,
+            450,
+            733
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            208,
+            82,
+            426,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            85,
+            620,
+            510,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            82,
+            386,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            620,
+            470,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            188,
+            82,
+            406,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            65,
+            620,
+            490,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.5-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            32,
+            386,
+            78
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            570,
+            470,
+            713
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            148,
+            52,
+            366,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            25,
+            590,
+            450,
+            733
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            208,
+            82,
+            426,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            85,
+            620,
+            510,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            82,
+            386,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            620,
+            470,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            188,
+            82,
+            406,
+            128
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            65,
+            620,
+            490,
+            763
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1-0.35-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            168,
+            32,
+            386,
+            78
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            45,
+            570,
+            470,
+            713
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2220,
+            22,
+            2580,
+            825
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            111,
+            39,
+            274,
+            74
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            19,
+            442,
+            338,
+            550
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            156,
+            62,
+            320,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            64,
+            465,
+            382,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            62,
+            290,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            465,
+            352,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            141,
+            62,
+            304,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            49,
+            465,
+            368,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-1-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            24,
+            290,
+            58
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            428,
+            352,
+            535
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2220,
+            22,
+            2580,
+            825
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            111,
+            39,
+            274,
+            74
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            19,
+            442,
+            338,
+            550
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            156,
+            62,
+            320,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            64,
+            465,
+            382,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            62,
+            290,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            465,
+            352,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            141,
+            62,
+            304,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            49,
+            465,
+            368,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.75-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            24,
+            290,
+            58
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            428,
+            352,
+            535
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2220,
+            22,
+            2580,
+            825
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            111,
+            39,
+            274,
+            74
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            19,
+            442,
+            338,
+            550
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            156,
+            62,
+            320,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            64,
+            465,
+            382,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            62,
+            290,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            465,
+            352,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            141,
+            62,
+            304,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            49,
+            465,
+            368,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.5-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            24,
+            290,
+            58
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            428,
+            352,
+            535
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            2220,
+            22,
+            2580,
+            825
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            111,
+            39,
+            274,
+            74
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            19,
+            442,
+            338,
+            550
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            156,
+            62,
+            320,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            64,
+            465,
+            382,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            62,
+            290,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            465,
+            352,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            141,
+            62,
+            304,
+            96
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            49,
+            465,
+            368,
+            572
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-0.75-0.35-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            126,
+            24,
+            290,
+            58
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            34,
+            428,
+            352,
+            535
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            3700,
+            38,
+            4300,
+            1375
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            185,
+            65,
+            458,
+            122
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            31,
+            738,
+            562,
+            916
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            260,
+            102,
+            532,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            106,
+            775,
+            638,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            102,
+            482,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            775,
+            588,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            235,
+            102,
+            508,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            81,
+            775,
+            612,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-1-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            40,
+            482,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            712,
+            588,
+            891
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            3700,
+            38,
+            4300,
+            1375
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            185,
+            65,
+            458,
+            122
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            31,
+            738,
+            562,
+            916
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            260,
+            102,
+            532,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            106,
+            775,
+            638,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            102,
+            482,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            775,
+            588,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            235,
+            102,
+            508,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            81,
+            775,
+            612,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.75-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            40,
+            482,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            712,
+            588,
+            891
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            3700,
+            38,
+            4300,
+            1375
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            185,
+            65,
+            458,
+            122
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            31,
+            738,
+            562,
+            916
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            260,
+            102,
+            532,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            106,
+            775,
+            638,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            102,
+            482,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            775,
+            588,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            235,
+            102,
+            508,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            81,
+            775,
+            612,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.5-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            40,
+            482,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            712,
+            588,
+            891
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-0.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_panel",
+          "xyxy": [
+            3700,
+            38,
+            4300,
+            1375
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-1.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            185,
+            65,
+            458,
+            122
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            31,
+            738,
+            562,
+            916
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-2.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            260,
+            102,
+            532,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            106,
+            775,
+            638,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-3.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            102,
+            482,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            775,
+            588,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-4.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            235,
+            102,
+            508,
+            160
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            81,
+            775,
+            612,
+            954
+          ]
+        }
+      ]
+    },
+    {
+      "path": "../../data/raw/gold-reward-1011/final-no-gold-1.25-0.35-5.png",
+      "split": "train",
+      "sessionId": "reward-reconstruction-1011",
+      "boxes": [
+        {
+          "class": "reward_gate_title",
+          "xyxy": [
+            210,
+            40,
+            482,
+            98
+          ]
+        },
+        {
+          "class": "gold_reward_absent",
+          "xyxy": [
+            56,
+            712,
+            588,
+            891
+          ]
+        }
+      ]
+    },
+    {
       "path": "../../data/raw/gold-reward-1011/negative-0-0.png",
       "split": "train",
       "sessionId": "reward-reconstruction-1011",

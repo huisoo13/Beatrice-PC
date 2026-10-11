@@ -108,8 +108,8 @@ Equal(parsedSnapshot.CurrencyImages.HasValue,false,"older engines need no curren
 Console.WriteLine($"PASS: {passed} presentation, protocol, receipt and currency image checks");
 Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"unmatched"}""")).Missing,0,"confirmed no gold needs no catalog");
 Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Gold,0m,"confirmed no gold ignores catalog gold");
-Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Missing,1,"historical unknown is excluded");
-Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":null,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Missing,1,"null receipt is unknown");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Gold,9999m,"historical unknown shows catalog gold");
+Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":null,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Gold,9999m,"null receipt shows catalog gold");
 Console.WriteLine($"PASS: {passed} gold receipt checks");
 
 Equal(RecordPresentation.GoldReceipt(Detail("""{"goldReward":true}""")),"획득","receipt detail received");

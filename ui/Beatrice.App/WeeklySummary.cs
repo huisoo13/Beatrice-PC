@@ -35,9 +35,7 @@ internal static class WeeklySummary
     }
     internal static WeeklyMoney ReadMoney(JsonElement detail)
     {
-        if (detail.ValueKind != JsonValueKind.Object || !detail.TryGetProperty("goldReward",out var receipt)) return new(0,0,1);
-        if (receipt.ValueKind == JsonValueKind.False) return WeeklyMoney.Zero;
-        if (receipt.ValueKind != JsonValueKind.True) return new(0,0,1);
+        if (detail.ValueKind == JsonValueKind.Object && detail.TryGetProperty("goldReward",out var receipt) && receipt.ValueKind == JsonValueKind.False) return WeeklyMoney.Zero;
         if (detail.ValueKind != JsonValueKind.Object || !detail.TryGetProperty("status",out var status) ||
             status.ValueKind != JsonValueKind.String || status.GetString() != "matched" || !detail.TryGetProperty("values",out var values) || values.ValueKind != JsonValueKind.Object ||
             !values.TryGetProperty("gold",out var gold) || gold.ValueKind != JsonValueKind.Number || !gold.TryGetDecimal(out var amount) || amount<0 || amount>1000000000000m || amount != decimal.Truncate(amount) ||

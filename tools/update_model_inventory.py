@@ -14,7 +14,7 @@ DESCRIPTIONS={
     'gate_in_progress':'진행 중 관문 아이콘','gate_completed':'완료 관문 아이콘',
     'gate_not_started':'진행 전 관문 아이콘','gateless_title':'관문 없는 레이드 제목',
     'completion_overlay':'중앙 완료 연출','completion_text':'N관문 돌파 / 던전 클리어 문구 영역',
-    'reward_panel':'관문 보상표 전체','reward_gate_title':'보상표의 N관문 돌파 제목',
+    'reward_panel':'관문 보상표 전체','reward_gate_title':'보상표의 N관문 돌파·던전 종료 제목',
     'gold_reward_present':'골드 행이 있는 통화 보상 영역','gold_reward_absent':'골드 행이 없는 통화 보상 영역'}
 
 def inventory():

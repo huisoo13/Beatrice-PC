@@ -15,12 +15,15 @@ def main():
     detector=GoldRewardDetector(PaddleKoreanReader(),config,parent_detector=UIRegionDetector(parent))
     rows=[];raw=ROOT/'data/raw/gold-reward-1011'
     sources=[(raw/'gold.png',True,'training-parent'),(raw/'no-gold.png',False,'training-parent'),
-             (ROOT/'data/raw/dungeon-completion-0923/completion-235.jpg',True,'same-session-holdout')]
+             (ROOT/'data/raw/dungeon-completion-0923/completion-235.jpg',True,'same-session-holdout'),
+             (raw/'final-no-gold.png',False,'final-training-parent')]
     session=Path('C:/Users/Huisoo/AppData/Local/BeatricePC/completion-diagnostics/20261011T053841Z-92af6174')
     sources.extend((session/f'event-{n:08d}.jpg',False,'same-session-holdout') for n in (112,125,150,178,207))
+    final_session=Path('C:/Users/Huisoo/AppData/Local/BeatricePC/completion-diagnostics/20261011T102237Z-6b11ca8d')
+    sources.extend((final_session/f'event-{n:08d}.jpg',False,'final-same-session-holdout') for n in (255,256))
     for path,expected,purpose in sources:
-        if purpose=='same-session-holdout':
-            saved=raw/path.name
+        if purpose.endswith('same-session-holdout'):
+            saved=raw/(('final-' if purpose.startswith('final') else '')+path.name)
             if not saved.exists():shutil.copyfile(path,saved)
             path=saved
         original=cv2.imdecode(np.fromfile(path,dtype=np.uint8),cv2.IMREAD_COLOR)
@@ -28,7 +31,8 @@ def main():
             for dim in (1,.75,.5,.35):
                 frame=cv2.resize(np.clip(original*dim,0,255).astype(np.uint8),None,fx=scale,fy=scale)
                 start=time.perf_counter();result=detector.analyze(frame,0)
-                rows.append(dict(source=str(path),purpose=purpose,scale=scale,brightness=dim,milliseconds=round((time.perf_counter()-start)*1000,1),passed=result.get('status')=='verified' and result.get('received') is expected and result.get('gate')==1,result=result))
+                title_ok=result.get('scope')=='final' if purpose.startswith('final') else result.get('gate')==1
+                rows.append(dict(source=str(path),purpose=purpose,scale=scale,brightness=dim,milliseconds=round((time.perf_counter()-start)*1000,1),passed=result.get('status')=='verified' and result.get('received') is expected and title_ok,result=result))
     for path in sorted(raw.glob('negative-*-0.png')):
         frame=cv2.imdecode(np.fromfile(path,dtype=np.uint8),cv2.IMREAD_COLOR);result=detector.analyze(frame,0)
         rows.append(dict(source=str(path),purpose='hard-negative',passed=result.get('status')!='verified',result=result))

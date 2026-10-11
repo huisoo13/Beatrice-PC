@@ -112,3 +112,5 @@ Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약
 `native_bridge.main`은 이벤트 루프 예외에서도 Host의 shutdown API로 작업자를 중지하고 join한 뒤 instance lock을 해제합니다. 작업자가 캡처를 유지한 채 중복 실행 제한만 풀리는 상황을 방지합니다. 다른 앱이나 설치된 OBS 프로세스를 종료하지 않습니다.
 
 OBS stderr는 ObsCapture의 상태 수신 스트림에서 로그와 오류 메시지로 변환합니다. 파이프 연결 실패 및 예외 종료 검증은 [OBS 잔여 프로세스 수정](66-obs-orphan-process-fix.md)을 참고하세요.
+
+최종 보상 범위: GoldRewardDetector는 `scope=final`과 골드 여부를 반환하고 관문 번호를 추정하지 않습니다. GoldRewardSession이 현재 전체 관문 완료와 새 완료 기록의 expectedGates를 확인해 마지막 관문 하나에 연결합니다. WeeklySummary는 미확인 보상을 공용 금액으로 합산하되 저장소의 goldReward를 변경하지 않습니다.

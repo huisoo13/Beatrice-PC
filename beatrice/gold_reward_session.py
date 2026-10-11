@@ -22,9 +22,13 @@ class GoldRewardSession:
         def clear():self.candidate=None;self.last_at=None;self.count=0
         if dungeon.get('contextStatus')!='ocr_verified' or not dungeon.get('currentRaidPanel') or observation.get('status')!='verified':clear();return []
         gate=observation.get('gate');received=observation.get('received')
+        if observation.get('scope')=='final':
+            if not boxes or any(b.get('state')!='완료' or b.get('confidence',0)<.5 for b in boxes):clear();return []
+            gate=len(boxes)
         if type(gate) is not int or type(received) is not bool or not 1<=gate<=len(boxes) or boxes[gate-1].get('state')!='완료' or boxes[gate-1].get('confidence',0)<.5:clear();return []
         matches=[]
         for identifier,(row,_) in self.pending.items():
+            if observation.get('scope')=='final' and row.get('expectedGates')!=gate:continue
             aliases=[row['contentName'],row.get('ocrOriginal',{}).get('contentName'),row.get('catalogMatch',{}).get('fieldName')]
             if row['gateNumber']==gate and key(dungeon.get('dungeonName') or '') in {key(a) for a in aliases if a} and mode_key(row['difficulty'])==mode_key(dungeon.get('difficulty') or ''):matches.append(identifier)
         if len(matches)!=1:clear();return []
