@@ -155,6 +155,7 @@ class Host:
                      records=records, clients=[asdict(client) for client in self.clients],
                      selected=self.client.hwnd if self.client else 0,
                      catalogStatus=self.catalog.message,
+                     currencyImages=self.catalog.currency_images(),
                      catalogLastUpdated=(self.catalog.cached or {}).get('checkedAt', ''),
                      catalogRefreshAvailableAt=self.catalog.refresh_available_at,
                      busy=self.maintenance or self.restarting or self.drive.busy or self.account.busy or (not self.initialized and not self.error),

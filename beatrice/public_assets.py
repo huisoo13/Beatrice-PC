@@ -214,3 +214,16 @@ class PublicAssetCache:
         """Resolve a profession to a verified local SVG without a network request."""
         bundle = self.load() if bundle is None else bundle
         return self.emblem_cache.for_job(job, (bundle or {}).get('emblems')) if self.emblem_cache else None
+
+    def image_path(self, name, bundle=None):
+        """Resolve an exact logical image name to a verified local version; never fetch."""
+        try:
+            bundle = self.load() if bundle is None else bundle
+            if not bundle or bundle.get('source') != self._source():
+                return None
+            matches = [item for item in bundle.get('images', []) if item.get('name') == name]
+            if len(matches) != 1 or self._body(matches[0]) is None:
+                return None
+            return str(self.file_path(matches[0]).resolve())
+        except (OSError, ValueError, KeyError, TypeError, ContentError):
+            return None

@@ -139,7 +139,7 @@ Beatrice-PC/
 │  ├─ character_catalog.py       # 계정 전체 캐릭터 조회·영속 캐시·레벨·직업 문양 연결
 │  ├─ catalog_service.py          # 공용 데이터 갱신·취소·갱신 주기
 │  ├─ public_content.py           # 공용 Drive 조회·JSON 캐시·설정
-│  ├─ public_assets.py            # EmblemJSON·Drive 이미지 버전 캐시
+│  ├─ public_assets.py            # EmblemJSON·Drive 이미지 버전 캐시·검증된 이미지 조회
 │  ├─ emblem_cache.py             # CDN SVG 조건부 갱신·직업별 로컬 경로
 │  ├─ content_catalog.py          # 신규·이전 ContentJSON 검증·보상 인덱스
 │  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
@@ -187,6 +187,9 @@ Beatrice-PC/
 │  ├─ MainWindow.xaml.cs         # 창 생명주기·화면 전환·연결
 │  ├─ MainWindow.Records.cs      # 기록 화면 연결
 │  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
+│  ├─ MainWindow.WeeklySummary.cs # 주간 현황 연결·데모 검증
+│  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·골드 분리
+│  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·주간 변경 표시
 │  ├─ RecordsView.cs             # 기록 화면·주간 탐색·RichTextBlock 문장·직업 문양
 │  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
 │  ├─ CharacterPortraitView.cs   # 현재 캐릭터 직업 문양·이미지 로딩
@@ -211,6 +214,7 @@ MainWindow
 │                 ├─ CharacterCatalog → LostArkClient.characters.siblings → 캐릭터 정보 캐시
 │                 │                      └─ CatalogService.emblem_path → 검증된 로컬 직업 SVG
 │                 ├─ CatalogService → PublicContentClient → Drive API
+│                 │                  └─ PublicAssetCache.image_path → currencyImages → WeeklySummaryView
 │                 │                  ├─ ContentCatalog → 스키마 검증·name 보상표
 │                 │                  ├─ ContentMatcher → field_name 비교·name 표시
 │                 │                  └─ PublicAssetCache → EmblemCache → CDN SVG
@@ -226,10 +230,12 @@ MainWindow
 │                             ├─ 확정 시 analyze_dungeon → 던전 YOLO·OCR·관문·배너
 │                             └─ LiveCoordinator → StateSession → Store
 ├─ RecordsView
+├─ WeeklySummaryView → WeeklySummary → name으로 통일된 Raid 표시 데이터
+│                                    └─ RecordPresentation → 수요일 06시 구분
 ├─ CharacterPortraitView
 │  └─ RecordsView와 EmblemImageSource 공유
 └─ RewardsView
-   └─ 기록·보상표 화면이 ViewTheme 공유
+   └─ 기록·주간 현황·보상표 화면이 ViewTheme 공유
 ```
 
 ## 현재 구현

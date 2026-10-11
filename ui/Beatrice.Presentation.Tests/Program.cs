@@ -57,3 +57,51 @@ Equal(RecordPresentation.ItemLevel("1700.00"),"Lv.1700","integer item level");
 Equal(RecordPresentation.ItemLevel(null),"","missing item level omitted");
 Equal(RecordPresentation.ItemLevel("NaN"),"","invalid item level omitted");
 Console.WriteLine($"PASS: {passed} record presentation checks");
+
+// Weekly receipts reuse completed records and cached character metadata without fetching APIs.
+System.Text.Json.JsonElement Detail(string json) { using var doc=System.Text.Json.JsonDocument.Parse(json); return doc.RootElement.Clone(); }
+var matched=Detail("""{"status":"matched","values":{"gold":10000,"fee":9000,"bound_percentage":0.2}}""");
+var noMatch=Detail("""{"status":"unmatched"}""");
+Raid Sample(string who,string dungeon,string mode,string gate,string date,System.Text.Json.JsonElement? detail=null,string? job="바드",string? level="1,774.99") => new(who,dungeon,mode,gate,date,detail??matched,job,null,level);
+var receipt=WeeklySummary.Build(new[]{
+    Sample("후이수","던전A","하드","1관문","2026.10.07 06:00"),
+    Sample("후이수","던전A","하드","2관문","2026.10.08 12:00"),
+    Sample("후이수","던전A","노말","3관문","2026.10.08 13:00"),
+    Sample("다른캐릭터","던전B","하드","레이드 전체","2026.10.08 14:00",noMatch,null,null),
+    Sample("이전주","던전C","하드","1관문","2026.10.07 05:59"),
+    Sample("다음주","던전C","하드","1관문","2026.10.14 06:00"),
+    Sample("날짜오류","던전C","하드","1관문","invalid")},new DateTime(2026,10,10));
+Equal(receipt.Characters.Count,2,"receipt Wednesday boundaries and invalid dates");
+Equal(receipt.Money.Gold,24000m,"receipt unbound gold ignores extra reward fee");
+Equal(receipt.Money.BoundGold,6000m,"receipt bound gold");
+Equal(receipt.Money.Missing,1,"receipt missing linked reward count");
+var bard=receipt.Characters.Single(c => c.Name=="후이수");
+Equal(bard.Dungeons.Count,2,"same dungeon modes stay separate");
+Equal(bard.Dungeons.Single(d => d.Mode=="하드").Gates,"1–2관문","contiguous gates grouped");
+Equal(bard.Level,"Lv.1774","receipt level uses cached truncated item level");
+Equal(bard.Job,"바드","receipt cached profession");
+Equal(receipt.Characters.Single(c => c.Name=="다른캐릭터").Dungeons[0].Gates,"","receipt gateless label omitted");
+Equal(WeeklySummary.GateLabel(new[]{"3관문","1관문","1관문"}),"1·3관문","missing middle gate not invented");
+Equal(WeeklySummary.GateLabel(new[]{"1관문","2관문","4관문","5관문"}),"1–2·4–5관문","multiple contiguous ranges");
+Equal(WeeklySummary.GateLabel(new[]{"레이드 전체",""}),"","gateless only");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":101,"fee":0,"bound_percentage":0.5}}""")).Gold,51m,"integer splitting conserves reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":1}}""")).Gold,0m,"fully bound reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"fee":0,"bound_percentage":0}}""")).BoundGold,0m,"fully unbound reward");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":100,"bound_percentage":2}}""")).Missing,1,"invalid ratio unknown");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":123}""")).Missing,1,"invalid status safely unknown");
+Equal(WeeklySummary.ReadMoney(Detail("""{"status":"matched","values":{"gold":-1,"bound_percentage":0}}""")).Missing,1,"negative reward unknown");
+Equal(WeeklySummary.ReadMoney(default).Missing,1,"missing detail safely unknown");
+var mixed=WeeklySummary.Build(new[]{Sample("혼합","A","하드","1관문","2026.10.08 12:00"),Sample("혼합","A","하드","2관문","2026.10.08 13:00",noMatch)},start);
+Equal(mixed.Characters[0].Dungeons[0].Money.Missing,1,"mixed known unknown dungeon marked incomplete");
+Equal(mixed.Money.Gold,8000m,"mixed totals retain only known reward");
+Equal(WeeklySummary.Build(Array.Empty<Raid>(),start).Money.Gold,0m,"empty receipt totals zero");
+Equal(WeeklySummary.Amount(1234567),"1,234,567","currency grouping independent of locale");
+Console.WriteLine($"PASS: {passed} presentation, engine protocol and weekly receipt checks");
+EngineSnapshot currencySnapshot;
+using(var doc=System.Text.Json.JsonDocument.Parse("""
+{"status":"ready","busy":false,"catalogBusy":false,"profile":{"character":"이름","message":"플레이 중","active":true},"records":[],"clients":[],"selected":0,"catalogStatus":"cached","currencyImages":{"gold":"C:/cache/gold.png","boundGold":"C:/cache/bound.png"}}
+""")) currencySnapshot=EngineSnapshot.Parse(doc.RootElement);
+Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("gold").GetString(),"C:/cache/gold.png","currency path survives JSON disposal");
+Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("boundGold").GetString(),"C:/cache/bound.png","bound currency path preserved");
+Equal(parsedSnapshot.CurrencyImages.HasValue,false,"older engines need no currency image field");
+Console.WriteLine($"PASS: {passed} presentation, protocol, receipt and currency image checks");

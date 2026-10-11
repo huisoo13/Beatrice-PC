@@ -187,3 +187,42 @@ class PublicAssetTests(unittest.TestCase):
             save.assert_not_called()
 
 if __name__ == '__main__': unittest.main()
+
+class PublicImageLookupTests(unittest.TestCase):
+    setUp = PublicAssetTests.setUp
+    initial = PublicAssetTests.initial
+    def test_exact_image_lookup_reuses_verified_cache_without_download(self):
+        bundle = self.initial()
+        self.fake.downloads.clear()
+        expected = str(self.cache.file_path(bundle['images'][0]).resolve())
+        self.assertEqual(self.cache.image_path('gold.png', bundle), expected)
+        self.assertEqual(self.cache.image_path('gold.png'), expected)
+        self.assertEqual(self.fake.downloads, [])
+
+    def test_unknown_ambiguous_corrupt_and_missing_images_have_no_path(self):
+        import copy
+        bundle = self.initial()
+        self.assertIsNone(self.cache.image_path('unknown.png', bundle))
+        duplicate = copy.deepcopy(bundle)
+        duplicate['images'].append(duplicate['images'][0])
+        self.assertIsNone(self.cache.image_path('gold.png', duplicate))
+        path = self.cache.file_path(bundle['images'][0])
+        path.write_bytes(b'corrupt')
+        self.assertIsNone(self.cache.image_path('gold.png', bundle))
+        path.unlink()
+        self.assertIsNone(self.cache.image_path('gold.png', bundle))
+
+    def test_wrong_bundle_source_is_not_used(self):
+        import copy
+        bundle = copy.deepcopy(self.initial())
+        bundle['source']['rootFolderID'] = 'wrong-folder'
+        self.assertIsNone(self.cache.image_path('gold.png', bundle))
+
+    def test_service_resolves_currency_names_via_public_cache_api(self):
+        with patch('beatrice.catalog_service.load_settings', return_value=SETTINGS):
+            service = CatalogService(self.temp.name, self.temp.name)
+        self.assertEqual(service.currency_images(), dict(gold=None, boundGold=None))
+        service.assets = self.initial()
+        with patch.object(service.asset_cache, 'image_path', side_effect=['gold-path', 'bound-path']) as lookup:
+            self.assertEqual(service.currency_images(), dict(gold='gold-path', boundGold='bound-path'))
+            self.assertEqual([args.args[0] for args in lookup.call_args_list], ['gold.unbound.png', 'gold.bound.png'])

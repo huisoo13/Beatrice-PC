@@ -17,6 +17,8 @@
 | 저장·복원·주간 중복 | `beatrice/storage.py`의 `Store` | 세션과 Drive 어댑터는 SQL을 실행하지 않고 저장소 API를 호출합니다. 주간 DB 복구 SQL도 저장소에서 관리합니다. |
 | SVG 문양 렌더링 | `ui/Beatrice.App/EmblemImageSource.cs` | `Load(path, size, color)`로 검증된 로컬 SVG 착색·크기 명시 디코딩을 기록과 하단 이미지에서 재사용합니다. 실패하면 null을 반환합니다. UI 배치와 실패 표시는 호출 화면이 소유합니다. |
 | 캐릭터 이미지 | `ui/Beatrice.App/CharacterPortraitView.cs` | 현재 캐릭터의 검증된 로컬 SVG를 로딩·착색하며 기본 이미지와 비동기 전환을 관리합니다. |
+| 주간 현황 집계 | `ui/Beatrice.App/WeeklySummary.cs` | `Build(records, koreaNow)`는 이번 주 완료 기록을 캐릭터·던전·난이도로 묶고 일반·귀속 골드를 분리합니다. 네트워크·SQL·WinUI에 의존하지 않습니다. |
+| 주간 현황 화면 | `ui/Beatrice.App/WeeklySummaryView.cs` | 승인된 영수증 배치, 미연결 안내, 너비별 표시와 수요일 06시 변경 타이머를 소유합니다. MainWindow는 메뉴와 스냅샷을 연결합니다. |
 | 기록 화면 | `ui/Beatrice.App/RecordsView.cs` | 주간 탐색, 기록 렌더링, 날짜·문장 배치, 캐시 아이템 레벨과 주간 변경 타이머를 관리합니다. 상세 보기와 스크롤·변경 알림은 콜백으로 전달합니다. |
 | 보상표 화면 | `ui/Beatrice.App/RewardsView.cs` | 난이도·펼침 선택 상태, 보상표 렌더링, 갱신 상태 표시, 너비별 배치를 관리합니다. 갱신 요청은 콜백으로 전달합니다. |
 | 엔진 메시지 모델 | `ui/Beatrice.App/EngineMessages.cs` | JSON 해석을 한곳에서 수행합니다. 프로필·기록·갱신 정보는 타입으로 전달하며 입력 JsonDocument가 해제되어도 보관 데이터가 유효합니다. 기록 배열은 변경 시에만 해석합니다. |
@@ -88,3 +90,10 @@ Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약
 
 
 보상 매칭 보완 (2026-10-11): ContentMatcher.record는 새 완료 JSON도 받고 같은 형식으로 반환합니다. 저장·표시 name을 OCR 매칭 별칭으로 사용하지 않으며 OCR 원문을 field_name으로 비교합니다. refresh_record_match는 기존 미매칭 완료의 원문·난이도·관문에 정확한 보상만 연결하는 순수 API입니다. Store.refresh_catalog_matches가 이력·체크포인트·전송 예약을 원자적으로 갱신합니다. Host는 시작 시와 공용 갱신 완료 후 해당 API 호출만 담당합니다. 실제 ContentJSON v16의 지평의 성당 3단계 두 관문 매칭과 Python 473개 회귀를 검증했습니다.
+
+## 공용 골드 이미지 (2026-10-11)
+- PublicAssetCache.image_path(name, bundle)는 정확한 논리 파일명으로 유일한 이미지를 찾고 파일 무결성을 재확인한 로컬 경로만 반환합니다. 네트워크를 호출하지 않으며 누락·변조·중복은 None입니다.
+- CatalogService.currency_images()는 gold.unbound.png와 gold.bound.png를 각각 gold와 boundGold 경로로 제공합니다. Host는 currencyImages 메시지 연결만 수행합니다.
+- EngineSnapshot이 선택적인 currencyImages를 복제해 메시지 수명을 보장하고, WeeklySummaryView가 이미지를 금액 왼쪽에 총합 16px·간격 4px, 나머지 14px·간격 2px로 표시합니다. 같은 경로는 BitmapImage를 공유하며 경로 갱신 시 화면을 다시 표시합니다. 이미지 누락·로딩 실패는 금액 텍스트를 유지합니다.
+
+- 주간 현황 금액 폰트는 공통 ViewTheme의 Pretendard를 재사용합니다. 화면별 별도 폰트 생성자 연결은 없습니다.

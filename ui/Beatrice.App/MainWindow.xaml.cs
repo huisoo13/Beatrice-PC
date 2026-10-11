@@ -56,6 +56,9 @@ public partial class MainWindow : Window
             ShowRecordDetail, () => PageViewport.ChangeView(null,0,null,true));
         recordsView.Changed += () => { if (mainContentLoaded) RebuildRecords(); };
         rewardsView = new RewardsView(Page, viewTheme, RefreshRewards);
+        weeklySummaryView = new WeeklySummaryView(Page,viewTheme,
+            () => demo ? new DateTime(2026,10,8,23,0,0) : RecordPresentation.KoreaNow(DateTimeOffset.UtcNow));
+        weeklySummaryView.Changed += () => { if(mainContentLoaded) RebuildRecords(); };
         Root.Background = Brush("hover"); Rail.Background = Brush("sidebar");
         SecondarySidebar.Background = Brush("sidebar");
         var sidebarDivider = Brush("border"); sidebarDivider.Opacity = .45; Rail.BorderBrush = sidebarDivider;
@@ -84,7 +87,7 @@ public partial class MainWindow : Window
         appStatus = Text(statusMessage,12,"muted"); appStatus.VerticalAlignment = VerticalAlignment.Center;
         appStatus.TextTrimming = TextTrimming.CharacterEllipsis; appStatus.TextWrapping = TextWrapping.NoWrap;
         AppStatusHost.Children.Add(appStatus);
-        var mainMenu = Nav("square-dashed", "관문 기록 및 보상표", "raid-section");
+        var mainMenu = Nav("square-dashed", "관문 기록, 주간 현황 및 보상표", "raid-section");
         mainMenu.Width = mainMenu.Height = 48;
         mainMenu.Padding = new Thickness(0);
         mainMenu.HorizontalContentAlignment = HorizontalAlignment.Center;
@@ -96,6 +99,10 @@ public partial class MainWindow : Window
         recordMenu.Background = Brush("accentTint"); recordMenu.BorderThickness = new Thickness(0);
         recordMenu.Tag = "records";
         RecordNavigation.Children.Add(recordMenu);
+        var summaryMenu = Action("주간 현황", (_, _) => ShowPage("weekly"));
+        summaryMenu.Tag="weekly"; summaryMenu.HorizontalAlignment=HorizontalAlignment.Stretch;
+        summaryMenu.HorizontalContentAlignment=HorizontalAlignment.Left; summaryMenu.BorderThickness=new Thickness(0);
+        RecordNavigation.Children.Insert(0,summaryMenu);
         var rewardMenu = Action("보상표", (_, _) => ShowPage("rewards"));
         rewardMenu.Tag = "rewards"; rewardMenu.HorizontalAlignment = HorizontalAlignment.Stretch;
         rewardMenu.HorizontalContentAlignment = HorizontalAlignment.Left; rewardMenu.BorderThickness = new Thickness(0);
@@ -120,7 +127,7 @@ public partial class MainWindow : Window
             if (args.Key == Windows.System.VirtualKey.Escape && DismissSettings()) args.Handled = true;
         };
         Root.SizeChanged += (_, _) => Adapt();
-        ShowPage(launchArgs.Contains("--page=rewards") ? "rewards" : "records");
+        ShowPage(launchArgs.Contains("--page=weekly") ? "weekly" : launchArgs.Contains("--page=rewards") ? "rewards" : "records");
         engine.Message += value => DispatcherQueue.TryEnqueue(() => {
             try { Receive(value); } catch (Exception error) { SetFailure("분석 데이터 표시 오류: " + error.Message); }
         });
@@ -142,7 +149,7 @@ public partial class MainWindow : Window
         AppWindow.Closing += async (_, args) => {
             args.Cancel = true;
             if (closing) return;
-            closing = true; recordsView.Dispose(); rewardCooldownTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
+            closing = true; recordsView.Dispose(); weeklySummaryView.Dispose(); rewardCooldownTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
             if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
             try { await SaveLostArkApiKey(); await engine.StopAsync().ConfigureAwait(false); }
             catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
@@ -171,7 +178,7 @@ public partial class MainWindow : Window
             var outputArg = Environment.GetCommandLineArgs().FirstOrDefault(arg => arg.StartsWith("--capture-dir="));
             var folderPath = outputArg is null ? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"..","..","..","..","..")) : Path.GetFullPath(outputArg[14..]);
             var folder = await Windows.Storage.StorageFolder.GetFolderFromPathAsync(folderPath);
-            foreach (var destination in new[]{"records", "rewards"})
+            foreach (var destination in new[]{"records", "weekly", "rewards"})
             {
                 ShowPage(destination);
                 var content = Page.Children[0];
@@ -183,15 +190,17 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("메인 분류 선택 유지 및 반복 클릭 상태 보존 실패");
             }
             await ValidateWeeklyRecordInteractions();
+            ValidateWeeklySummary();
             await ValidateSettingsTextNavigation();
-            var views = new[]{"records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-public", "settings-records", "settings-api", "settings-api-focused", "settings-api-filled", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty"};
+            var views = new[]{"weekly", "weekly-640", "weekly-375", "records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-public", "settings-records", "settings-api", "settings-api-focused", "settings-api-filled", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty", "weekly-empty"};
             foreach (var view in views)
             {
+                if(view=="records" || view=="weekly-empty") AppWindow.Resize(new Windows.Graphics.SizeInt32(1280,880));
                 if (view.EndsWith("640")) AppWindow.Resize(new Windows.Graphics.SizeInt32(640,1000));
                 if (view.EndsWith("375")) AppWindow.Resize(new Windows.Graphics.SizeInt32(375,900));
                 var before = AppWindow.Size;
                 DismissSettings(false);
-                ShowPage(view.StartsWith("rewards") ? "rewards" : "records");
+                ShowPage(view.StartsWith("weekly") ? "weekly" : view.StartsWith("rewards") ? "rewards" : "records");
                 if (view.StartsWith("character-"))
                 {
                     var sample = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"Assets","demo.json")))!;
@@ -206,7 +215,7 @@ public partial class MainWindow : Window
                 Task? detailTask = null;
                 if (view == "detail") detailTask = ShowRecordDetail(records[0]);
                 if (view == "drive-restore") detailTask = ShowDrivePreview(JsonSerializer.SerializeToElement(new { previewId = "review-preview", email = "preview@example.com", createdTime = "2026-10-08T03:00:00Z", completedCount = 8, omittedCount = 0, localCount = records.Count }));
-                if (view == "empty") { records.Clear(); RebuildRecords(); }
+                if (view == "empty" || view == "weekly-empty") { records.Clear(); RebuildRecords(); }
                 if (view.StartsWith("settings")) ToggleSettings();
                 if (view.StartsWith("settings")) ShowSettingsSection(view.StartsWith("settings-drive") ? "Google Drive" : view.StartsWith("settings-api") ? "로스트아크" : view == "settings-public" ? "공용 데이터" : view == "settings-records" ? "기록 관리" : "게임 클라이언트");
                 if (view == "settings-api-focused" || view == "settings-api-filled") {
@@ -239,7 +248,7 @@ public partial class MainWindow : Window
                     if (!PageViewport.IsEnabled || settingsOpen || settingsButton?.FocusState == FocusState.Unfocused) throw new InvalidOperationException("설정 닫기 후 포커스 복구 실패");
                 }
             }
-            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: weekly record navigation and Wednesday 06:00 boundary; preserved selected week; Pretendard and 20px titles; separate settings pages and repeated selection preservation; repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
+            File.WriteAllText(Path.Combine(folderPath,"capture-status.txt"),"PASS: weekly character receipts and totals; weekly record navigation and Wednesday 06:00 boundary; preserved selected week; Pretendard and 20px titles; separate settings pages and repeated selection preservation; repeat initialization splash lifecycle; custom caption minimize/maximize/restore; unclipped 28px menu icon; records/settings/rewards 1280,640,375; reward mode switching, expand/collapse, selection restoration, record-update isolation, synchronized sibling animation, rapid reversal, reduced motion; reward detail; Drive settings 1280,640,375 and restore confirmation; empty state; stable window size; modal background blocking; focus restoration");
         }
         catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"capture-error.txt"),error.ToString()); }
         finally { Application.Current.Exit(); }
@@ -289,14 +298,14 @@ public partial class MainWindow : Window
     {
         if (destination == "settings") { ToggleSettings(); return; }
         DismissSettings(false);
-        if (destination == "raid-section") destination = currentPage is "records" or "rewards" ? currentPage : "records";
+        if (destination == "raid-section") destination = currentPage is "records" or "weekly" or "rewards" ? currentPage : "records";
         if (destination == currentPage && Page.Children.Count > 0) return;
         currentPage = destination; Page.Spacing = destination == "records" ? 12 : 24; Page.Children.Clear();
         foreach (var navigation in TopNavigation.Children.Concat(BottomNavigation.Children).OfType<Button>())
         {
             if (navigation == settingsButton) { UpdateSettingsButton(); continue; }
             var selected = (string?)navigation.Tag == "raid-section"
-                ? destination is "records" or "rewards"
+                ? destination is "records" or "weekly" or "rewards"
                 : (string?)navigation.Tag == destination;
             if ((string?)navigation.Tag != "settings")
             {
@@ -309,6 +318,7 @@ public partial class MainWindow : Window
         foreach (var menu in RecordNavigation.Children.OfType<Button>())
             menu.Background = Brush((string?)menu.Tag == destination ? "accentTint" : "sidebar");
         if (destination == "records") ShowRecords();
+        else if (destination == "weekly") weeklySummaryView.Render(records);
         else if (destination == "rewards") { ShowRewards(); _ = RequestRewards(); }
         else ShowAssets();
         Adapt();
@@ -322,6 +332,7 @@ public partial class MainWindow : Window
         RailColumn.Width = new GridLength(small ? 64 : 76);
         SidebarColumn.Width = new GridLength(200);
         AdaptRecordWeek();
+        if(currentPage=="weekly") weeklySummaryView.Adapt(Root.ActualWidth-RailColumn.Width.Value-200-32);
         Root.ColumnDefinitions[2].Width = new GridLength(1,GridUnitType.Star);
         Grid.SetRowSpan(SecondarySidebar,2);
         Grid.SetRow(PageViewport,1); Grid.SetRowSpan(PageViewport,2);
@@ -461,6 +472,7 @@ public partial class MainWindow : Window
         UpdateSplash(value);
         if (!mainContentLoaded) { pendingSnapshot = value.Clone(); return; }
         var snapshot = EngineSnapshot.Parse(value);
+        weeklySummaryView.UpdateCurrencyImages(snapshot.CurrencyImages);
         statusMessage = snapshot.Status;
         busy = snapshot.Busy; catalogBusy = snapshot.CatalogBusy;
         if (appStatus is not null) { appStatus.Text = statusMessage; ToolTipService.SetToolTip(appStatus,statusMessage); }
@@ -540,8 +552,10 @@ public partial class MainWindow : Window
     }
     private void RebuildRecords()
     {
-        if (currentPage != "records") return;
-        Page.Children.Clear(); ShowRecords(); Adapt();
+        if (currentPage is not ("records" or "weekly")) return;
+        Page.Children.Clear();
+        if(currentPage=="weekly") weeklySummaryView.Render(records); else ShowRecords();
+        Adapt();
     }
     private async Task ShowRecordDetail(Raid raid)
     {

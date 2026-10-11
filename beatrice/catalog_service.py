@@ -136,3 +136,10 @@ class CatalogService:
 
     def emblem_path(self, job):
         return self.asset_cache.emblem_path(job, self.assets) if self.asset_cache and self.assets else None
+
+    def currency_images(self):
+        """Known Drive currency images, exposed through the validated cache API."""
+        if not self.asset_cache or not self.assets:
+            return dict(gold=None, boundGold=None)
+        return dict(gold=self.asset_cache.image_path('gold.unbound.png', self.assets),
+                    boundGold=self.asset_cache.image_path('gold.bound.png', self.assets))
