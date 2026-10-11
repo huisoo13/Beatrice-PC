@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,7 +15,7 @@ public partial class MainWindow
 {
     private readonly Dictionary<string,StackPanel> settingsSections = new();
     private readonly Dictionary<string,Button> settingsMenuItems = new();
-    private string selectedSettingsSection = "게임 클라이언트";
+    private string selectedSettingsSection = "클라이언트";
     private void BuildSettingsNavigation()
     {
         SettingsNavigation.Children.Clear(); settingsMenuItems.Clear();
@@ -35,8 +35,8 @@ public partial class MainWindow
             }
             SettingsNavigation.Children.Add(group);
         }
-        Group("앱 관리","게임 클라이언트","공용 데이터","기록 관리");
-        Group("계정 및 연동","로스트아크","Google Drive");
+        Group("앱 관리","클라이언트","OBS","데이터 관리");
+        Group("계정 및 연동","로스트아크 API","Google Drive");
         ShowSettingsSection(selectedSettingsSection);
     }
     private void SelectSettingsMenu(string selected)
@@ -50,7 +50,6 @@ public partial class MainWindow
     private void ShowSettingsSection(string selected)
     {
         if (!settingsSections.TryGetValue(selected,out var section)) return;
-        if (selectedSettingsSection == "로스트아크" && selected != selectedSettingsSection) _ = SaveLostArkApiKey();
         selectedSettingsSection = selected; SelectSettingsMenu(selected);
         if (SettingsContent.Children.Count == 1 && ReferenceEquals(SettingsContent.Children[0],section)) return;
         SettingsContent.Children.Clear(); SettingsContent.Children.Add(section);
@@ -62,7 +61,7 @@ public partial class MainWindow
         ToggleSettings(); await Task.Delay(100); Root.UpdateLayout();
         if (settingsMenuItems.Count != 5 || SettingsNavigation.Children.OfType<StackPanel>().Count() != 2 ||
             settingsMenuItems.Values.Any(button => button.Content is not TextBlock)) throw new InvalidOperationException("설정 텍스트 메뉴 및 분류 생성 실패");
-        foreach (var name in new[]{"로스트아크","Google Drive","공용 데이터","기록 관리","게임 클라이언트"})
+        foreach (var name in new[]{"로스트아크 API","Google Drive","OBS","데이터 관리","클라이언트"})
         {
             var button = settingsMenuItems[name];
             ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
@@ -73,6 +72,15 @@ public partial class MainWindow
             ((IInvokeProvider)new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke)).Invoke();
             if (!ReferenceEquals(content,SettingsContent.Children[0])) throw new InvalidOperationException("같은 설정 메뉴 재선택 상태 유지 실패");
         }
+        if (AppStatusHost.Children.Count != 0) throw new InvalidOperationException("상단바 상태 메시지가 남아 있습니다.");
+        var savedObs=obs;
+        obs=System.Text.Json.JsonSerializer.SerializeToElement(new { status="캡처 오류", error="OBS 접근 거부" });
+        ShowSettingsSection("OBS"); UpdateObsSettings();
+        if (obsStatusText?.Text != "캡처 오류" || obsErrorText?.Text != "OBS 접근 거부") throw new InvalidOperationException("OBS 상태·오류 표시 실패");
+        obs=System.Text.Json.JsonSerializer.SerializeToElement(new { status="게임 화면 캡처 중", error="" }); UpdateObsSettings();
+        if (obsErrorText?.Text != "없음") throw new InvalidOperationException("OBS 오류 복구 표시 실패");
+        obs=savedObs; UpdateObsSettings();
+        ValidateDriveAccountUI();
         DismissSettings(false);
     }
 }

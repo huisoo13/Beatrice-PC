@@ -14,6 +14,7 @@
     <RootNamespace>BeatricePC</RootNamespace>
     <AssemblyName>BeatricePC</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\beatrice.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />

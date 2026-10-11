@@ -20,6 +20,7 @@ def ignore(*args):
 
 @dataclass
 class RecognitionEvents:
+    obs: Callable = ignore
     status: Callable = ignore
     observation: Callable = ignore
     progress: Callable = ignore
@@ -41,6 +42,12 @@ class RecognitionService:
         self.stop_event=threading.Event()
         self.command_lock=threading.Lock();self.command=(0,None)
         self.process_snapshot=None;self.capture_pause=None;self.settled_generation=0
+        self.last_obs=None
+
+    def publish_obs(self,generation,state):
+        value=(generation,state)
+        if value!=self.last_obs:
+            self.last_obs=value;self.events.obs(generation,state)
 
     def stop(self):
         self.stop_event.set()
@@ -86,7 +93,13 @@ class RecognitionService:
             last_diagnostic=0
             self.events.progress('2 / 3 · 내장 OBS 엔진을 준비하는 중…')
             capture=ObsCapture(None,self.data)
-            if not capture.prepare(self.stop_event):return
+            self.publish_obs(self.requested()[0],capture.view())
+            try:
+                if not capture.prepare(self.stop_event):return
+            except Exception as exc:
+                self.publish_obs(self.requested()[0],dict(status='엔진 준비 실패',error=str(exc)))
+                raise
+            self.publish_obs(self.requested()[0],capture.view())
             self.events.progress('3 / 3 · LOSTARK 클라이언트를 연결하는 중…')
             watch=ProcessWatch(self.process_state);watch.start()
             while not watch.ready.wait(.1):
@@ -109,18 +122,22 @@ class RecognitionService:
                     character.reset_name_cache();tracker.reset();dungeon_observer.reset()
                     coordinator=LiveCoordinator(store)
                     capture.bind(client)
+                    self.publish_obs(generation,capture.view())
                     self.settled_generation=generation
                     self.events.settled(generation)
                 if client is None:
+                    self.publish_obs(generation,capture.view())
                     self.stop_event.wait(.1);continue
                 if not client_alive(client):
                     self.events.status(generation,'클라이언트 실행 대기')
                     self.stop_event.wait(.2);continue
                 started=time.monotonic()
                 try:frame,reason=capture.grab()
-                except RuntimeError:
+                except RuntimeError as exc:
+                    self.publish_obs(generation,dict(status='캡처 오류',error=str(exc)))
                     if not client_alive(client):continue
                     raise
+                self.publish_obs(generation,capture.view())
                 at=capture.observed_at if frame is not None else datetime.now(timezone.utc)
                 if frame is None:
                     self.capture_wait(capture,reason,generation,character,tracker,dungeon_observer,coordinator)

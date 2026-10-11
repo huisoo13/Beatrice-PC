@@ -13,7 +13,7 @@ DATA=Path(os.environ.get('BEATRICE_DATA_DIR',str(Path.home()/'BeatricePC')))
 class Worker:
     def __init__(self):
         self._thread=Thread(target=self._execute,name='BeatriceRecognition')
-        names=('status','observation','progress','ready','failed','settled','process_changed')
+        names=('status','observation','progress','ready','failed','settled','process_changed','obs')
         for name in (*names,'finished'):setattr(self,name,Event())
         events=RecognitionEvents(**{name:getattr(self,name).emit for name in names})
         self.service=RecognitionService(ROOT,DATA,events)

@@ -16,7 +16,6 @@ internal sealed class RecordsView : IDisposable
     private readonly StackPanel Page;
     private readonly ViewTheme theme;
     private readonly Func<DateTime> clock;
-    private readonly Func<Raid, System.Threading.Tasks.Task> showDetail;
     private readonly System.Action scrollToTop;
     private string font => theme.Font;
     private string semiboldFont => theme.SemiboldFont;
@@ -29,8 +28,8 @@ internal sealed class RecordsView : IDisposable
     internal Button? OlderWeekButton => olderWeekButton;
     internal TextBlock? WeekRange => recordWeekRange;
     public RecordsView(StackPanel page, ViewTheme theme, Func<DateTime> clock,
-        Func<Raid, System.Threading.Tasks.Task> showDetail, System.Action scrollToTop)
-    { Page = page; this.theme = theme; this.clock = clock; this.showDetail = showDetail; this.scrollToTop = scrollToTop; }
+        System.Action scrollToTop)
+    { Page = page; this.theme = theme; this.clock = clock; this.scrollToTop = scrollToTop; }
     public void Dispose() => recordWeekTimer?.Stop();
 
     private readonly List<TextBlock> recordDateLabels = new();
@@ -48,7 +47,7 @@ internal sealed class RecordsView : IDisposable
         recordDateLabels.Clear(); recordLogRows.Clear();
         Page.Spacing = 12;
         var heading = new StackPanel { Spacing = 12 };
-        heading.Children.Add(Text("관문 기록",20,bold:true));
+        heading.Children.Add(Text("완료 일지",20,bold:true));
         recordWeekNavigation = new Grid { ColumnSpacing = 12, RowSpacing = 8, HorizontalAlignment = HorizontalAlignment.Center };
         recordWeekNavigation.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
         recordWeekNavigation.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -110,7 +109,7 @@ internal sealed class RecordsView : IDisposable
             recordWeekTimer.Start();
         }
     }
-    private Button RecordLog(Raid raid,DateTime? date)
+    private Border RecordLog(Raid raid,DateTime? date)
     {
         var grid = new Grid { ColumnSpacing = 12, RowSpacing = 4 };
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -147,11 +146,10 @@ internal sealed class RecordsView : IDisposable
         if (gate != "") Part(" " + gate,false,"text");
         Part(RecordPresentation.Particle(gate != "" ? gate : string.IsNullOrWhiteSpace(raid.Mode) ? raid.Dungeon : raid.Mode,"을/를") + " 클리어했습니다.");
         Grid.SetColumn(message,1); grid.Children.Add(message);
-        var button = new Button { Content = grid, Padding = new Thickness(4,10,4,10), MinHeight = 44, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Colors.Transparent),
-            HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Template = (ControlTemplate)theme.Resources["RecordLogButton"] };
-        AutomationProperties.SetName(button,RecordPresentation.Sentence(raid.Character,raid.Dungeon,raid.Mode,raid.Gate) + " " + raid.Date + " 상세 보기");
-        button.Click += async (_,_) => await showDetail(raid);
-        return button;
+        var row = new Border { Child = grid, Padding = new Thickness(4,10,4,10), MinHeight = 44,
+            HorizontalAlignment = HorizontalAlignment.Stretch };
+        AutomationProperties.SetName(row,RecordPresentation.Sentence(raid.Character,raid.Dungeon,raid.Mode,raid.Gate) + " " + raid.Date);
+        return row;
     }
     private async System.Threading.Tasks.Task LoadEmblem(Image image,Paragraph paragraph,InlineUIContainer inline,string path)
     {

@@ -23,7 +23,7 @@
 | 캐릭터 이미지 | `ui/Beatrice.App/CharacterPortraitView.cs` | 현재 캐릭터의 검증된 로컬 SVG를 로딩·착색하며 기본 이미지와 비동기 전환을 관리합니다. |
 | 주간 현황 집계 | `ui/Beatrice.App/WeeklySummary.cs` | `Build(records, koreaNow)`는 이번 주 완료 기록을 캐릭터·던전·난이도로 묶고 일반·귀속 골드를 분리합니다. 네트워크·SQL·WinUI에 의존하지 않습니다. |
 | 주간 현황 화면 | `ui/Beatrice.App/WeeklySummaryView.cs` | 승인된 영수증 배치, 미연결 안내, 너비별 표시와 수요일 06시 변경 타이머를 소유합니다. MainWindow는 메뉴와 스냅샷을 연결합니다. |
-| 기록 화면 | `ui/Beatrice.App/RecordsView.cs` | 주간 탐색, 기록 렌더링, 날짜·문장 배치, 캐시 아이템 레벨과 주간 변경 타이머를 관리합니다. 상세 보기와 스크롤·변경 알림은 콜백으로 전달합니다. |
+| 완료 일지 | `ui/Beatrice.App/RecordsView.cs` | 주간 탐색, 읽기 전용 로그 행, 날짜·문장·직업 문양 배치와 주간 변경 타이머를 관리합니다. 스크롤·변경 알림만 콜백으로 전달하며 상세 클릭 콜백은 없습니다. |
 | 보상표 화면 | `ui/Beatrice.App/RewardsView.cs` | 난이도·펼침 선택 상태, 보상표 렌더링, 갱신 상태 표시, 너비별 배치를 관리합니다. 갱신 요청은 콜백으로 전달합니다. |
 | 엔진 메시지 모델 | `ui/Beatrice.App/EngineMessages.cs` | JSON 해석을 한곳에서 수행합니다. 프로필·기록·갱신 정보는 타입으로 전달하며 입력 JsonDocument가 해제되어도 보관 데이터가 유효합니다. 기록 배열은 변경 시에만 해석합니다. |
 | 공통 화면 토큰 | `ui/Beatrice.App/ViewTheme.cs` | 글꼴·리소스·텍스트·색상 생성 함수를 화면 컴포넌트에 제공합니다. 화면 컴포넌트는 MainWindow나 EngineClient를 참조하지 않습니다. |
@@ -113,4 +113,27 @@ Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약
 
 OBS stderr는 ObsCapture의 상태 수신 스트림에서 로그와 오류 메시지로 변환합니다. 파이프 연결 실패 및 예외 종료 검증은 [OBS 잔여 프로세스 수정](66-obs-orphan-process-fix.md)을 참고하세요.
 
+OBS 설정 진단 (2026-10-11): ObsCapture.view()는 캡처 상태와 오류 메시지만 반환합니다. RecognitionService가 변경 시 RecognitionEvents.obs(generation, state)로 전달하고 Worker의 이벤트 어댑터와 Host가 같은 세대의 상태를 snapshot.obs에 연결합니다. 이전 작업자와 세대의 응답은 반영하지 않습니다. EngineSnapshot은 선택적인 obs를 복제하고 MainWindow.ObsSettings.cs가 OBS 설정 화면을 표시합니다. UI는 캡처 모듈 내부 상태를 직접 조회하지 않습니다. 기존 스냅샷에 obs가 없으면 상태 확인 대기를 표시합니다.
+
+설정 메뉴는 클라이언트·OBS·데이터 관리와 로스트아크 API·Google Drive로 나눕니다. 클라이언트 화면은 앱 재실행 버튼만 표시합니다. MainWindow.ObsSettings는 감지 중인 클라이언트 선택과 분석 상태도 표시하며 기존 select 명령과 UpdateClients API를 재사용합니다. 데이터 관리는 기존 공용 데이터 갱신과 기록 전체 삭제 API를 그대로 사용합니다. 완료 일지는 RecordsView가 읽기 전용 Border 행으로 표시하고 상세 클릭 콜백과 상세 창은 제거했습니다. 설정 오버레이는 44px 상단바 아래의 본문만 덮으며 기존 반응형 여백은 본문 기준으로 계산합니다.
+
+Google Drive 설정 (2026-10-11): MainWindow.Drive는 타이틀·안내 문구와 함께 로그인 전에는 Google 공식 흰색 Light 로그인 버튼을, 로그인 후에는 계정 정보·빨간 로그아웃 버튼을 표시합니다. GoogleAccountView가 40px 원형 사진·16px 이름·12px 이메일 표시와 이미지 로딩을 소유합니다. Google OAuth userinfo의 name/picture는 기존 암호화 세션에 함께 저장되고 GoogleAccount.view의 name/picture/email → Host snapshot.google → GoogleAccountView.Update로 연결됩니다. UI가 인증 저장소를 직접 읽지 않습니다. 사진은 HTTPS만 로드하며 누락·오류는 기존 기본 이미지로 표시합니다. 늦게 도착한 이전 사진의 로딩 결과는 반영하지 않습니다. 기존 세션의 필드 누락은 빈 값으로 처리하고 다음 로그인 복원에서 갱신합니다.
+
+로그인 중에는 원본 이미지와 크기를 유지하고 중복 실행을 막습니다. 상태·오류는 버튼 도움말로 전달하며 Drive 권한 연결·수동 저장·불러오기 버튼은 제거했습니다. google_login/google_logout 명령, GoogleAccount의 로그인 복원·토큰 보관, PersonalDrive의 자동 저장은 기존 공개 API를 유지합니다. 복원 확인 연결은 남아 있지만 이 화면에서 수동 복원을 시작하지 않습니다.
+
 최종 보상 범위: GoldRewardDetector는 `scope=final`과 골드 여부를 반환하고 관문 번호를 추정하지 않습니다. GoldRewardSession이 현재 전체 관문 완료와 새 완료 기록의 expectedGates를 확인해 마지막 관문 하나에 연결합니다. WeeklySummary는 미확인 보상을 공용 금액으로 합산하되 저장소의 goldReward를 변경하지 않습니다.
+
+## 앱 아이콘 (2026-10-11)
+Assets/beatrice.ico는 실행 파일 ApplicationIcon과 MainWindow의 AppWindow.SetIcon에서 사용합니다. StartupWindow는 AppIconRasterizer.Load(size)를 통해 Assets/beatrice-white.png를 물리 픽셀 크기에 맞춰 읽고 128px 중앙 영역에 합성합니다. AppIconRasterizer는 BitmapDecoder를 통한 premultiplied BGRA 해석과 크기별 캐시를 소유하며, StartupWindow는 배경·둥근 모서리·진행 애니메이션을 소유합니다. MainWindow.Splash는 초기 준비와 화면 전환만 연결합니다. 메인 사이드바의 레이드 분류는 승인된 아치형 SVG와 10px 레이드 라벨을 사용합니다.
+
+상단바는 같은 투명 PNG를 20px로 표시하고 Beatrice 이름과 8px 간격을 사용합니다. 장식 이미지는 접근성 읽기에서 제외합니다. PNG 원본은 output/imagegen/beatrice-transparent-white.png이며 실행 시 output 폴더를 참조하지 않습니다.
+
+앱 재실행 (2026-10-11): 클라이언트 설정의 앱 재실행은 엔진만 초기화하는 restart 명령을 보내지 않습니다. MainWindow.Splash가 중복 요청을 막고 기존 창을 숨긴 뒤 공통 ShutdownApp 흐름을 직접 호출합니다. WinUI Window.Close가 AppWindow.Closing을 통과한다는 가정에 의존하지 않습니다. 공통 종료 흐름이 EngineClient.StopAsync를 수행하여 OBS·작업자 정리 및 종료를 기다린 후 AppRelaunch.Start로 새 프로세스를 실행합니다. AppRelaunch는 실행 파일·설치 루트 인자만 보존하고 이전 화면·데모·캡처 인자는 전달하지 않습니다. 새 프로세스는 일반 시작 흐름의 스플래시를 거쳐 주간 현황으로 이동합니다. BeginSplash도 메인 창을 숨겨 재준비 중 기본 화면이 남지 않도록 합니다.
+
+재실행 검증은 --startup-check --restart-check로 격리된 초기 준비 데이터를 사용하여 네이티브 앱 재실행 버튼을 Invoke합니다. 새 프로세스에는 검증 인자를 전달하지 않으므로 정상 앱으로 시작하며, 기존 PID 종료와 새 PID의 설치 루트 인자만 유지되는 것을 확인했습니다.
+
+스플래시 이미지 진행 (2026-10-11): StartupWindow는 배경 래스터와 AppIconRasterizer의 DPI별 아이콘 픽셀을 별도로 보유합니다. Progress.Value의 0~3 단계를 0~1로 변환하고 기존 280ms 보간값으로 아이콘의 아래부터 원본 흰색을 합성합니다. 하단 바와 track/accent 생성자 의존성은 제거했습니다. MainWindow.Splash는 단계 전달과 전환만 담당합니다.
+
+API 등록 검증 (2026-10-11): LostArkClient.news.events → NewsApi → 고정 공식 호스트의 GET /news/events를 재사용합니다. LostArkRegistration은 후보 키 검증 스레드와 결과 큐를 소유하고 begin/view/poll/stop/settled를 공개합니다. 네트워크 스레드는 저장소를 변경하지 않으며 owner thread의 poll에서만 LostArkApiKey.save를 호출합니다. Host는 명령 lostark_api_verify(기존 save도 동일 검증 경로), snapshot.lostArkApi의 configured/busy/message, lostark_api_saved 결과를 연결합니다. 성공 시 CharacterCatalog.credentials_changed를 호출하고 종료 시 등록 작업을 취소·정리합니다. MainWindow.LostArkApi는 명시적 검증·등록·변경·발급 안내 상태만 표시합니다. ApiKeyRequiredView는 공통 미등록 안내와 등록 진입 버튼을 렌더링하고 MainWindow는 메뉴 전환을 연결합니다. 미검증 입력의 자동 저장은 제거했습니다.
+
+API 미등록 안내 중앙 배치: ApiKeyRequiredView.Render는 본문 StackPanel과 ScrollViewer를 받아 타이틀 아래 가용 높이를 계산합니다. 안내 문구·버튼을 Grid 안에서 가로·세로 중앙에 표시하고, 뷰가 로드·언로드될 때 viewport SizeChanged 연결을 등록·해제합니다. MainWindow는 화면 진입 연결만 유지합니다.

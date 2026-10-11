@@ -57,8 +57,10 @@ class LostArkClient:
         self._blocked_until = 0
         from .characters import CharactersApi
         from .armory import ArmoryApi
+        from .news import NewsApi
         self.characters = CharactersApi(self)
         self.armory = ArmoryApi(self)
+        self.news = NewsApi(self)
 
     @classmethod
     def from_saved_key(cls, directory=None, *, timeout=15):

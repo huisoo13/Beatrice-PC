@@ -83,6 +83,24 @@ class GoogleAuthTests(unittest.TestCase):
             with self.assertRaises(AuthError):
                 authenticate('.', saved, threading.Event(), False)
 
+    def test_profile_name_and_picture_survive_authentication_without_tokens_in_view(self):
+        from beatrice.account_service import GoogleAccount
+        saved=dict(client_id='client',refresh_token='refresh',account={'sub':'person'})
+        profile=dict(sub='person',email='test@example.com',email_verified=True,name='사용자',picture='https://lh3.googleusercontent.com/profile')
+        with patch('beatrice.google_auth.load_client',return_value={'client_id':'client'}), \
+                patch('beatrice.google_auth.request_json',side_effect=[{'access_token':'new'},profile]):
+            result=authenticate('.',saved,threading.Event(),False)
+        with tempfile.TemporaryDirectory() as folder:
+            account=GoogleAccount(Path('.'),Path(folder));account.session=result
+            view=account.view()
+            self.assertEqual(view['name'],'사용자')
+            self.assertEqual(view['picture'],profile['picture'])
+            self.assertNotIn('refresh_token',view)
+            self.assertNotIn('access_token',view)
+            account.session=dict(account={'email':'old@example.com'})
+            self.assertEqual(account.view()['name'],'')
+            self.assertEqual(account.view()['picture'],'')
+
     @unittest.skipUnless(os.name == 'nt', 'Windows DPAPI')
     def test_credentials_are_encrypted_and_clearable(self):
         with tempfile.TemporaryDirectory() as directory:

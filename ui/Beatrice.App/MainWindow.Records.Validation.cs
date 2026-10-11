@@ -20,7 +20,8 @@ public partial class MainWindow
             var messageCenter = message.TransformToVisual(row).TransformPoint(new Windows.Foundation.Point()).Y + message.ActualHeight/2;
             if (Math.Abs(timeCenter-messageCenter) > .5) throw new InvalidOperationException("시간과 로그 문장의 수직 중앙 정렬 불일치");
         }
-        int LogCount() => ((StackPanel)Page.Children[1]).Children.OfType<Button>().Count();
+        int LogCount() => ((StackPanel)Page.Children[1]).Children.OfType<Border>().Count(row => row.Child is Grid);
+        if (((StackPanel)Page.Children[1]).Children.OfType<Button>().Any()) throw new InvalidOperationException("완료 일지에 클릭 버튼이 남아 있습니다.");
         if (LogCount() != 4 || recordsView.NewerWeekButton?.IsEnabled != false || recordsView.WeekRange?.FontSize != 14)
             throw new InvalidOperationException("이번 주 기록 및 날짜 영역 검증 실패");
         if (((StackPanel)Page.Children[0]).Children[0] is not TextBlock title || title.FontSize != 20 || !title.FontFamily.Source.Contains("Pretendard"))

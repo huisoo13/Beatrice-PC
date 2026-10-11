@@ -29,9 +29,11 @@ internal sealed class StartupWindow
     private readonly System.Threading.Timer timer;
     private int frameQueued;
     private readonly Stopwatch motion = new();
-    private readonly Color background, track, accent;
+    private readonly Color background;
     private readonly double scale;
     private readonly byte[] basePixels, pixels;
+    private readonly byte[] iconPixels;
+    private readonly int iconSize, iconOrigin;
     private readonly IntPtr hwnd, dc, bitmap, previousBitmap, bits;
     private Point origin;
     private double displayed, from, target;
@@ -43,14 +45,15 @@ internal sealed class StartupWindow
     private const string ClassName = "BeatriceSmoothSplash";
     private static bool registered;
 
-    public StartupWindow(Brush surfaceBrush, Brush trackBrush, Brush accentBrush, IntPtr owner)
+    public StartupWindow(Brush surfaceBrush, IntPtr owner)
     {
         background = ((SolidColorBrush)surfaceBrush).Color;
-        track = ((SolidColorBrush)trackBrush).Color;
-        accent = ((SolidColorBrush)accentBrush).Color;
         scale = GetDpiForWindow(owner) / 96.0;
         PixelSize = (int)Math.Round(256 * scale);
         basePixels = new byte[PixelSize * PixelSize * 4]; pixels = new byte[basePixels.Length];
+        iconSize=(int)Math.Round(128*scale);
+        iconPixels=AppIconRasterizer.Load(iconSize);
+        iconOrigin=(PixelSize-iconSize)/2;
         RasterizeSurface();
         if (!registered)
         {
@@ -120,17 +123,18 @@ internal sealed class StartupWindow
     {
         if (completed) return;
         Buffer.BlockCopy(basePixels, 0, pixels, 0, pixels.Length);
-        // Only the 4px bottom strip changes; the antialiased edge alpha stays intact.
-        var barTop = (int)Math.Floor(252 * scale);
-        for (var y = barTop; y < PixelSize; y++)
-        for (var x = 0; x < PixelSize; x++)
+        // Reveal the original white mark from the bottom, retaining its alpha edges.
+        // The faint unfilled mark keeps the app identity visible while loading.
+        for (var y = 0; y < iconSize; y++)
+        for (var x = 0; x < iconSize; x++)
         {
-            var offset = (y*PixelSize+x)*4;
-            var edge = pixels[offset+3] / 255.0;
-            var coverage = Math.Clamp(displayed*PixelSize - x, 0, 1);
-            pixels[offset] = (byte)Math.Round((track.B + (accent.B-track.B)*coverage)*edge);
-            pixels[offset+1] = (byte)Math.Round((track.G + (accent.G-track.G)*coverage)*edge);
-            pixels[offset+2] = (byte)Math.Round((track.R + (accent.R-track.R)*coverage)*edge);
+            var offset=((y+iconOrigin)*PixelSize+x+iconOrigin)*4;
+            var iconOffset=(y*iconSize+x)*4;
+            var coverage=Math.Clamp(displayed*iconSize-(iconSize-y-1),0,1);
+            var intensity=.16+.84*coverage;
+            var opacity=iconPixels[iconOffset+3]/255.0*intensity;
+            for(var channel=0;channel<3;channel++)
+                pixels[offset+channel]=(byte)Math.Round(iconPixels[iconOffset+channel]*intensity+pixels[offset+channel]*(1-opacity));
         }
         Marshal.Copy(pixels, 0, bits, pixels.Length);
         var size = new Point { X = PixelSize, Y = PixelSize }; var source = new Point();
@@ -147,46 +151,17 @@ internal sealed class StartupWindow
             var qx = Math.Abs(px-128)-96; var qy = Math.Abs(py-128)-96;
             var distance = Math.Sqrt(Math.Pow(Math.Max(qx,0),2)+Math.Pow(Math.Max(qy,0),2)) + Math.Min(Math.Max(qx,qy),0) - 32;
             var alpha = Math.Clamp(.5-distance*scale,0,1);
-            var icon = (px>=84 && px<=172 && py>=84 && py<=172) ? IconCoverage(px,py,scale) : 0;
+
             var offset = (y*PixelSize+x)*4;
-            basePixels[offset] = (byte)Math.Round((background.B+(255-background.B)*icon)*alpha);
-            basePixels[offset+1] = (byte)Math.Round((background.G+(255-background.G)*icon)*alpha);
-            basePixels[offset+2] = (byte)Math.Round((background.R+(255-background.R)*icon)*alpha);
+            basePixels[offset] = (byte)Math.Round(background.B*alpha);
+            basePixels[offset+1] = (byte)Math.Round(background.G*alpha);
+            basePixels[offset+2] = (byte)Math.Round(background.R*alpha);
             basePixels[offset+3] = (byte)Math.Round(255*alpha);
         }
     }
-    // Same 100-unit SVG rectangle, stroke, dash and gap as the approved placeholder asset.
-    private static double IconCoverage(double x,double y,double scale)
+    public async Task SaveCaptureAsync(Windows.Storage.StorageFolder folder,string name="splash-native.png")
     {
-        const double lo=87.26, hi=168.74, radius=12.18, arc=19.132299260362;
-        var best=double.MaxValue; var along=0.0; var walked=0.0;
-        void Segment(double ax,double ay,double bx,double by)
-        {
-            var dx=bx-ax; var dy=by-ay; var length=Math.Sqrt(dx*dx+dy*dy);
-            var t=Math.Clamp(((x-ax)*dx+(y-ay)*dy)/(length*length),0,1);
-            var d=Math.Sqrt(Math.Pow(x-ax-t*dx,2)+Math.Pow(y-ay-t*dy,2));
-            if(d<best){best=d;along=walked+t*length;} walked+=length;
-        }
-        void Arc(double cx,double cy,double start)
-        {
-            var a=Math.Atan2(y-cy,x-cx);
-            while(a<start) a+=Math.PI*2;
-            while(a>start+Math.PI*2) a-=Math.PI*2;
-            if(a>start+Math.PI/2) a = a-(start+Math.PI/2)<start+Math.PI*2-a ? start+Math.PI/2 : start;
-            var d=Math.Sqrt(Math.Pow(x-cx-radius*Math.Cos(a),2)+Math.Pow(y-cy-radius*Math.Sin(a),2));
-            if(d<best){best=d;along=walked+(a-start)*radius;} walked+=arc;
-        }
-        Segment(lo+radius,lo,hi-radius,lo); Arc(hi-radius,lo+radius,-Math.PI/2);
-        Segment(hi,lo+radius,hi,hi-radius); Arc(hi-radius,hi-radius,0);
-        Segment(hi-radius,hi,lo+radius,hi); Arc(lo+radius,hi-radius,Math.PI/2);
-        Segment(lo,hi-radius,lo,lo+radius); Arc(lo+radius,lo+radius,Math.PI);
-        var dash=along%15.12;
-        var endDistance = dash<=8.4 ? -Math.Min(dash,8.4-dash) : Math.Min(dash-8.4,15.12-dash);
-        return Math.Clamp(.5-Math.Max(best-1.26,endDistance)*scale,0,1);
-    }
-    public async Task SaveCaptureAsync(Windows.Storage.StorageFolder folder)
-    {
-        var file=await folder.CreateFileAsync("splash-native.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
+        var file=await folder.CreateFileAsync(name,Windows.Storage.CreationCollisionOption.ReplaceExisting);
         using var stream=await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite);
         var encoder=await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId,stream);
         encoder.SetPixelData(Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8,Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied,

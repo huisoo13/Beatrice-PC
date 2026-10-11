@@ -23,14 +23,14 @@ public partial class MainWindow : Window
     private bool settingsOpen;
     private Button? settingsButton;
     private Button? maximizeButton;
-    private string currentPage = "records";
+    private string currentPage = "weekly";
     private readonly List<Raid> records = new();
     private readonly EngineClient engine = new();
     private readonly CharacterPortraitView characterPortrait;
     private readonly bool demo = Environment.GetCommandLineArgs().Contains("--demo");
     private readonly bool startupCheck = Environment.GetCommandLineArgs().Contains("--startup-check") || Environment.GetCommandLineArgs().Contains("--startup-check-real");
     private readonly Stopwatch startupWatch = Stopwatch.StartNew();
-    private TextBlock? characterName, characterStatus, appStatus, catalogStatus;
+    private TextBlock? characterName, characterStatus, catalogStatus;
     private ComboBox? clientSelector;
     private Button? deleteButton, catalogRefresh, engineRestart;
     private bool applyingClients, closing, dialogOpen;
@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory,"Assets","beatrice.ico"));
         using var tokens = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Assets", "tokens.json")));
         colors = tokens.RootElement.GetProperty("colors").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!);
         colors["accentTint"] = tokens.RootElement.GetProperty("derivedColors").GetProperty("accentTint").GetString()!;
@@ -53,7 +54,7 @@ public partial class MainWindow : Window
         characterPortrait = new CharacterPortraitView(ProfilePortrait,Brush("text").Color);
         recordsView = new RecordsView(Page, viewTheme,
             () => demo ? new DateTime(2026,10,8,23,0,0) : RecordPresentation.KoreaNow(DateTimeOffset.UtcNow),
-            ShowRecordDetail, () => PageViewport.ChangeView(null,0,null,true));
+            () => PageViewport.ChangeView(null,0,null,true));
         recordsView.Changed += () => { if (mainContentLoaded) RebuildRecords(); };
         rewardsView = new RewardsView(Page, viewTheme, RefreshRewards);
         weeklySummaryView = new WeeklySummaryView(Page,viewTheme,
@@ -82,19 +83,20 @@ public partial class MainWindow : Window
         AddCaptionControls();
         AppHeader.Background = Brush("surface");
         var gameLabel = Text("Beatrice",14); gameLabel.VerticalAlignment = VerticalAlignment.Center;
-        gameLabel.Margin = new Thickness(16,0,0,0);
-        HeaderContent.Children.Add(gameLabel);
-        appStatus = Text(statusMessage,12,"muted"); appStatus.VerticalAlignment = VerticalAlignment.Center;
-        appStatus.TextTrimming = TextTrimming.CharacterEllipsis; appStatus.TextWrapping = TextWrapping.NoWrap;
-        AppStatusHost.Children.Add(appStatus);
-        var mainMenu = Nav("square-dashed", "관문 기록, 주간 현황 및 보상표", "raid-section");
-        mainMenu.Width = mainMenu.Height = 48;
-        mainMenu.Padding = new Thickness(0);
-        mainMenu.HorizontalContentAlignment = HorizontalAlignment.Center;
-        mainMenu.VerticalContentAlignment = VerticalAlignment.Center;
-        if (mainMenu.Content is Image mainIcon) mainIcon.Width = mainIcon.Height = 28;
+        var brand=new StackPanel { Orientation=Orientation.Horizontal,Spacing=8,Margin=new Thickness(16,0,0,0),VerticalAlignment=VerticalAlignment.Center };
+        var brandIcon=new Image { Width=20,Height=20,Source=new BitmapImage(new Uri("ms-appx:///Assets/beatrice-white.png")),Stretch=Stretch.Uniform,VerticalAlignment=VerticalAlignment.Center };
+        AutomationProperties.SetAccessibilityView(brandIcon,Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        brand.Children.Add(brandIcon); brand.Children.Add(gameLabel); HeaderContent.Children.Add(brand);
+        var mainMenu = new Button { Tag="raid-section",Width=48,Height=48,Padding=new Thickness(0),HorizontalContentAlignment=HorizontalAlignment.Center,VerticalContentAlignment=VerticalAlignment.Center };
+        var raidContent=new StackPanel { Spacing=0,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center };
+        var raidIcon=new Image { Width=28,Height=28,Source=new SvgImageSource(new Uri("ms-appx:///Assets/icons/gate-arch-muted.svg")) };
+        AutomationProperties.SetAccessibilityView(raidIcon,Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+        var raidLabel=Text("레이드",10,"muted"); raidLabel.TextWrapping=TextWrapping.NoWrap; raidLabel.TextAlignment=TextAlignment.Center; raidLabel.TextLineBounds=TextLineBounds.Tight;
+        raidContent.Children.Add(raidIcon); raidContent.Children.Add(raidLabel); mainMenu.Content=raidContent;
+        AutomationProperties.SetName(mainMenu,"레이드: 주간 현황, 완료 일지 및 보상표"); ToolTipService.SetToolTip(mainMenu,"레이드");
+        mainMenu.Click+=(_,_) => ShowPage("raid-section");
         TopNavigation.Children.Add(mainMenu);
-        var recordMenu = Action("관문 기록", (_, _) => ShowPage("records"));
+        var recordMenu = Action("완료 일지", (_, _) => ShowPage("records"));
         recordMenu.HorizontalAlignment = HorizontalAlignment.Stretch; recordMenu.HorizontalContentAlignment = HorizontalAlignment.Left;
         recordMenu.Background = Brush("accentTint"); recordMenu.BorderThickness = new Thickness(0);
         recordMenu.Tag = "records";
@@ -127,7 +129,7 @@ public partial class MainWindow : Window
             if (args.Key == Windows.System.VirtualKey.Escape && DismissSettings()) args.Handled = true;
         };
         Root.SizeChanged += (_, _) => Adapt();
-        ShowPage(launchArgs.Contains("--page=weekly") ? "weekly" : launchArgs.Contains("--page=rewards") ? "rewards" : "records");
+        ShowPage(launchArgs.Contains("--page=records") ? "records" : launchArgs.Contains("--page=rewards") ? "rewards" : "weekly");
         engine.Message += value => DispatcherQueue.TryEnqueue(() => {
             try { Receive(value); } catch (Exception error) { SetFailure("분석 데이터 표시 오류: " + error.Message); }
         });
@@ -148,12 +150,7 @@ public partial class MainWindow : Window
         SettingsPresenter.TabFocusNavigation = Microsoft.UI.Xaml.Input.KeyboardNavigationMode.Cycle;
         AppWindow.Closing += async (_, args) => {
             args.Cancel = true;
-            if (closing) return;
-            closing = true; recordsView.Dispose(); weeklySummaryView.Dispose(); rewardCooldownTimer?.Stop(); startupWindow?.Complete(); startupWindow = null; Root.IsHitTestVisible = false; SetBackgroundEnabled(false);
-            if (appStatus is not null) appStatus.Text = "작업을 마무리하고 종료하는 중…";
-            try { await SaveLostArkApiKey(); await engine.StopAsync().ConfigureAwait(false); }
-            catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
-            DispatcherQueue.TryEnqueue(() => { try { Application.Current.Exit(); } catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-exit-error.log"),error.ToString()); } });
+            await ShutdownApp();
         };
     }
     private async Task CaptureReview()
@@ -163,10 +160,10 @@ public partial class MainWindow : Window
         {
             LoadDemo();
             await VerifyRepeatSplash();
-            if (TopNavigation.Children[0] is Button menu && menu.Content is Image menuIcon)
+            if (TopNavigation.Children[0] is Button menu && menu.Content is FrameworkElement menuIcon)
             {
                 var available = menu.ActualWidth - menu.Padding.Left - menu.Padding.Right - menu.BorderThickness.Left - menu.BorderThickness.Right;
-                if (menuIcon.ActualWidth < 28 || available < 28) throw new InvalidOperationException("메인 사이드바 아이콘 잘림");
+                if (menuIcon.ActualWidth < 28 || available < 28 || menuIcon.ActualHeight > menu.ActualHeight-menu.BorderThickness.Top-menu.BorderThickness.Bottom) throw new InvalidOperationException("메인 사이드바 아이콘 잘림");
             }
             ToggleMaximize(); await Task.Delay(150);
             if (AppWindow.Presenter is not Microsoft.UI.Windowing.OverlappedPresenter maximized || maximized.State != Microsoft.UI.Windowing.OverlappedPresenterState.Maximized) throw new InvalidOperationException("최대화 실패");
@@ -192,7 +189,8 @@ public partial class MainWindow : Window
             await ValidateWeeklyRecordInteractions();
             ValidateWeeklySummary();
             await ValidateSettingsTextNavigation();
-            var views = new[]{"weekly", "weekly-640", "weekly-375", "records", "character-selecting", "character-unset", "detail", "rewards", "settings", "settings-public", "settings-records", "settings-api", "settings-api-focused", "settings-api-filled", "settings-drive", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty", "weekly-empty"};
+            ValidateApiRegistrationUI();
+            var views = new[]{"weekly", "weekly-640", "weekly-375", "records", "character-selecting", "character-unset", "rewards", "settings", "settings-public", "settings-records", "settings-obs", "settings-api", "settings-api-focused", "settings-api-filled", "settings-api-registered", "settings-api-error", "settings-api-busy", "weekly-api-required", "records-api-required", "settings-drive", "settings-drive-signed-in", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty", "weekly-empty"};
             foreach (var view in views)
             {
                 if(view=="records" || view=="weekly-empty") AppWindow.Resize(new Windows.Graphics.SizeInt32(1280,880));
@@ -211,13 +209,18 @@ public partial class MainWindow : Window
                     Receive(JsonSerializer.SerializeToElement(sample));
                 }
                 else LoadDemo();
+                if (view.Contains("api-required") || view.StartsWith("settings-api")) {
+                    lostArkApi=JsonSerializer.SerializeToElement(new { configured=view=="settings-api-registered", busy=view=="settings-api-busy",
+                        message=view=="settings-api-error" ? "API 키가 유효하지 않습니다. 입력한 키를 확인해주세요." : "" });
+                    lostArkApiEditing=false; lostArkApiFeedback=view=="settings-api-error"; RebuildRecords();
+                }
                 if (view == "rewards") ValidateRewardInteractions();
                 Task? detailTask = null;
-                if (view == "detail") detailTask = ShowRecordDetail(records[0]);
                 if (view == "drive-restore") detailTask = ShowDrivePreview(JsonSerializer.SerializeToElement(new { previewId = "review-preview", email = "preview@example.com", createdTime = "2026-10-08T03:00:00Z", completedCount = 8, omittedCount = 0, localCount = records.Count }));
                 if (view == "empty" || view == "weekly-empty") { records.Clear(); RebuildRecords(); }
+                if (view.StartsWith("settings-drive")) google=JsonSerializer.SerializeToElement(new { signedIn=view.Contains("signed-in"), name="샘플 사용자", email="preview@example.com", busy=false });
                 if (view.StartsWith("settings")) ToggleSettings();
-                if (view.StartsWith("settings")) ShowSettingsSection(view.StartsWith("settings-drive") ? "Google Drive" : view.StartsWith("settings-api") ? "로스트아크" : view == "settings-public" ? "공용 데이터" : view == "settings-records" ? "기록 관리" : "게임 클라이언트");
+                if (view.StartsWith("settings")) ShowSettingsSection(view.StartsWith("settings-drive") ? "Google Drive" : view.StartsWith("settings-api") ? "로스트아크 API" : view is "settings-public" or "settings-records" ? "데이터 관리" : view == "settings-obs" ? "OBS" : "클라이언트");
                 if (view == "settings-api-focused" || view == "settings-api-filled") {
                     if (view == "settings-api-filled") lostArkApiInput!.Password = "dummy-preview-key";
                     lostArkApiInput!.Focus(FocusState.Programmatic);
@@ -231,6 +234,8 @@ public partial class MainWindow : Window
                 }
                 if (before.Width != AppWindow.Size.Width || before.Height != AppWindow.Size.Height) throw new InvalidOperationException("설정 열기로 창 크기가 변경되었습니다.");
                 if (view.StartsWith("settings") && (PageViewport.IsEnabled || !settingsOpen)) throw new InvalidOperationException("설정 오버레이 배경 차단 실패");
+                if (view.StartsWith("settings") && (Grid.GetRow(SettingsPresenter) != 1 || Grid.GetRowSpan(SettingsPresenter) != 2 || SettingsPresenter.TransformToVisual(Root).TransformPoint(new Windows.Foundation.Point()).Y < 44))
+                    throw new InvalidOperationException("설정 오버레이 상단바 제외 실패");
                 if (view.StartsWith("rewards")) await ValidateRewardMotion();
                 var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(view is "detail" or "drive-restore" ? activeDialog! : Root);
                 var pixels = await bitmap.GetPixelsAsync();
@@ -298,7 +303,7 @@ public partial class MainWindow : Window
     {
         if (destination == "settings") { ToggleSettings(); return; }
         DismissSettings(false);
-        if (destination == "raid-section") destination = currentPage is "records" or "weekly" or "rewards" ? currentPage : "records";
+        if (destination == "raid-section") destination = currentPage is "records" or "weekly" or "rewards" ? currentPage : "weekly";
         if (destination == currentPage && Page.Children.Count > 0) return;
         currentPage = destination; Page.Spacing = destination == "records" ? 12 : 24; Page.Children.Clear();
         foreach (var navigation in TopNavigation.Children.Concat(BottomNavigation.Children).OfType<Button>())
@@ -312,13 +317,16 @@ public partial class MainWindow : Window
                 navigation.Background = Brush(selected ? "accentTint" : "surface");
                 navigation.BorderBrush = Brush(selected ? "accent" : "border");
             }
+            if ((string?)navigation.Tag=="raid-section" && navigation.Content is StackPanel raidContent) {
+                ((Image)raidContent.Children[0]).Source=new SvgImageSource(new Uri($"ms-appx:///Assets/icons/gate-arch-{(selected ? "accent" : "muted")}.svg"));
+                ((TextBlock)raidContent.Children[1]).Foreground=Brush(selected ? "accent" : "muted");
+            }
             if (navigation.Content is Image icon && navigation.DataContext is string iconName)
                 icon.Source = new SvgImageSource(new Uri($"ms-appx:///Assets/icons/{iconName}-{(selected ? "accent" : "muted")}.svg"));
         }
         foreach (var menu in RecordNavigation.Children.OfType<Button>())
             menu.Background = Brush((string?)menu.Tag == destination ? "accentTint" : "sidebar");
-        if (destination == "records") ShowRecords();
-        else if (destination == "weekly") weeklySummaryView.Render(records);
+        if (destination is "records" or "weekly") RebuildRecords();
         else if (destination == "rewards") { ShowRewards(); _ = RequestRewards(); }
         else ShowAssets();
         Adapt();
@@ -332,7 +340,7 @@ public partial class MainWindow : Window
         RailColumn.Width = new GridLength(small ? 64 : 76);
         SidebarColumn.Width = new GridLength(200);
         AdaptRecordWeek();
-        if(currentPage=="weekly") weeklySummaryView.Adapt(Root.ActualWidth-RailColumn.Width.Value-200-32);
+        if(currentPage=="weekly") weeklySummaryView.Adapt(Root.ActualWidth-RailColumn.Width.Value-200-48);
         Root.ColumnDefinitions[2].Width = new GridLength(1,GridUnitType.Star);
         Grid.SetRowSpan(SecondarySidebar,2);
         Grid.SetRow(PageViewport,1); Grid.SetRowSpan(PageViewport,2);
@@ -345,9 +353,9 @@ public partial class MainWindow : Window
         SettingsPanel.Margin = new Thickness(settingsInset,small ? 16 : 48,settingsInset,small ? 16 : 48);
         SettingsMenuColumn.Width = new GridLength(small ? 120 : compact ? 176 : 208);
         SettingsMenuSurface.Padding = new Thickness(small ? 8 : 16,24,small ? 8 : 16,24);
-        SettingsScroll.Padding = compact ? new Thickness(16) : new Thickness(32,16,32,32);
+        SettingsScroll.Padding = compact ? new Thickness(16,16,32,16) : new Thickness(32,16,48,32);
         if (SettingsNavigation.Children.FirstOrDefault() is TextBlock settingsLabel) settingsLabel.FontSize = 20;
-        Page.Margin = small ? new Thickness(16,24,16,160) : new Thickness(16,32,16,40);
+        Page.Margin = small ? new Thickness(16,24,32,160) : new Thickness(16,32,32,40);
         if (Page.Children.FirstOrDefault() is StackPanel heading && heading.Children.FirstOrDefault() is TextBlock title) title.FontSize = 20;
         if (SettingsContent.Children.FirstOrDefault() is TextBlock settingsTitle) settingsTitle.FontSize = 20;
         var settingsContentWidth = Math.Max(0,Math.Min(1120,Root.ActualWidth - settingsInset*2) - SettingsMenuColumn.Width.Value - SettingsScroll.Padding.Left - SettingsScroll.Padding.Right);
@@ -356,31 +364,31 @@ public partial class MainWindow : Window
     private void ShowSettings()
     {
         SettingsContent.Children.Clear(); settingsSections.Clear();
-        var clientSection = Section("게임 클라이언트");
-        clientSelector = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "게임 실행 대기", MinHeight = 44, FontFamily = new FontFamily(font), FontSize = 14 };
-        AutomationProperties.SetName(clientSelector,"분석할 게임 클라이언트");
-        clientSelector.SelectionChanged += async (_, _) => {
-            if (!applyingClients && clientSelector.SelectedItem is ComboBoxItem item && item.Tag is long hwnd)
-                await Send(new { type = "select", hwnd });
-        };
-        clientSection.Children.Add(clientSelector); UpdateClients();
-        engineStatus = Text(statusMessage,12,"muted"); clientSection.Children.Add(engineStatus);
-        engineRestart = Action("앱 다시 초기화",async (_, _) => await Send(new { type = "restart" }));
-        ToolTipService.SetToolTip(engineRestart,"분석 작업자를 종료하고 모델·OBS를 다시 준비합니다. 저장된 기록과 로그인 정보는 유지됩니다.");
+        var clientSection = Section("클라이언트","앱 클라이언트를 관리합니다.");
+        engineRestart = Action("앱 재실행",async (_, _) => await RestartApp());
+        ToolTipService.SetToolTip(engineRestart,"앱을 종료한 뒤 스플래시부터 다시 시작합니다. 저장된 기록과 로그인 정보는 유지됩니다.");
         clientSection.Children.Add(engineRestart);
-        var catalogSection = Section("공용 데이터");
-        catalogStatus = Text("",14,"muted"); catalogSection.Children.Add(catalogStatus);
-        catalogRefresh = Action("공용 데이터 갱신",async (_, _) => await Send(new { type = "catalog_refresh" })); catalogSection.Children.Add(catalogRefresh);
-        var recordSection = Section("기록 관리");
+        var catalogSection = Section("데이터 관리","앱에 저장된 데이터 및 외부 정보를 관리합니다.");
+        var publicSection = new StackPanel { Spacing = 12 };
+        catalogSection.Children.Add(publicSection);
+        publicSection.Children.Add(Text("공용 데이터",14,bold:true));
+        catalogStatus = Text("",14,"muted"); publicSection.Children.Add(catalogStatus);
+        catalogRefresh = Action("공용 데이터 갱신",async (_, _) => await Send(new { type = "catalog_refresh" })); publicSection.Children.Add(catalogRefresh);
+        var recordSection = new StackPanel { Spacing = 12, Margin = new Thickness(0,24,0,0) };
+        recordSection.Children.Add(Text("기록 관리",14,bold:true)); catalogSection.Children.Add(recordSection);
         deleteButton = Action("기록 전체 삭제",async (_, _) => await ConfirmDelete()); recordSection.Children.Add(deleteButton);
-        AddDriveSettings(); AddLostArkApiSettings();
+        AddObsSettings(); AddDriveSettings(); AddLostArkApiSettings();
         BuildSettingsNavigation();
         UpdateSettingsState();
     }
-    private StackPanel Section(string title)
+    private StackPanel Section(string title,string description)
     {
-        var section = new StackPanel { Spacing = 12, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
-        section.Children.Add(Text(title,20,bold:true)); settingsSections[title] = section; return section;
+        var section = new StackPanel { Spacing = 24, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
+        var header = new StackPanel { Spacing = 12 };
+        header.Children.Add(Text(title,20,bold:true));
+        header.Children.Add(Text(description,14,"muted"));
+        section.Children.Add(header);
+        settingsSections[title] = section; return section;
     }
     private void ToggleSettings()
     {
@@ -391,13 +399,12 @@ public partial class MainWindow : Window
         PageViewport.IsEnabled = false;
         SetBackgroundEnabled(false);
         UpdateSettingsButton(); Adapt();
-        if (selectedSettingsSection == "게임 클라이언트") clientSelector?.Focus(FocusState.Programmatic);
+        if (selectedSettingsSection == "OBS") clientSelector?.Focus(FocusState.Programmatic);
         else if (settingsMenuItems.TryGetValue(selectedSettingsSection,out var selectedMenu)) selectedMenu.Focus(FocusState.Programmatic);
     }
     private bool DismissSettings(bool restoreFocus = true)
     {
         if (!settingsOpen) return false;
-        if (selectedSettingsSection == "로스트아크") _ = SaveLostArkApiKey();
         settingsOpen = false; SettingsPresenter.Visibility = Visibility.Collapsed;
         PageViewport.IsEnabled = true;
         SetBackgroundEnabled(true);
@@ -447,7 +454,6 @@ public partial class MainWindow : Window
     {
         EndSplash();
         statusMessage = message;
-        if (appStatus is not null) { appStatus.Text = "분석 오류 · 설정에서 상태를 확인해주세요"; ToolTipService.SetToolTip(appStatus,message); }
         UpdateSettingsState();
     }
     private void Receive(JsonElement value)
@@ -475,7 +481,7 @@ public partial class MainWindow : Window
         weeklySummaryView.UpdateCurrencyImages(snapshot.CurrencyImages);
         statusMessage = snapshot.Status;
         busy = snapshot.Busy; catalogBusy = snapshot.CatalogBusy;
-        if (appStatus is not null) { appStatus.Text = statusMessage; ToolTipService.SetToolTip(appStatus,statusMessage); }
+        if (snapshot.Obs is JsonElement obsState) obs = obsState;
         var profile = snapshot.Profile;
         characterPortrait.Update(profile.CharacterEmblem,profile.CharacterClass);
         if (characterName is not null) { characterName.Text = profile.Character; ToolTipService.SetToolTip(characterName,characterName.Text); }
@@ -516,7 +522,9 @@ public partial class MainWindow : Window
         if (snapshot.CatalogRefreshAvailableAt is DateTimeOffset deadline) rewardRefreshAvailableAt = deadline;
         UpdateRewardRefresh();
         if (currentPage == "rewards" && !catalogBusy && (rewardData.ValueKind != JsonValueKind.Array || previousCatalog != catalogMessage)) _ = RequestRewards();
+        var apiWasConfigured=Flag(lostArkApi,"configured");
         if (snapshot.LostArkApi is JsonElement lostArkApiState) lostArkApi = lostArkApiState;
+        if (apiWasConfigured != Flag(lostArkApi,"configured")) RebuildRecords();
         if (snapshot.Google is JsonElement googleState) google = googleState;
         if (snapshot.Drive is JsonElement driveState) drive = driveState;
         UpdateSettingsState();
@@ -542,7 +550,7 @@ public partial class MainWindow : Window
     }
     private void UpdateSettingsState()
     {
-        UpdateDriveSettings(); UpdateLostArkApiSettings();
+        UpdateDriveSettings(); UpdateLostArkApiSettings(); UpdateObsSettings();
         if (catalogStatus is not null) catalogStatus.Text = catalogMessage;
         if (engineStatus is not null) engineStatus.Text = statusMessage;
         if (clientSelector is not null) clientSelector.IsEnabled = !busy;
@@ -554,25 +562,13 @@ public partial class MainWindow : Window
     {
         if (currentPage is not ("records" or "weekly")) return;
         Page.Children.Clear();
+        if (!Flag(lostArkApi,"configured")) {
+            ApiKeyRequiredView.Render(Page,PageViewport,new ViewTheme(font,semiboldFont,Root.Resources,Brush,Text),
+                currentPage=="weekly" ? "주간 현황" : "완료 일지",OpenLostArkApiRegistration);
+            Adapt(); return;
+        }
         if(currentPage=="weekly") weeklySummaryView.Render(records); else ShowRecords();
         Adapt();
-    }
-    private async Task ShowRecordDetail(Raid raid)
-    {
-        var content = new StackPanel { Spacing = 16 };
-        content.Children.Add(Text(raid.Dungeon,20,bold:true));
-        content.Children.Add(Text(string.Join(" · ",new[]{raid.Mode,RecordPresentation.Gate(raid.Gate)}.Where(v => !string.IsNullOrWhiteSpace(v))) + "\n" + raid.Character + " · " + raid.Date,14,"muted"));
-        content.Children.Add(Text("골드 보상  " + RecordPresentation.GoldReceipt(raid.Detail),16));
-        if (raid.Detail.GetProperty("status").GetString() == "matched")
-        {
-            var values = raid.Detail.GetProperty("values");
-            content.Children.Add(Text($"기본 골드  {values.GetProperty("gold").GetInt64():N0}\n비용  {values.GetProperty("fee").GetInt64():N0}\n귀속 비율  {values.GetProperty("bound_percentage").GetDouble()*100:0.##}%",16));
-            content.Children.Add(Text(raid.Detail.GetProperty("source").GetString()!,12,"muted"));
-        }
-        else content.Children.Add(Text("상세 정보가 연결되지 않았습니다. 공용 데이터에서 일치하는 항목을 확인해주세요.",14,"muted"));
-        if (raid.Detail.TryGetProperty("ocrOriginal",out var original))
-            content.Children.Add(Text($"OCR 원문: {original.GetProperty("dungeonName").GetString()} / {original.GetProperty("difficulty").GetString()} / {original.GetProperty("gate").GetInt32()}관문",12,"muted"));
-        await Dialog("완료 기록 상세",content);
     }
     private async Task ConfirmDelete()
     {
@@ -598,7 +594,7 @@ public partial class MainWindow : Window
     {
         var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = ElementTheme.Dark,
             Title = Text(title,20,bold:true), Background = Brush("hover"), Foreground = Brush("text"), FontFamily = new FontFamily(font), FontSize = 14,
-            Content = new ScrollViewer { Content = content, HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, CloseButtonText = "닫기" };
+            Content = new ScrollViewer { Content = content, Padding = new Thickness(0,0,16,0), HorizontalScrollMode = ScrollMode.Disabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, CloseButtonText = "닫기" };
         foreach (var key in Root.Resources.Keys) dialog.Resources[key] = Root.Resources[key];
         dialog.Resources["ContentDialogTitleFontSize"] = 20d;
         dialog.Resources["ContentDialogTitleFontFamily"] = new FontFamily(semiboldFont);
@@ -608,8 +604,9 @@ public partial class MainWindow : Window
     }
     private void LoadDemo()
     {
-        using var sample = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"Assets","demo.json")));
-        Receive(sample.RootElement);
+        var sample = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"Assets","demo.json")))!;
+        sample["lostArkApi"]=System.Text.Json.Nodes.JsonNode.Parse("{\"configured\":true}");
+        Receive(JsonSerializer.SerializeToElement(sample));
     }
     private void AddCaptionControls()
     {

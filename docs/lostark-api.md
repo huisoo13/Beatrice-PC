@@ -1,10 +1,10 @@
 # 로스트아크 API 모듈
 
-2026-10-10 기준. 앱에 저장한 키로 사용할 수 있는 Python 서비스 모듈입니다. UI, Qt, 모델 라이브러리에 의존하지 않으며 Python 표준 라이브러리만 사용합니다.
+2026-10-11 기준. 앱에 저장한 키로 사용할 수 있는 Python 서비스 모듈입니다. UI, Qt, 모델 라이브러리에 의존하지 않으며 Python 표준 라이브러리만 사용합니다.
 
 ## 빠른 사용
 
-프로젝트 루트에서 실행합니다. 앱 설정에 API 키를 먼저 저장하세요.
+프로젝트 루트에서 실행합니다. 앱 설정에서 API 키를 입력하고 검증해 등록하세요. LostArkRegistration은 후보 키로 뉴스 API를 백그라운드 호출하고 정상 목록 응답을 받은 경우에만 LostArkApiKey.save로 암호화 저장합니다. 실패·취소·앱 종료에는 기존 키를 유지합니다. 입력 필드의 포커스 이동이나 설정 닫기로 자동 저장하지 않습니다.
 
 ```python
 from beatrice.lostark import LostArkClient
@@ -18,6 +18,7 @@ if profile is not None:
 equipment = api.armory.equipment("후이수")
 gems = api.armory.gems("후이수")
 account_characters = api.characters.siblings("후이수")
+events = api.news.events()
 ```
 
 `from_saved_key(directory=None, timeout=15)`의 경로 우선순위는 명시한 `directory` → `BEATRICE_DATA_DIR` → `%LOCALAPPDATA%/BeatricePC`입니다. LOCALAPPDATA가 없으면 사용자 홈 아래 BeatricePC를 사용합니다. `lostark-api-key.bin`을 기존 `LostArkApiKey`로 복호화하며, Windows 사용자 계정에 연결된 DPAPI를 사용합니다. 매 요청에 키를 다시 읽어 앱에서 키를 변경하거나 초기화한 결과를 반영합니다. 클라이언트 생성만으로 네트워크 요청을 보내지는 않습니다.
@@ -26,10 +27,11 @@ account_characters = api.characters.siblings("후이수")
 
 ## 구현된 조회 API
 
-아래 모든 메서드는 캐릭터명 `name: str` 하나를 받습니다. 앞뒤 공백은 제거하고 UTF-8 URL 인코딩합니다. 표의 `{name}`은 인코딩된 이름입니다. 모든 호출은 GET입니다.
+캐릭터·전투정보 메서드는 캐릭터명 `name: str` 하나를 받습니다. 앞뒤 공백은 제거하고 UTF-8 URL 인코딩합니다. 표의 `{name}`은 인코딩된 이름입니다. 뉴스 events는 인자가 없습니다. 모든 호출은 GET입니다.
 
 | 호출 | 공식 경로 | 반환 JSON 형태 |
 |---|---|---|
+| `api.news.events()` | `/news/events` | 진행 중인 이벤트 list |
 | `api.characters.profile(name)` | `/armories/characters/{name}/profiles` | 기본 정보 dict 또는 None |
 | `api.characters.siblings(name)` | `/characters/{name}/siblings` | 동일 계정 캐릭터 list 또는 None |
 | `api.armory.full(name)` | `/armories/characters/{name}` | 전투정보 전체 dict 또는 None |

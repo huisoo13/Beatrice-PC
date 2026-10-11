@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><Compile Include="../Beatrice.App/WeeklySummary.cs" Link="WeeklySummary.cs" /><Compile Include="../Beatrice.App/RecordPresentation.cs" Link="RecordPresentation.cs" /><Compile Include="../Beatrice.App/EngineMessages.cs" Link="EngineMessages.cs" /><Compile Include="../Beatrice.App/EngineProcessLifetime.cs" Link="EngineProcessLifetime.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../Beatrice.App/AppRelaunch.cs" Link="AppRelaunch.cs" /></ItemGroup>
 </Project>

@@ -218,7 +218,8 @@ def authenticate(root, saved, cancel, interactive):
         raise AuthError('저장된 Google 계정이 일치하지 않습니다. 다시 로그인해주세요.')
     return dict(client_id=client['client_id'], refresh_token=tokens['refresh_token'],
                 scopes=tokens.get('scope', SCOPES if interactive else ' '.join((saved or {}).get('scopes', []))).split(),
-                account={k: account.get(k, '') for k in ('sub', 'email', 'name')})
+                account={k: account.get(k, '') if isinstance(account.get(k, ''),str) else ''
+                         for k in ('sub', 'email', 'name', 'picture')})
 
 
 def drive_access_token(root, saved, cancel):

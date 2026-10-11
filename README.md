@@ -30,6 +30,8 @@
 
 UI 에셋과 디자인 자료의 Git 관리 기준은 [디자인 자료 관리](design/README.md)를 참고합니다. 로컬 스킬 설치본·이전 시안·생성된 검토 이미지는 제외하고, 앱 소스·실행 에셋·최종 지침은 포함합니다.
 
+2026-10-11: 앱 아이콘·아이콘 채우기 스플래시·전체 앱 재실행을 적용했습니다. 기본 화면은 레벨순 주간 현황이며 완료 일지는 읽기 전용입니다. 설정은 클라이언트·OBS·데이터 관리·로스트아크 API·Google Drive로 나누고, API 키는 뉴스 API 검증 성공 후 암호화 저장합니다. API 미등록 시 주간 현황·완료 일지에 공통 등록 안내를 표시합니다. Google Drive는 공식 로그인 버튼과 로그인 계정·로그아웃을 표시하며 완료 기록 자동 저장을 유지합니다.
+
 2026-10-07: [WinUI 3 데스크톱 UI](docs/58-winui-desktop.md)를 적용했습니다. 승인한 태그강조형 기록 카드·사이드바·설정 오버레이를 실제 분석 작업자와 연결합니다. 소스 실행 전 `./ui/Beatrice.App/build.ps1`로 UI를 빌드합니다. 개인 Google Drive는 Google 로그인·권한 연결·저장·불러오기 및 완료 기록 자동 저장을 지원하며, 클라이언트 선택·공용 데이터·기록 삭제도 설정에서 사용할 수 있습니다.
 
 앱 실행은 `Run-Beatrice.cmd` 하나로 통합했습니다. 더블클릭하면 관리자 권한을 요청하며 Windows UAC를 승인하면 실행됩니다. 이미 관리자 권한인 환경에서는 추가 요청 없이 실행합니다. 소스 환경의 `.venv-win`과 배포 폴더의 `runtime`을 모두 지원합니다.
@@ -192,17 +194,31 @@ Beatrice-PC/
 │  │  ├─ client.py               # 공통 통신·호출 제한
 │  │  ├─ characters.py           # 캐릭터 조회
 │  │  ├─ armory.py               # 전투정보 조회
+│  │  ├─ news.py                 # 뉴스 이벤트 조회·키 검증 요청
 │  │  └─ errors.py               # 오류 정의
-│  └─ lostark_api.py             # 앱 API 키 저장·조회
+│  ├─ lostark_api.py             # 앱 API 키 암호화 저장·조회
+│  └─ lostark_registration.py    # 뉴스 API 비동기 검증·성공 후 등록·종료 취소
 │
 ├─ ui/Beatrice.App/
 │  ├─ MainWindow.xaml.cs         # 창 생명주기·화면 전환·연결
 │  ├─ MainWindow.Records.cs      # 기록 화면 연결
 │  ├─ MainWindow.Rewards.cs      # 보상표 요청·화면 연결
 │  ├─ MainWindow.WeeklySummary.cs # 주간 현황 연결·데모 검증
+│  ├─ MainWindow.Splash.cs       # 초기 준비·스플래시 전환·공통 종료·재실행 연결
+│  ├─ AppRelaunch.cs             # 엔진 종료 후 새 앱 프로세스 실행·설치 경로 인자 보존
+│  ├─ MainWindow.ObsSettings.cs  # 감지 클라이언트 선택·OBS 상태·오류 설정 화면
+│  ├─ MainWindow.Drive.cs        # Google 로그인·계정·로그아웃 화면·복원 확인 연결
+│  ├─ GoogleAccountView.cs       # 계정 이름·이메일·원형 사진·로딩 실패 대체 표시
+│  ├─ MainWindow.LostArkApi.cs    # 등록·검증·변경 설정 화면·발급 안내 연결
+│  ├─ ApiKeyRequiredView.cs       # 주간 현황·완료 일지의 API 미등록 안내·등록 진입
+│  ├─ StartupWindow.cs           # 투명 모서리·아이콘 아래부터 채우는 진행 애니메이션
+│  ├─ AppIconRasterizer.cs       # 투명 PNG의 DPI별 픽셀 해석·캐시
+│  ├─ Assets/beatrice.ico        # 실행 파일·작업표시줄 아이콘
+│  ├─ Assets/beatrice-white.png  # 스플래시·상단바 투명 흰색 아이콘
+│  ├─ Assets/google-signin-light.png # Google 공식 로그인 버튼 원본 에셋
 │  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·미획득 제외·미확인 공용 금액 합산
 │  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·주간 변경 표시
-│  ├─ RecordsView.cs             # 기록 화면·주간 탐색·RichTextBlock 문장·직업 문양
+│  ├─ RecordsView.cs             # 완료 일지·주간 탐색·읽기 전용 문장·직업 문양
 │  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
 │  ├─ CharacterPortraitView.cs   # 현재 캐릭터 직업 문양·이미지 로딩
 │  ├─ RewardsView.cs             # 보상표·선택 상태·갱신 표시
@@ -245,6 +261,8 @@ MainWindow
 │                 ├─ GoogleAccount / PersonalDrive → 인증·Drive API
 │                 └─ Worker → RecognitionService
 │                             ├─ RecognitionPipeline.analyze_character → 캐릭터 YOLO·OCR
+│                             ├─ ObsCapture.view → RecognitionEvents.obs → Host.snapshot.obs
+│                             │                                         └─ MainWindow.ObsSettings
 │                             ├─ LiveCoordinator.observe_character → 확정 여부
 │                             ├─ 확정 시 analyze_dungeon → 던전 YOLO·OCR·관문·배너
 │                             │                            └─ GoldRewardDetector → 보상표·관문/최종 제목·골드 여부

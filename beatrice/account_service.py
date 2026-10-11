@@ -53,6 +53,8 @@ class GoogleAccount:
 
     def view(self):
         return dict(signedIn=bool(self.session), email=(self.session or {}).get('account', {}).get('email', ''),
+                    name=(self.session or {}).get('account', {}).get('name', ''),
+                    picture=(self.session or {}).get('account', {}).get('picture', ''),
                     busy=self.busy, authorized=self.authorized, message=self.message,
                     canLogout=bool(self.session) or self.tokens.path.exists())
 

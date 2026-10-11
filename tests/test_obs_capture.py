@@ -42,6 +42,15 @@ class FrameProtocolTests(unittest.TestCase):
             self.assertEqual(runtime_path(),owned.resolve())
 
 class ObsCaptureTests(unittest.TestCase):
+    def test_diagnostic_view_distinguishes_wait_capture_and_error(self):
+        capture=ObsCapture(None,Path('.'))
+        self.assertEqual(capture.view(),dict(status='엔진 준비 중',error=''))
+        capture.engine_ready.set()
+        self.assertEqual(capture.view()['status'],'엔진 준비 완료 · 게임 실행 대기')
+        capture.client=Client(1,2,'game');capture.wait_kind='ready'
+        self.assertEqual(capture.view()['status'],'게임 화면 캡처 중')
+        capture.error='OBS 접근 거부'
+        self.assertEqual(capture.view(),dict(status='오류 · 재연결 대기',error='OBS 접근 거부'))
     def test_pipe_failure_is_visible_in_capture_status_and_logged(self):
         capture=ObsCapture(None,Path('.'))
         line="warning: [game-capture] init_pipe: failed to start pipe\n"

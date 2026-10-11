@@ -16,11 +16,38 @@ public partial class MainWindow
 {
     private StartupWindow? startupWindow;
     private int mainWidth, mainHeight;
+    private System.Diagnostics.ProcessStartInfo? relaunch;
+    private async Task RestartApp()
+    {
+        if (closing || relaunch is not null || demo || busy) return;
+        try {
+            relaunch = AppRelaunch.Prepare();
+            AppWindow.Hide();
+            await ShutdownApp();
+        }
+        catch (Exception error) { relaunch=null; Activate(); SetFailure("앱 재실행 실패: " + error.Message); }
+    }
+    private async Task ShutdownApp()
+    {
+        if (closing) return;
+        closing=true; recordsView.Dispose(); weeklySummaryView.Dispose(); rewardCooldownTimer?.Stop();
+        startupWindow?.Complete(); startupWindow=null; Root.IsHitTestVisible=false; SetBackgroundEnabled(false);
+        try {
+            await engine.StopAsync().ConfigureAwait(false);
+            if (relaunch is not null) AppRelaunch.Start(relaunch);
+        }
+        catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-shutdown-error.log"),error.ToString()); }
+        DispatcherQueue.TryEnqueue(() => {
+            try { Application.Current.Exit(); }
+            catch (Exception error) { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"native-exit-error.log"),error.ToString()); }
+        });
+    }
     private void BeginSplash(int width, int height)
     {
         finishingSplash = false;
+        AppWindow.Hide();
         mainWidth = width; mainHeight = height;
-        startupWindow = new StartupWindow(Brush("hover"), Brush("border"), Brush("accent"), WinRT.Interop.WindowNative.GetWindowHandle(this));
+        startupWindow = new StartupWindow(Brush("hover"), WinRT.Interop.WindowNative.GetWindowHandle(this));
         startupWindow.ReadyToStart += async () => {
             try { if (demo) await CheckSplash(); else engine.Start(); }
             catch (Exception error) { SetFailure(error.Message); }
@@ -90,7 +117,11 @@ public partial class MainWindow
             throw new InvalidOperationException("메인 화면 전환 확인 실패");
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"startup-check.txt"),
             $"PASS: YOLO/OCR/OBS/public data ready; main painted and settings button invoked; {bitmap.PixelWidth}x{bitmap.PixelHeight}, {records.Count} records, in {startupWatch.Elapsed.TotalSeconds:F2}s");
-        Close();
+        if (Environment.GetCommandLineArgs().Contains("--restart-check")) {
+            var restartPeer = new Microsoft.UI.Xaml.Automation.Peers.ButtonAutomationPeer(engineRestart!);
+            ((Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider)restartPeer.GetPattern(Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke)).Invoke();
+        }
+        else Close();
     }
     private void UpdateSplash(JsonElement value)
     {
@@ -130,10 +161,11 @@ public partial class MainWindow
         await startupWindow.SaveCaptureAsync(folder);
         startupWindow.Progress.Value = 3;
         await startupWindow.WaitForProgressAsync();
+        await startupWindow.SaveCaptureAsync(folder,"splash-complete-native.png");
         EndSplash(); await WaitForMainFrame();
         if (!ReferenceEquals(Content, Root) || AppWindow.Size.Width != mainWidth || AppWindow.Size.Height != mainHeight)
             throw new InvalidOperationException("Splash transition failed");
-        File.WriteAllText(Path.Combine(directory, "splash-status.txt"), "PASS: 256x256 splash, 84px asset, 32px per-pixel alpha corners, animated progress, main size restored");
+        File.WriteAllText(Path.Combine(directory, "splash-status.txt"), "PASS: 256x256 splash, 128px bottom-up image fill, 32px per-pixel alpha corners, animated progress, main size restored");
         Close();
     }
 }

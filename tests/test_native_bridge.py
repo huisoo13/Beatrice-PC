@@ -28,6 +28,13 @@ class FakeWorker:
 
 
 class NativeBridgeTests(unittest.TestCase):
+    def test_obs_snapshot_keeps_error_separate_and_rejects_stale_generation(self):
+        self.host.obs(self.host.generation,dict(status='캡처 오류',error='OBS 접근 거부'))
+        self.assertEqual(self.messages[-1]['obs'],dict(status='캡처 오류',error='OBS 접근 거부'))
+        self.host.obs(self.host.generation-1,dict(status='old',error='old'))
+        self.assertEqual(self.host.obs_state['error'],'OBS 접근 거부')
+        self.host.obs(self.host.generation,dict(status='게임 화면 캡처 중',error=''))
+        self.assertEqual(self.messages[-1]['obs']['error'],'')
     @classmethod
     def setUpClass(cls): cls.app = EventLoop()
 
@@ -42,6 +49,10 @@ class NativeBridgeTests(unittest.TestCase):
             self.workers.append(worker)
             return worker
         self.host = Host(self.app, self.messages.append, factory)
+        from unittest.mock import Mock
+        verified_client = Mock()
+        verified_client.news.events.return_value = []
+        self.host.lostark_registration.client_factory = lambda **kwargs: verified_client
         self.host.catalog.next_check = float('inf')
         self.host.start()
 
@@ -66,6 +77,8 @@ class NativeBridgeTests(unittest.TestCase):
         from beatrice.lostark_api import LostArkApiKey
         if os.name != 'nt': self.skipTest('Windows DPAPI')
         self.host.command(dict(type='lostark_api_save', key='dummy-bridge-key'))
+        self.host.lostark_registration.pending[2].join(timeout=2)
+        self.host.drain_commands()
         result = next(v for v in reversed(self.messages) if v['type'] == 'lostark_api_saved')
         self.assertTrue(result['success'])
         self.assertTrue(result['configured'])
@@ -97,6 +110,8 @@ class NativeBridgeTests(unittest.TestCase):
              patch.object(self.host.catalog,'emblem_path',return_value=Path(self.folder.name)/'bard.svg'):
             self.seed()
             self.host.command(dict(type='lostark_api_save',key='dummy-profile-key'))
+            self.host.lostark_registration.pending[2].join(timeout=2)
+            self.host.drain_commands()
             deadline=time.monotonic()+2
             while not self.host.character_catalog.settled and time.monotonic()<deadline: time.sleep(.001)
             self.host.drain_commands()

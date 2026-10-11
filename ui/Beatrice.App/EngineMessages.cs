@@ -9,7 +9,7 @@ internal sealed record EngineProfile(string Character, string Message, string Ch
 internal sealed record EngineSnapshot(string Status, bool Busy, bool CatalogBusy, EngineProfile Profile,
     JsonElement RecordData, string RecordsJson, JsonElement Clients, long Selected,
     string CatalogStatus, DateTimeOffset? CatalogLastUpdated, DateTimeOffset? CatalogRefreshAvailableAt,
-    JsonElement? LostArkApi, JsonElement? Google, JsonElement? Drive, JsonElement? CurrencyImages = null)
+    JsonElement? LostArkApi, JsonElement? Google, JsonElement? Drive, JsonElement? CurrencyImages = null, JsonElement? Obs = null)
 {
     public IReadOnlyList<Raid> Records => RecordData.EnumerateArray().Select(row => new Raid(
         row.GetProperty("character").GetString()!, row.GetProperty("dungeon").GetString()!,
@@ -40,6 +40,6 @@ internal sealed record EngineSnapshot(string Status, bool Busy, bool CatalogBusy
                 profile.TryGetProperty("characterEmblem",out var emblem) ? emblem.GetString() : null),
             records.Clone(), records.GetRawText(), value.GetProperty("clients").Clone(), value.GetProperty("selected").GetInt64(),
             value.GetProperty("catalogStatus").GetString()!, updated, deadline,
-            Optional(value,"lostArkApi"), Optional(value,"google"), Optional(value,"drive"), Optional(value,"currencyImages"));
+            Optional(value,"lostArkApi"), Optional(value,"google"), Optional(value,"drive"), Optional(value,"currencyImages"), Optional(value,"obs"));
     }
 }

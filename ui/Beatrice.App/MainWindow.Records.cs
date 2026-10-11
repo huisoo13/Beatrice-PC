@@ -5,6 +5,6 @@ public partial class MainWindow
     private void ShowRecords() => recordsView.Render(records);
     private void AdaptRecordWeek()
     {
-        if (currentPage == "records") recordsView.Adapt(Root.ActualWidth - RailColumn.Width.Value - 200 - 32);
+        if (currentPage == "records") recordsView.Adapt(Root.ActualWidth - RailColumn.Width.Value - 200 - 48);
     }
 }

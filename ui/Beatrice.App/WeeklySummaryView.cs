@@ -89,9 +89,6 @@ internal sealed class WeeklySummaryView : IDisposable
         var labels=Row(Text(""),goldLabel,boundLabel,0); labels.Margin=new Thickness(0,0,0,8); page.Children.Add(labels);
         var total=Row(Text("총합",14,bold:true),Number(Receipt.Money.Gold,"총 일반 골드",bold:true,color:"warning",size:20,total:true),Number(Receipt.Money.BoundGold,"총 귀속 골드",bold:true,size:20,bound:true,total:true));
         page.Children.Add(new Border { Child=total,BorderThickness=new Thickness(0,1,0,1),BorderBrush=theme.Brush("border"),Padding=new Thickness(0,16,0,16),Margin=new Thickness(0,0,0,16) });
-        {
-            var note=Text("미확인 보상은 공용 데이터 금액으로 합산 · 미획득 보상 제외"+(Receipt.Money.Missing>0 ? $" · 금액 미연결 {Receipt.Money.Missing}건" : ""),12,"muted"); note.Margin=new Thickness(0,0,0,16); page.Children.Add(note);
-        }
         if(Receipt.Characters.Count==0) {
             var empty=Text("이번 주에는 클리어 기록이 없습니다.",14,"muted"); empty.Margin=new Thickness(0,48,0,48); empty.TextAlignment=TextAlignment.Center; page.Children.Add(empty); return;
         }
@@ -103,7 +100,6 @@ internal sealed class WeeklySummaryView : IDisposable
             IdentityPart((character.Job ?? "—")+"  ",12,"muted");
             IdentityPart(character.Name,14,"characterAccent",true);
             if(character.Level!="") IdentityPart("  "+character.Level,12,"muted");
-            // Character totals are partial when some rewards are not linked; the global note states this.
             var header=Row(identity,Number(character.Money.Gold,character.Name+" 일반 골드 합",bold:true,color:"warning"),Number(character.Money.BoundGold,character.Name+" 귀속 골드 합",bold:true,bound:true));
             header.Margin=new Thickness(0,0,0,8); section.Children.Add(header);
             foreach(var dungeon in character.Dungeons) {

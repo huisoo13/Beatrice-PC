@@ -43,7 +43,7 @@ class ObsCapture:
     def __init__(self,client,data_dir):
         self.client=client;self.data_dir=Path(data_dir)
         self.process=None;self.memory=None;self.retry_at=0;self.last_sequence=0
-        self.message='내장 OBS 엔진 연결 중';self.log=None
+        self.message='내장 OBS 엔진 연결 중';self.log=None;self.error=''
         self.observed_at=None;self.frame_info={}
         self.last_digest=None;self.changed_at=0;self.received_at=0
         self.status_thread=None
@@ -56,7 +56,7 @@ class ObsCapture:
     def bind(self,client):
         with self.command_lock:
             if client!=self.client:
-                self.client=client;self.target_revision+=1
+                self.client=client;self.target_revision+=1;self.error=''
                 self.active_revision=None;self.binding_ready.clear()
                 self.last_sequence=0;self.last_digest=None;self.changed_at=0
                 self.source_received_at=None;self.read_wait_since=None
@@ -72,7 +72,7 @@ class ObsCapture:
             try:
                 self.process.stdin.write(json.dumps(command)+'\n');self.process.stdin.flush()
                 self.sent_revision=self.target_revision
-            except (OSError,ValueError):self.message='내장 OBS 엔진 연결 종료 · 재연결 대기'
+            except (OSError,ValueError):self.error=self.message='내장 OBS 엔진 연결 종료 · 재연결 대기'
 
     def prepare(self,stop_event,timeout=15):
         if self.process is None:self._start()
@@ -88,13 +88,25 @@ class ObsCapture:
         self.wait_reason=reason
         return None,reason
 
+    def view(self):
+        """Expose capture diagnostics without leaking process or shared-memory state."""
+        if self.error:status='오류 · 재연결 대기'
+        elif self.process is not None and self.process.poll() is not None:
+            return dict(status='엔진 종료 · 재연결 대기',error=self.message+' · obs-engine.log 확인')
+        elif not self.engine_ready.is_set():status='엔진 준비 중'
+        elif self.client is None:status='엔진 준비 완료 · 게임 실행 대기'
+        elif self.wait_kind=='ready':status='게임 화면 캡처 중'
+        elif self.wait_kind=='transient':status='새 게임 프레임 대기'
+        else:status=self.wait_reason or self.message
+        return dict(status=status,error=self.error)
+
     def _status(self,process):
         for line in process.stdout:
             if process is not self.process:break
             try:
                 status=json.loads(line);self.message=status.get('message',self.message)
                 if status.get('event')=='engine_ready':
-                    self.engine_ready.set();self._send_target()
+                    self.error='';self.engine_ready.set();self._send_target()
                 elif status.get('event')=='target_ready':
                     with self.command_lock:
                         if status.get('revision')==self.target_revision:
@@ -102,11 +114,11 @@ class ObsCapture:
             except (ValueError,TypeError):
                 if self.log is not None:self.log.write(line.encode('utf-8'))
                 if 'init_pipe: failed to start pipe' in line:
-                    self.message='OBS 게임 연결 파이프 생성 실패 · 이전 앱의 캡처 프로세스 또는 다른 캡처 연결 확인'
+                    self.error=self.message='OBS 게임 연결 파이프 생성 실패 · 이전 앱의 캡처 프로세스 또는 다른 캡처 연결 확인'
                 elif 'could not open process' in line:
-                    self.message='OBS 게임 접근 거부 · 앱/게임 실행 권한 또는 게임 보안 차단 확인'
+                    self.error=self.message='OBS 게임 접근 거부 · 앱/게임 실행 권한 또는 게임 보안 차단 확인'
                 elif 'inject' in line.lower() and ('failed' in line.lower() or 'error' in line.lower()):
-                    self.message='OBS 게임 캡처 연결 실패 · 게임 실행 권한 또는 보안 차단 확인'
+                    self.error=self.message='OBS 게임 캡처 연결 실패 · 게임 실행 권한 또는 보안 차단 확인'
 
     def _start(self):
         runtime=runtime_path()
@@ -149,11 +161,11 @@ class ObsCapture:
         now=time.monotonic()
         if self.process is not None and self.process.poll() is not None:
             code=self.process.returncode;self.close();self.retry_at=now+2
-            self.message=f'내장 OBS 엔진 재연결 대기 ({code}) · obs-engine.log 확인'
+            self.error=self.message=f'내장 OBS 엔진 재연결 대기 ({code}) · obs-engine.log 확인'
         if self.process is None and now>=self.retry_at:
             try:self._start()
             except Exception as exc:
-                self.close();self.message=str(exc);self.retry_at=now+2
+                self.close();self.error=self.message=str(exc);self.retry_at=now+2
         if self.memory is None:return self._waiting(self.message)
         if self.active_revision!=self.target_revision:return self._waiting(self.message)
         now=time.monotonic()
@@ -186,7 +198,7 @@ class ObsCapture:
         # Conservatively stop counting identical pixels after two seconds.
         if now-self.changed_at>2:return self._waiting('OBS 화면 변화 없음 · 정지 화면 또는 렌더링 중단 대기')
         self.observed_at=datetime.now(timezone.utc);self.received_at=now
-        self.wait_kind='ready';self.wait_reason=''
+        self.wait_kind='ready';self.wait_reason='';self.error=''
         self.frame_info=dict(source='embedded_obs',sourceTicks=ticks,sequence=sequence,
                             minimized=minimized,
                             foreground=u.GetForegroundWindow()==self.client.hwnd,

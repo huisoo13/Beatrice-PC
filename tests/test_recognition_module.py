@@ -73,6 +73,13 @@ class RecognitionPipelineTests(unittest.TestCase):
 
 
 class RecognitionServiceTests(unittest.TestCase):
+    def test_obs_diagnostics_publish_only_changes_including_generation(self):
+        events=RecognitionEvents(obs=Mock())
+        runtime=RecognitionService(ROOT,ROOT/'outputs',events)
+        state=dict(status='캡처 중',error='')
+        runtime.publish_obs(1,state);runtime.publish_obs(1,dict(state))
+        runtime.publish_obs(2,state)
+        self.assertEqual(events.obs.call_count,2)
     def setup_runtime(self,stack,folder):
         runtime=RecognitionService(ROOT,folder)
         pipeline=Mock(config={'architecture':'split'})

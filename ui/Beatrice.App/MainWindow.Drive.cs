@@ -1,38 +1,50 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace BeatricePC;
 public partial class MainWindow
 {
     private JsonElement google, drive;
-    private TextBlock? googleStatus, driveStatus;
-    private Button? googleLogin, googleLogout, driveConnect, driveUpload, driveDownload;
+    private GoogleAccountView? googleAccountView;
+    private Button? googleLogin, googleLogout;
     private string? activePreviewId;
 
     private void AddDriveSettings()
     {
-        var section = Section("Google Drive");
-        section.Children.Add(Text("로그인과 권한 연결 후 새 완료 기록이 자동 저장됩니다.",14,"muted"));
-        if (demo) section.Children.Add(Text("화면 미리보기에서는 Google 계정을 연결하지 않습니다.",12,"muted"));
-        googleStatus = Text("Google · 로그인하지 않음",14,"muted");
-        AutomationProperties.SetLiveSetting(googleStatus,AutomationLiveSetting.Polite);
-        section.Children.Add(googleStatus);
-        googleLogin = Action("Google 로그인",async (_, _) => await Send(new { type = Flag(google,"busy") ? "google_cancel" : "google_login" }));
+        var section = Section("Google Drive","데이터를 앱 또는 웹과 공유하기 위해 사용됩니다.");
+        googleAccountView = new GoogleAccountView(new ViewTheme(font,semiboldFont,Root.Resources,Brush,Text));
+        AutomationProperties.SetLiveSetting(googleAccountView.Element,AutomationLiveSetting.Polite);
+        section.Children.Add(googleAccountView.Element);
+        googleLogin = new Button { MaxWidth=180, Height=44, Padding=new Thickness(0),
+            HorizontalAlignment=HorizontalAlignment.Left, HorizontalContentAlignment=HorizontalAlignment.Stretch,
+            Template=(ControlTemplate)Root.Resources["BareSettingsButton"],
+            Content=new Image { Height=40, Stretch=Stretch.Uniform,
+                Source=new BitmapImage(new Uri("ms-appx:///Assets/google-signin-light.png")) } };
+        AutomationProperties.SetName(googleLogin,"Google 계정으로 로그인");
+        AutomationProperties.SetAccessibilityView((Image)googleLogin.Content,AccessibilityView.Raw);
+        googleLogin.Click += async (_, _) => await Send(new { type="google_login" });
         googleLogout = Action("로그아웃",async (_, _) => await Send(new { type = "google_logout" }));
+        googleLogout.MinWidth=80; googleLogout.MinHeight=32; googleLogout.Height=32;
+        googleLogout.Padding=new Thickness(12,4,12,4);
+        googleLogout.CornerRadius=new CornerRadius(6); googleLogout.BorderThickness=new Thickness(1);
+        googleLogout.HorizontalAlignment=HorizontalAlignment.Left;
+        googleLogout.Background=Brush("surface"); googleLogout.BorderBrush=Brush("danger"); googleLogout.Foreground=Brush("danger");
+        foreach (var state in new[]{"","PointerOver","Pressed","Disabled"}) {
+            googleLogout.Resources["ButtonBackground"+state]=Brush(state is "PointerOver" or "Pressed" ? "hover" : "surface");
+            googleLogout.Resources["ButtonBorderBrush"+state]=Brush("danger");
+            googleLogout.Resources["ButtonForeground"+state]=Brush("danger");
+        }
         ToolTipService.SetToolTip(googleLogout,"이 PC의 로그인 정보를 삭제합니다. Google 계정의 앱 권한은 유지됩니다.");
-        driveConnect = Action("Drive 권한 연결",async (_, _) => await Send(new { type = "google_connect" }));
-        driveUpload = Action("Drive에 저장",async (_, _) => await Send(new { type = "drive_upload" }));
-        driveDownload = Action("Drive에서 불러오기",async (_, _) => await Send(new { type = "drive_download" }));
-        ToolTipService.SetToolTip(driveDownload,"분석을 보류하고, 확인 후 PC 기록을 Drive 기록으로 교체합니다.");
-        foreach (var button in new[]{googleLogin,googleLogout,driveConnect,driveUpload,driveDownload}) section.Children.Add(button);
-        driveStatus = Text("Drive · 로그인 후 사용할 수 있습니다.",14,"muted");
-        AutomationProperties.SetLiveSetting(driveStatus,AutomationLiveSetting.Polite);
-        section.Children.Add(driveStatus);
+        section.Children.Add(googleLogin); section.Children.Add(googleLogout);
+        UpdateDriveSettings();
     }
 
     private static bool Flag(JsonElement state, string name) => state.ValueKind == JsonValueKind.Object && state.TryGetProperty(name,out var value) && value.ValueKind == JsonValueKind.True;
@@ -42,28 +54,44 @@ public partial class MainWindow
     {
         var signingIn = Flag(google,"busy");
         var signedIn = Flag(google,"signedIn");
-        var authorized = Flag(google,"authorized");
         var available = !demo && !busy && !signingIn;
-        if (googleStatus is not null) googleStatus.Text = StateText(google,"message","Google · 로그인하지 않음");
-        if (driveStatus is not null) driveStatus.Text = StateText(drive,"message","Drive · 로그인 후 사용할 수 있습니다.");
+        if (googleAccountView is not null) {
+            googleAccountView.Update(StateText(google,"name",""),StateText(google,"email",""),signedIn ? StateText(google,"picture","") : "");
+            googleAccountView.Element.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
+        }
         if (googleLogin is not null)
         {
-            googleLogin.Content = signingIn ? "로그인 취소" : "Google 로그인";
-            googleLogin.Visibility = signingIn || !signedIn ? Visibility.Visible : Visibility.Collapsed;
-            googleLogin.IsEnabled = !demo && (signingIn || available);
+            googleLogin.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+            googleLogin.IsEnabled = available;
+            var message=StateText(google,"message","Google 계정으로 로그인");
+            ToolTipService.SetToolTip(googleLogin,message);
+            AutomationProperties.SetHelpText(googleLogin,message);
+            AutomationProperties.SetItemStatus(googleLogin,signingIn ? "로그인 진행 중" : "");
         }
         if (googleLogout is not null)
         {
-            googleLogout.Visibility = Flag(google,"canLogout") ? Visibility.Visible : Visibility.Collapsed;
+            googleLogout.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
             googleLogout.IsEnabled = available;
         }
-        if (driveConnect is not null)
-        {
-            driveConnect.Visibility = signedIn && !authorized ? Visibility.Visible : Visibility.Collapsed;
-            driveConnect.IsEnabled = available && signedIn;
+    }
+
+    private void ValidateDriveAccountUI()
+    {
+        var saved=google;
+        try {
+            ShowSettingsSection("Google Drive");
+            google=JsonSerializer.SerializeToElement(new { signedIn=false, busy=false }); UpdateDriveSettings();
+            var originalContent=googleLogin!.Content;
+            if (googleLogin.Visibility != Visibility.Visible || googleAccountView!.Element.Visibility != Visibility.Collapsed || googleLogout!.Visibility != Visibility.Collapsed)
+                throw new InvalidOperationException("로그인 전 Google 버튼 표시 실패");
+            google=JsonSerializer.SerializeToElement(new { signedIn=false, busy=true }); UpdateDriveSettings();
+            if (googleLogin.IsEnabled || !ReferenceEquals(originalContent,googleLogin.Content)) throw new InvalidOperationException("Google 로그인 중 중복 실행 방지 실패");
+            google=JsonSerializer.SerializeToElement(new { signedIn=true, name="샘플 사용자", email="preview@example.com", busy=false }); UpdateDriveSettings();
+            if (googleLogin.Visibility != Visibility.Collapsed || googleAccountView.Element.Visibility != Visibility.Visible || !AutomationProperties.GetName(googleAccountView.Element).Contains("샘플 사용자, preview@example.com") || googleLogout.Visibility != Visibility.Visible ||
+                settingsSections["Google Drive"].Children.OfType<Button>().Count(b => b.Visibility == Visibility.Visible) != 1)
+                throw new InvalidOperationException("로그인 후 계정·로그아웃 전용 화면 실패");
         }
-        if (driveUpload is not null) driveUpload.IsEnabled = available && authorized && Flag(drive,"available");
-        if (driveDownload is not null) driveDownload.IsEnabled = available && authorized && Flag(drive,"available");
+        finally { google=saved; UpdateDriveSettings(); }
     }
 
     private async Task ShowDrivePreview(JsonElement preview)
@@ -74,7 +102,7 @@ public partial class MainWindow
         var apply = false;
         try
         {
-            // A record-detail dialog may already be open; keep the worker paused until this preview is answered.
+            // Keep the worker paused until an existing confirmation closes and this preview is answered.
             while (dialogOpen && !closing) await Task.Delay(100);
             if (closing) return;
             dialogOpen = true;
@@ -89,7 +117,7 @@ public partial class MainWindow
         }
         catch (Exception error)
         {
-            if (driveStatus is not null) driveStatus.Text = "복원 확인 창을 열지 못했습니다: " + error.Message;
+            SetFailure("복원 확인 창을 열지 못했습니다: " + error.Message);
         }
         finally
         {

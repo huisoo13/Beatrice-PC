@@ -2,6 +2,12 @@ using BeatricePC;
 using System.Diagnostics;
 var passed=0;
 void Equal<T>(T actual,T expected,string name){if(!EqualityComparer<T>.Default.Equals(actual,expected))throw new Exception(name+": "+actual+" != "+expected);passed++;}
+var relaunch = AppRelaunch.CreateStartInfo(@"C:\Program Files\Beatrice\BeatricePC.exe",
+    new[]{"BeatricePC.exe",@"--app-root=C:\Program Files\Beatrice","--page=records","--capture","--demo"});
+Equal(relaunch.FileName,@"C:\Program Files\Beatrice\BeatricePC.exe","relaunch executable with spaces");
+Equal(relaunch.ArgumentList.Count,1,"relaunch drops demo/capture/previous page");
+Equal(relaunch.ArgumentList[0],@"--app-root=C:\Program Files\Beatrice","relaunch preserves installation root as one argument");
+Equal(relaunch.UseShellExecute,false,"relaunch does not use shell");
 var start=new DateTime(2026,10,7,6,0,0);
 Equal(RecordPresentation.WeekStart(start.AddTicks(-1)),start.AddDays(-7),"Wednesday before 06:00");
 Equal(RecordPresentation.WeekStart(start),start,"Wednesday at 06:00");
@@ -77,6 +83,15 @@ Equal(receipt.Money.Gold,24000m,"receipt unbound gold ignores extra reward fee")
 Equal(receipt.Money.BoundGold,6000m,"receipt bound gold");
 Equal(receipt.Money.Missing,1,"receipt missing linked reward count");
 var bard=receipt.Characters.Single(c => c.Name=="후이수");
+var sortedReceipt=WeeklySummary.Build(new[]{
+    Sample("미확인","A","하드","1관문","2026.10.08 15:00",level:"invalid"),
+    Sample("낮음","A","하드","1관문","2026.10.08 14:00",level:"999.99"),
+    Sample("높음","A","하드","1관문","2026.10.08 13:00",level:"1,774.99"),
+    Sample("소수차이","A","하드","1관문","2026.10.08 12:00",level:"1774.01"),
+    Sample("동일레벨","A","하드","1관문","2026.10.08 11:00",level:"1774.01"),
+    Sample("누락","A","하드","1관문","2026.10.08 10:00",level:null)},start);
+Equal(string.Join(",",sortedReceipt.Characters.Select(c => c.Name)),"높음,소수차이,동일레벨,낮음,미확인,누락","numeric level descending, stable ties and unknown levels last");
+Equal(sortedReceipt.Money.Gold,48000m,"sorting preserves reward totals");
 Equal(bard.Dungeons.Count,2,"same dungeon modes stay separate");
 Equal(bard.Dungeons.Single(d => d.Mode=="하드").Gates,"1–2관문","contiguous gates grouped");
 Equal(bard.Level,"Lv.1774","receipt level uses cached truncated item level");
@@ -105,6 +120,12 @@ using(var doc=System.Text.Json.JsonDocument.Parse("""
 Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("gold").GetString(),"C:/cache/gold.png","currency path survives JSON disposal");
 Equal(currencySnapshot.CurrencyImages!.Value.GetProperty("boundGold").GetString(),"C:/cache/bound.png","bound currency path preserved");
 Equal(parsedSnapshot.CurrencyImages.HasValue,false,"older engines need no currency image field");
+Equal(parsedSnapshot.Obs.HasValue,false,"older engine snapshots need no OBS diagnostic field");
+EngineSnapshot obsSnapshot;
+using(var doc=System.Text.Json.JsonDocument.Parse("""
+{"status":"ready","busy":false,"catalogBusy":false,"profile":{"character":"이름","message":"플레이 중","active":true},"records":[],"clients":[],"selected":0,"catalogStatus":"cached","obs":{"status":"캡처 오류","error":"OBS 접근 거부"}}
+""")) obsSnapshot=EngineSnapshot.Parse(doc.RootElement);
+Equal(obsSnapshot.Obs!.Value.GetProperty("error").GetString(),"OBS 접근 거부","OBS diagnostics survive snapshot JSON disposal");
 Console.WriteLine($"PASS: {passed} presentation, protocol, receipt and currency image checks");
 Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"unmatched"}""")).Missing,0,"confirmed no gold needs no catalog");
 Equal(WeeklySummary.ReadMoney(Detail("""{"goldReward":false,"status":"matched","values":{"gold":9999,"bound_percentage":0}}""")).Gold,0m,"confirmed no gold ignores catalog gold");

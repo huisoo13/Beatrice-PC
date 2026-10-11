@@ -1,6 +1,7 @@
 # 디자인 자료 관리
 
 현재 앱 UI의 소스와 실행 에셋은 `ui/Beatrice.App/`에서 관리합니다.
+앱은 주간 현황으로 시작하며 기록 메뉴 이름은 완료 일지입니다. 완료 일지의 행은 클릭 동작이 없는 로그입니다. 상단바는 앱 아이콘·이름·창 버튼만 표시하며 상태 메시지는 설정에서 확인합니다. 설정 오버레이는 상단바 아래부터 시작하고 기존 여백을 그 영역 기준으로 적용합니다. 공용 데이터와 기록 관리는 데이터 관리로 통합하고 OBS 상태·오류 화면을 추가했습니다. API 설정 이름은 로스트아크 API입니다.
 팔레트·폰트·간격은 `ui/Beatrice.App/Assets/tokens.json`, 아이콘은 같은 폴더의 SVG가 원본입니다.
 현재 주간 로그 디자인은 `docs/61-weekly-record-ui.md`, 데스크톱 구현은 `docs/58-winui-desktop.md`, UI 작업 지침은 `design/ui-workflow.md`에 보존합니다.
 
@@ -16,3 +17,31 @@ Pretendard 1.3.9의 Regular·SemiBold와 OFL 라이선스를 실행 에셋에 �
 이전 카드 전용 토큰과 미사용 Bold 글꼴은 제거했습니다. 보상표의 난이도 캡슐 에셋은 유지합니다.
 
 캐릭터별 주간 영수증은 `docs/62-weekly-character-summary.md`에 보존하며, 승인된 표시 토큰은 `tokens.json`의 `layout.weeklySummary`에서 관리합니다.
+
+스크롤 화면은 오른쪽에 16px 스크롤바 공간을 별도로 확보합니다. 본문 콘텐츠의 기본 좌우 간격 16px을 유지하며 오른쪽 스크롤바가 겹치지 않게 하고 설정 화면·설정 메뉴·상세 창에도 같은 공간을 확보합니다.
+
+앱 아이콘은 output/imagegen/beatrice-windows.ico에서 승인된 원본을 Assets/beatrice.ico로 복사해 실행 에셋으로 관리합니다. 실행 파일·작업표시줄에는 ICO를 사용합니다. 스플래시 중앙은 128px 투명 흰색 PNG, 상단바는 같은 PNG를 20px로 표시합니다. output의 생성 후보는 실행 에셋과 분리합니다.
+
+투명 흰색 원본 output/imagegen/beatrice-transparent-white.png를 Assets/beatrice-white.png로 복사해 사용하며 변형하지 않습니다.
+
+사이드바 첫 버튼은 승인된 아치형 SVG gate-arch-accent.svg / gate-arch-muted.svg를 사용합니다. 아이콘 28px·버튼 48px, 아래 레이드 글자는 Pretendard 10px·간격 0px입니다. 파란 게임 컷아웃은 실행 에셋에서 제거했습니다.
+
+단색 관문 아이콘 검토 시안은 design/gate-icons/에서 관리하며 A 아치형을 앱에 적용했습니다.
+
+설정의 클라이언트 화면은 앱 재실행 버튼만 표시합니다. 감지 중인 클라이언트 선택과 분석 상태는 OBS 화면에서 엔진 상태·오류 위에 표시합니다.
+
+Google Drive는 타이틀·안내 문구와 로그인 버튼을 표시하고 로그인 후 프로필 사진·이름·이메일·로그아웃을 표시합니다. Assets/google-signin-light.png는 [Google 공식 브랜딩 가이드](https://developers.google.com/identity/branding-guidelines)의 [공식 에셋 번들](https://developers.google.com/static/identity/images/signin-assets.zip)에서 Android + Web / PNG @4x / Light / text Yes / Square 원본을 그대로 가져왔습니다. 원본 720×160px을 180×40px 비율로 표시하고 클릭 영역은 높이 44px입니다. 텍스트·로고·색상은 수정하지 않습니다. Google 브랜드 에셋은 Google의 사용 지침을 따르며 공통 Pretendard·앱 팔레트 적용의 예외입니다. 번들 자체와 캡처는 outputs에서 Git 제외합니다.
+
+로그인 후 계정 영역은 40px 원형 사진과 16px 이름·12px 이메일을 12px 간격으로 나란히 표시합니다. 이름·이메일 간격은 2px이고 사진 누락·로딩 실패는 기존 흰색 기본 이미지를 사용합니다. 로그아웃 버튼은 surface 배경에 danger 글자·1px 테두리를 사용합니다. 높이 32px·최소 너비 80px·좌우 패딩 12px·상하 패딩 4px·모서리 6px이며 hover/pressed에서 기존 hover 배경으로 반응합니다.
+
+설정의 5개 화면은 20px 타이틀 아래에 14px muted 안내 문구를 표시합니다. 타이틀과 안내 문구 사이는 12px, 화면 내 분류 타이틀과 내용 및 그룹 내부 간격은 12px입니다. 헤더와 본문·분류 사이 간격은 24px이고, 데이터 관리의 기록 관리 그룹 위쪽 추가 여백은 24px입니다. 각 안내는 클라이언트 관리, OBS 화면 감지, 데이터 관리, API 키 관리, Drive 데이터 공유 목적을 설명합니다.
+
+클라이언트의 버튼 이름은 앱 재실행입니다. 클릭 즉시 기존 창을 숨기고 엔진·OBS 종료 후 새 앱을 실행하여 스플래시부터 시작합니다.
+
+스플래시 진행 표시는 하단 바 대신 128px 중앙 흰색 아이콘을 아래부터 채웁니다. 미완료 영역은 원본의 16% 밝기, 완료 영역은 원본 흰색입니다. 280ms 보간과 이미지·창의 알파 가장자리를 유지하며 Windows 애니메이션 설정을 따릅니다.
+
+API 미등록 상태: 주간 현황·완료 일지는 20px 타이틀 아래 14px muted 안내와 등록하기 버튼을 표시합니다. 등록 설정은 44px 입력과 검증 버튼, 14px 발급 안내·공식 사이트 링크를 사용합니다. 등록 후 success 문구와 변경 버튼만 표시합니다. 변경 중 오류는 danger, 검증 중 상태는 muted이며 기본 12px 내부·24px 그룹 간격을 유지합니다.
+
+API 미등록 안내의 문구·등록하기 버튼은 본문 타이틀 아래 가용 영역의 가로·세로 중앙에 배치합니다. 창 높이 변경에도 중앙 정렬을 유지하고 문구는 가운데 줄바꿈합니다. 타이틀은 기존 왼쪽 상단 위치를 유지합니다.
+
+API 미등록 안내의 Page.Spacing은 두 화면 모두 12px로 고정합니다. 원래 주간 현황·완료 일지의 항목 간격을 상속하지 않아 안내의 중앙 위치가 달라지지 않습니다.

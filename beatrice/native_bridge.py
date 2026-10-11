@@ -18,6 +18,7 @@ from .instance_lock import InstanceLock
 from . import engine_worker as engine
 from .weekly import open_week, week_start
 from .lostark_api import LostArkApiKey
+from .lostark_registration import LostArkRegistration
 from .account_service import GoogleAccount
 from .drive_service import PersonalDrive
 from .native_presentation import record_view, empty_profile, character_view, progress_unit, observation_view, DungeonFooter
@@ -44,11 +45,13 @@ class Host:
         self.maintenance_settled = False
         self.preview_sent = None
         self.lostark_api = LostArkApiKey(engine.DATA)
+        self.lostark_registration = LostArkRegistration(self.lostark_api)
         self.character_catalog = CharacterCatalog(engine.DATA, key_available=lambda: self.lostark_api.view()["configured"])
         self.account = GoogleAccount(engine.ROOT, engine.DATA)
         self.drive = PersonalDrive(engine.ROOT, engine.DATA, self.account, self.store)
         self.startup_step = 0
         self.error = ''
+        self.obs_state = dict(status='엔진 준비 대기',error='')
         self.status = '모델을 준비하는 중…'
         self.profile = empty_profile()
         self.footer = DungeonFooter()
@@ -63,11 +66,12 @@ class Host:
         self.worker_done = False
         self.worker = self.worker_factory()
         worker=self.worker
-        for name in ('progress','ready','observation','process_changed','status','failed','settled','finished'):
+        for name in ('progress','ready','observation','process_changed','status','failed','settled','finished','obs'):
             handler=self.worker_status if name=='status' else getattr(self,name)
             def receive(*args,handler=handler,worker=worker):
                 self.app.dispatch(self.worker_event,worker,handler,args)
-            getattr(worker,name).connect(receive)
+            signal=getattr(worker,name,None)
+            if signal is not None:signal.connect(receive)
         self.worker.start()
         self.snapshot()
 
@@ -131,6 +135,11 @@ class Host:
         self.status = message
         self.snapshot()
 
+    def obs(self,generation,state):
+        if generation != self.generation or self.closing or self.restarting:return
+        self.obs_state=dict(state)
+        self.snapshot()
+
     def failed(self, message):
         self.error = self.status = message
         if self.maintenance_action == 'restore':
@@ -152,6 +161,7 @@ class Host:
                        self.character_catalog.character_view(self.profile['character'], self.catalog.emblem_path).items()
                        if key != 'character'})
         value = dict(type='snapshot', status=self.status, error=self.error, profile=profile,
+                     obs=dict(self.obs_state),
                      records=records, clients=[asdict(client) for client in self.clients],
                      selected=self.client.hwnd if self.client else 0,
                      catalogStatus=self.catalog.message,
@@ -160,7 +170,7 @@ class Host:
                      catalogRefreshAvailableAt=self.catalog.refresh_available_at,
                      busy=self.maintenance or self.restarting or self.drive.busy or self.account.busy or (not self.initialized and not self.error),
                      google=self.account.view(),
-                     lostArkApi=self.lostark_api.view(),
+                     lostArkApi=self.lostark_registration.view(),
                      drive=dict(self.drive.view(), available=self.drive.available and self.can_change_records()),
                      restarting=self.restarting,
                      catalogBusy=self.catalog.pending is not None,
@@ -176,6 +186,7 @@ class Host:
         kind = value.get('type')
         if kind == 'shutdown':
             self.closing = True
+            self.lostark_registration.stop()
             self.character_catalog.stop()
             self.account.shutdown()
             self.drive.shutdown()
@@ -185,6 +196,7 @@ class Host:
         elif kind == 'restart' and not self.maintenance and not self.restarting and not self.drive.busy and not self.account.busy:
             self.restarting = True
             self.error = ''
+            self.obs_state=dict(status='엔진 다시 준비 중',error='')
             self.stop_catalog()
             self.status = '현재 작업을 종료하고 초기화하는 중…'
             self.profile = empty_profile()
@@ -198,12 +210,12 @@ class Host:
             self.snapshot()
         elif kind == 'delete' and self.can_change_records():
             self.pause_for('delete')
-        elif kind == 'lostark_api_save':
-            success = self.lostark_api.save(value.get('key'))
-            if success: self.character_catalog.credentials_changed()
-            self.emit(dict(type='lostark_api_saved', success=success, **self.lostark_api.view()))
+        elif kind in ('lostark_api_verify', 'lostark_api_save'):
+            if not self.lostark_registration.begin(value.get('key')) and self.lostark_registration.pending is None:
+                self.emit(dict(type='lostark_api_saved', success=False, **self.lostark_registration.view()))
             self.snapshot()
         elif kind == 'lostark_api_clear':
+            if self.lostark_registration.pending is not None: return
             success = self.lostark_api.clear()
             if success: self.character_catalog.credentials_changed()
             self.emit(dict(type='lostark_api_cleared', success=success, **self.lostark_api.view()))
@@ -275,6 +287,11 @@ class Host:
             self.command(value)
             if self.closing: break
         if self.closed: return
+        registration = self.lostark_registration.poll()
+        if registration is not None:
+            if registration['success']: self.character_catalog.credentials_changed()
+            self.emit(dict(type='lostark_api_saved', **registration))
+            self.snapshot()
         changed = self.character_catalog.poll()
         changed = self.account.poll() or changed
         changed = self.drive.poll() or changed
@@ -311,7 +328,7 @@ class Host:
 
     def finish_shutdown(self):
         if (self.closed or not self.worker_done or not self.account.settled or not self.drive.settled
-                or not self.catalog.settled or not self.character_catalog.settled): return
+                or not self.catalog.settled or not self.character_catalog.settled or not self.lostark_registration.settled): return
         self.closed = True
         self.timer.stop()
         self.command_timer.stop()
