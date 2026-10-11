@@ -53,6 +53,7 @@ class Host:
         self.profile = empty_profile()
         self.footer = DungeonFooter()
         self.catalog = CatalogService(engine.ROOT, engine.DATA)
+        self.store.refresh_catalog_matches(self.catalog.matcher)
         self.last_snapshot = None
         self.commands = queue.Queue()
         self.command_timer = app.call_later(.05,self.drain_commands,repeat=True)
@@ -143,10 +144,10 @@ class Host:
 
     def snapshot(self):
         if self.closed: return
-        records = [record_view(row, self.catalog.cached, matcher=self.catalog.matcher) for row in self.store.history_records() if row['state'] == '완료']
+        records = [record_view(row, self.catalog.cached, matcher=self.catalog.matcher) for row in self.store.history_records() if not row['isTest']]
         self.character_catalog.ensure([self.profile['character']] + [row['character'] for row in records])
         self.character_catalog.decorate(records, self.catalog.emblem_path)
-        records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp(), reverse=True)
+        records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp() if row.get('observedAt') else float('-inf'), reverse=True)
         profile = dict(self.profile, **{key: value for key, value in
                        self.character_catalog.character_view(self.profile['character'], self.catalog.emblem_path).items()
                        if key != 'character'})
@@ -329,7 +330,8 @@ class Host:
     def tick(self):
         if self.closing or self.restarting: return
         if self.catalog.pending:
-            self.catalog.poll()
+            if self.catalog.poll() and not self.maintenance:
+                self.store.refresh_catalog_matches(self.catalog.matcher)
         elif self.initialized and time.monotonic() >= self.catalog.next_check:
             self.refresh_catalog()
         if self.initialized and self.pids and not self.maintenance and (self.client is None or not engine.client_alive(self.client)):

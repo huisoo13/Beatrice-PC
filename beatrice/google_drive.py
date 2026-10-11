@@ -44,15 +44,19 @@ class DriveClient:
             parameters['q'] += " and name = 'PC.json'"
         return next(self.api.files.iter_files(**parameters), None)
 
-    def read(self, metadata):
+    def read_body(self, metadata):
         if not isinstance(metadata, dict) or not isinstance(metadata.get('id'), str):
             raise DriveError('Drive 파일 정보가 올바르지 않습니다.')
         if metadata.get('mimeType') != 'application/json':
             raise DriveError('지원하지 않는 Drive 파일 형식입니다.')
-        if metadata.get('appProperties', {}).get('schemaVersion', '1') not in ('1', '2', '3'):
+        if metadata.get('appProperties', {}).get('schemaVersion', '1') not in ('1', '2', '3', '4'):
             raise DriveError('더 새로운 앱에서 만든 파일입니다. 앱을 업데이트해주세요.')
         body = self.api.files.download(metadata['id'])
-        return decode_records(body)
+        decode_records(body)
+        return body
+
+    def read(self, metadata):
+        return decode_records(self.read_body(metadata))
 
     def download(self):
         metadata = self.latest()
@@ -66,7 +70,7 @@ class DriveClient:
         if previous:
             if self.backup_directory is None:
                 raise DriveError('기존 PC 파일을 보존할 로컬 백업 경로가 필요합니다.')
-            old_body = encode_records(self.read(previous))
+            old_body = self.read_body(previous)
             self.backup_directory.mkdir(parents=True, exist_ok=True)
             backup = self.backup_directory / ('PC-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S') + '-' + secrets.token_hex(8) + '.json')
             with backup.open('xb') as recovery:
@@ -75,7 +79,7 @@ class DriveClient:
                 raise DriveError('기존 PC 기록의 백업을 검증하지 못했습니다.')
         metadata = dict(name='PC.json' if self.namespace == VERSION else 'beatrice-records-' + self.namespace + '-' + secrets.token_hex(16) + '.json',
                         mimeType='application/json', parents=['appDataFolder'],
-                        appProperties={PROPERTY: self.namespace, 'schemaVersion': '3'})
+                        appProperties={PROPERTY: self.namespace, 'schemaVersion': '4'})
         if previous:
             metadata.pop('parents')
         options = dict(mime_type='application/json; charset=UTF-8',

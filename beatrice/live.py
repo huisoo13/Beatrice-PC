@@ -6,16 +6,16 @@ from .state_session import StateSession
 from .completion_banner import CompletionBanner
 
 class LiveCoordinator:
-    def __init__(self,store):
+    def __init__(self,store,is_test=False):
         self.identity=CharacterTracker(max_gap=5)
-        self.session=StateSession(store)
+        self.session=StateSession(store,is_test=is_test)
         self.context=None;self.context_pair=None;self.candidate=None;self.count=0
         self.banner=CompletionBanner();self.completion_context=None;self.completion_seen_at=None
         self.gate_recheck=None
     def confirm(self,name):
         if self.context is None:return
         run,n=self.context
-        self.session.confirm_character('name:'+name,name,run,n,'live_capture',is_test=True)
+        self.session.confirm_character('name:'+name,name,run,n)
         self.session.tracker.max_gap=5
     def capture_interrupted(self):
         """Keep confirmed state; unavailable capture cannot count as an observation."""
@@ -24,16 +24,22 @@ class LiveCoordinator:
         self.identity.capture_interrupted()
         self.banner.capture_interrupted()
         self.session.capture_interrupted()
-    def update(self,at,character,boxes,dungeon):
+    def observe_character(self,at,character):
         identity=self.identity.update(at.timestamp(),character)
         suspended=any(a['type']=='suspend' for a in identity['actions'])
         if suspended:
             self.session.begin_character_change();self.context=None;self.context_pair=None;self.candidate=None;self.count=0
             self.banner.reset();self.completion_context=None;self.completion_seen_at=None
             self.gate_recheck=None
-        # 이름 확인은 메뉴에서 이루어지므로 당시 던전 UI가 가려져도 기존 보류 구간을 확정합니다.
         for action in identity['actions']:
             if action['type']=='confirmed':self.confirm(action['name'])
+        return identity
+
+    def update(self,at,character,boxes,dungeon,identity=None):
+        identity=identity if identity is not None else self.observe_character(at,character)
+        if not identity['recordingAllowed']:
+            return dict(identity=identity,result=dict(events=[],changedRecords=[]),dungeon={},recordingStatus='캐릭터 확인 대기 · 던전 탐지 중지')
+        suspended=any(a['type']=='suspend' for a in identity['actions'])
         frame_pair=tuple(key(dungeon[f]) for f in ('dungeonName','difficulty')) if dungeon.get('contextStatus')=='ocr_verified' else None
         gateless=dungeon.get('raidKind')=='gateless' and dungeon.get('currentRaidPanel') and frame_pair is not None
         if gateless:
@@ -42,13 +48,13 @@ class LiveCoordinator:
             boxes=[dict(state='진행중',confidence=1.,xyxy=bounds)] if bounds else []
         valid=frame_pair is not None and 1<=len(boxes)<=8 and all(b['confidence']>=.5 for b in boxes)
         pair=tuple(key(dungeon[f]) for f in ('dungeonName','difficulty')) if valid else None
-        active_tracker=self.session.tracker or self.session.pending_tracker
+        active_tracker=self.session.tracker
         locked=active_tracker is not None and active_tracker.stable is not None
         count_mismatch=bool(valid and locked and self.context is not None and pair==self.context_pair and len(boxes)!=self.context[1])
         if valid:
-            owner='name:'+identity['currentName'] if identity['recordingAllowed'] else self.session.owner
+            owner=('test:' if self.session.is_test else '')+'name:'+identity['currentName']
             known=self.session.store.state_records(owner,pair[0])
-            expected=max((r.get('expectedGates',r['gate']) for r in known),default=0)
+            expected=max((r['expectedGates'] for r in known),default=0)
             count_mismatch=count_mismatch or bool(expected and len(boxes)!=expected)
         if count_mismatch:valid=False
         signature=(*pair,len(boxes),dungeon.get('raidKind') or 'gated') if valid else None
@@ -65,17 +71,14 @@ class LiveCoordinator:
                 self.gate_recheck=None
                 self.context=context
                 self.context_pair=pair
-                if identity['recordingAllowed']:self.confirm(identity['currentName'])
-                else:
-                    self.session.prepare_pending_run(run,len(boxes),'live_capture',is_test=True)
-                    self.session.pending_tracker.max_gap=5
+                self.confirm(identity['currentName'])
             result=self.session.observe(self.session.token,at,boxes,dungeon)
-            tracker=self.session.tracker or self.session.pending_tracker
+            tracker=self.session.tracker
             if tracker and tracker.stable is not None:
                 self.completion_context=dict(dungeon)
                 self.completion_seen_at=at.timestamp()
         else:
-            tracker=self.session.tracker or self.session.pending_tracker
+            tracker=self.session.tracker
             if tracker is not None:tracker.clear_candidate()
         # A new visible header invalidates the old context immediately, even while
         # the display tracker deliberately retains its previous title for 10 seconds.
@@ -87,7 +90,7 @@ class LiveCoordinator:
             self.completion_context=None;self.completion_seen_at=None
         # Fresh matching title/mode still identifies the raid when an icon is
         # temporarily unreadable. Reuse only its already-confirmed gate count.
-        tracker=self.session.tracker or self.session.pending_tracker
+        tracker=self.session.tracker
         if (not suspended and not different and not count_mismatch
             and frame_pair is not None and frame_pair==self.context_pair
             and dungeon.get('currentRaidPanel') and self.context is not None

@@ -96,7 +96,7 @@ class PersonalDrive:
             return None
         result = self.preview['result']
         rows = result['records']
-        completed = sum(row['state'] == '완료' for row in rows)
+        completed = len(rows)
         return dict(type='drive_preview', previewId=self.preview['id'],
                     email=self.account.session['account']['email'],
                     createdTime=result['metadata'].get('modifiedTime') or result['metadata'].get('createdTime', ''),
@@ -116,7 +116,7 @@ class PersonalDrive:
                 rows = preview['result']['records']
                 backup = restore_records(self.store, rows, self.data / 'drive-backups')
                 self.auto.reset()
-                self.message = f"Drive 완료 기록 {sum(r['state']=='완료' for r in rows)}건 복원 완료 · 이전 기록 백업: {backup}"
+                self.message = f"Drive 완료 기록 {len(rows)}건 복원 완료 · 이전 기록 백업: {backup}"
             except Exception:
                 self.message = '로컬 기록을 복원하지 못했습니다. 기존 기록을 유지합니다.'
         return True

@@ -48,7 +48,7 @@ private.files.update(created['id'], {'name': 'example.json'},
 ## 보존하는 앱 동작
 
 - PC.json 파일 ID를 유지하는 PATCH, 교체 전 로컬 백업, 업로드 후 재다운로드 검증.
-- iOS.json과 기록 스키마 3, 주간 중복 판정, 완료 기록 보존, isTest 내보내기 제외 규칙.
+- iOS.json은 변경하지 않습니다. PC 기록은 [JSON v4](63-completion-record-schema.md)를 쓰고 이전 배열 v1~v3는 읽기 변환합니다. 주간 중복 판정·완료 이력·isTest 내보내기 제외 규칙은 유지합니다. iOS 호환은 후속 작업입니다.
 - 로그인·동의 범위·DPAPI 자격 증명 보관, 작업 시작 시 계정 캡처, 계정 전환·취소 시 결과 처리.
 - 공용 데이터 API 키, 4 MiB 제한, JSON 검증, 기존 캐시 포맷과 실패 시 마지막 정상 캐시 사용.
 - WinUI 명령과 응답 형식, 자동 업로드 지연·재시도 정책.
@@ -157,3 +157,8 @@ SVG 경로 앞에는 /2018/obt/assets/images/common/class/가 붙는다. 변경�
 ## ContentJSON 신규 배열 구조 (2026-10-11)
 
 ContentJSON의 신규 배열은 ContentCatalog가 검증·인덱싱한다. OCR 비교용 field_name과 저장·표시용 name을 구분하며 이전 객체 캐시도 유지한다. CatalogService의 보상표, 기록·하단·주간 현황과 중복 판정 연결을 새 구조에 맞췄다. [형식·정책·검증 결과](content-catalog.md)를 참고한다. 기존 Drive 통신·개인 기록 JSON·자산 다운로드 경계는 유지한다.
+
+
+## 완료 JSON v4 — 2026-10-11
+
+PC.json은 `{"schemaVersion":4,"records":[...]}`로 저장하며 Drive 파일 appProperties.schemaVersion도 `"4"`입니다. 완료 전용 필드·메타데이터·세 시각을 그대로 동기화합니다. DriveClient.read_body는 지원 버전·크기·JSON을 검증한 원본 bytes를 반환하고, 교체 전 그 bytes를 백업합니다. read는 canonical 완료 배열을 반환합니다. DB v5 변환 후 실제 기록이 있으면 한 번 업로드를 예약하며 기존 계정별 승인 번호와 대기 항목을 보존합니다. 원격 파일 업데이트는 기존 자동 업로드·수동 저장 경로로 진행됩니다. iOS.json을 쓰거나 iOS 코드를 수정하지 않습니다.

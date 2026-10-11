@@ -14,7 +14,7 @@ class StatePolicyTests(unittest.TestCase):
         self.live=LiveCoordinator(self.store);self.time=0
         self.now=datetime(2026,9,23,tzinfo=timezone.utc)
 
-    def feed(self,states,count=4,name='캐릭터',dungeon='던전',mode='하드'):
+    def feed(self,states,count=6,name='캐릭터',dungeon='던전',mode='하드'):
         for _ in range(count):
             self.time+=1
             boxes=[dict(state=s,confidence=.99,xyxy=[40+i*40,130,65+i*40,170]) for i,s in enumerate(states)]
@@ -29,12 +29,12 @@ class StatePolicyTests(unittest.TestCase):
         self.assertEqual(first[0]['expectedGates'],5)
         self.feed(['완료','진행 전','진행 전','완료','진행중'])
         rows=self.store.state_records();self.assertEqual(len(rows),4)
-        self.assertEqual([r['state'] for r in rows],['완료']*4)
+        self.assertEqual([r['gateNumber'] for r in rows],[1,2,3,4])
         self.assertEqual(self.live.session.tracker.stable[-1],'진행중')
         self.assertEqual(rows[0],first[0])
-        self.assertEqual(rows[1]['evidenceType'],'later_gate_completion')
-        self.assertIsNone(rows[1]['completedAt'])
-        self.assertEqual(rows[3]['evidenceType'],'direct')
+        self.assertEqual(rows[1]['gateNumber'],2)
+        self.assertIsNone(rows[1].get('completedAt'))
+        self.assertEqual(rows[3]['gateNumber'],4)
         self.assertEqual(self.store.records(),[])  # 새 누적 이벤트는 생성하지 않습니다.
 
     def test_completed_rows_survive_restart_mode_change_and_regression(self):
@@ -79,11 +79,11 @@ class StatePolicyTests(unittest.TestCase):
         before=self.store.state_records()
         session=StateSession(self.store);pending_owner=session.owner
         self.store.save_states(pending_owner,key('던전'),
-            [dict(before[0],characterKey=None,characterName=None,state='완료')])
+            [dict(characterName=None,dungeonName='던전',difficulty='하드',gate=1,state='완료')])
         session.prepare_pending_run('pending',1)
         session.confirm_character('name:캐릭터','캐릭터','pending',1)
         self.assertEqual(self.store.state_records('name:캐릭터'),before)
-        self.assertEqual(len(self.store.state_records(pending_owner)),1)
+        self.assertEqual(len(self.store.state_records(pending_owner)),0)
 
     def test_legacy_later_completion_backfills_without_inventing_direct_time(self):
         self.feed(['진행 전','진행 전','완료'])
@@ -92,10 +92,10 @@ class StatePolicyTests(unittest.TestCase):
         self.live=LiveCoordinator(self.store)
         self.feed(['진행중','진행 전','진행 전'],count=6)
         rows=self.store.state_records()
-        self.assertEqual([r['state'] for r in rows],['완료']*3)
+        self.assertEqual([r['gateNumber'] for r in rows],[1,2,3])
         for row in rows[:2]:
-            self.assertEqual(row['evidenceType'],'later_gate_completion')
-            self.assertIsNone(row['completedAt'])
+            self.assertEqual(row['gateNumber'],rows.index(row)+1)
+            self.assertIsNone(row.get('completedAt'))
 
 
 class DungeonTransitionTests(unittest.TestCase):

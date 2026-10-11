@@ -28,11 +28,11 @@ class CompletionOnlyTests(unittest.TestCase):
             store.close()
             store=Store(path)
             try:
-                self.assertEqual(store.db.execute('PRAGMA user_version').fetchone()[0],4)
+                self.assertEqual(store.db.execute('PRAGMA user_version').fetchone()[0],5)
                 self.assertEqual(store.state_records('name:캐릭터'),before)
-                self.assertEqual(len(store.state_records('pending:done')),1)
+                self.assertEqual(len(store.state_records('pending:done')),0)
                 self.assertEqual(store.state_records('pending:old'),[])
-                self.assertEqual(store.drive_revision(),revision)
+                self.assertEqual(store.drive_revision(),(revision[0],revision[1]+1))
                 with self.assertRaises(sqlite3.IntegrityError),store.db:
                     store.db.execute('INSERT INTO gate_states VALUES(?,?,?,?)',
                                      ('x','던전',2,json.dumps(dict(complete,state='진행중'))))
@@ -41,12 +41,12 @@ class CompletionOnlyTests(unittest.TestCase):
                                      (json.dumps(dict(complete,state='진행 전')),))
             finally:store.close()
 
-    def test_progress_never_writes_and_pending_completion_promotes_with_full_count(self):
+    def test_progress_and_unconfirmed_completion_never_write_then_fresh_icons_save(self):
         store=Store(':memory:');self.addCleanup(store.close)
         live=LiveCoordinator(store);now=datetime(2026,9,27,tzinfo=timezone.utc);tick=0
         def feed(states,character=None):
             nonlocal tick
-            for _ in range(4):
+            for _ in range(6):
                 tick+=1
                 live.update(now+timedelta(seconds=tick),character or {},
                     [dict(state=s,confidence=.99,xyxy=[50*i,0,50*i+30,40]) for i,s in enumerate(states)],
@@ -57,12 +57,12 @@ class CompletionOnlyTests(unittest.TestCase):
         self.assertEqual(store.db.total_changes,writes)
         self.assertEqual(store.state_records(),[])
         feed(['완료','진행중','진행 전'])
-        pending=store.state_records();self.assertEqual(len(pending),1)
-        self.assertIsNone(pending[0]['characterName']);self.assertEqual(pending[0]['expectedGates'],3)
+        pending=store.state_records();self.assertEqual(pending,[])
+        self.assertIsNone(live.session.pending_tracker)
         feed(['완료','진행중','진행 전'],dict(currentName=dict(text='캐릭터',confidence=.99)))
         rows=store.state_records();self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]['characterName'],'캐릭터');self.assertEqual(rows[0]['expectedGates'],3)
-        self.assertEqual(rows[0]['completedAt'],pending[0]['completedAt'])
+        self.assertGreaterEqual(rows[0]['observedAt'],'2026-09-27T00:00:20.000Z')
         self.assertEqual(live.session.tracker.stable,('완료','진행중','진행 전'))
 
     def test_restart_discards_progress_but_can_complete_after_fresh_observations(self):

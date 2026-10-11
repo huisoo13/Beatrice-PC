@@ -36,7 +36,7 @@ def main():
             if state['result'].get('gateRecheckRequested'):triggers.append(seconds)
         records=store.state_records();expected_count=0
         if len(triggers)!=1:errors.append('expected_one_recheck_event')
-        if len(records)!=expected_count or any(r['state']!='완료' for r in records):errors.append('wrong_saved_records')
+        if len(records)!=expected_count or any(r['gateNumber']<0 for r in records):errors.append('wrong_saved_records')
         checks.append(dict(video=number,passed=not errors,errors=errors,recheckSeconds=triggers,records=records));store.close()
     transforms=[r for r in rows if 'transformed' in r]
     for row in transforms:

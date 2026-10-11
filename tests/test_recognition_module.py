@@ -21,7 +21,8 @@ class RecognitionPipelineTests(unittest.TestCase):
     def setUp(self):
         self.pipeline=RecognitionPipeline(ROOT)
         self.pipeline.detector=Mock()
-        self.pipeline.detector.locate.return_value={'game_menu':{'status':'missing'},'switch_dialog':{'status':'missing'}}
+        self.pipeline.detector.locate_character.return_value={'game_menu':{'status':'missing'},'switch_dialog':{'status':'missing'}}
+        self.pipeline.detector.locate_dungeon.side_effect=lambda frame,regions:regions
         self.pipeline.character=Mock()
         self.pipeline.character.analyze_detected.return_value={}
         self.pipeline.dungeon_observer=Mock()
@@ -39,25 +40,27 @@ class RecognitionPipelineTests(unittest.TestCase):
         result=self.pipeline.analyze(frame,12,confirmed_name='캐릭터',completion_enabled=True)
         self.assertEqual(result.gates,[{'state':'완료'}])
         self.assertEqual(result.dungeon['completionOverlay'],{'status':'verified'})
-        self.pipeline.character.analyze_detected.assert_called_once_with(frame,self.pipeline.detector.locate.return_value,seconds=12,confirmed_name='캐릭터')
+        self.pipeline.character.analyze_detected.assert_called_once_with(frame,self.pipeline.detector.locate_character.return_value,seconds=12,confirmed_name='캐릭터')
 
     def test_menu_blocks_completion_analysis(self):
-        self.pipeline.detector.locate.return_value['game_menu']['status']='detected'
-        self.pipeline.analyze(object(),12,completion_enabled=True)
+        self.pipeline.detector.locate_character.return_value['game_menu']['status']='detected'
+        self.pipeline.analyze(object(),12,confirmed_name='캐릭터',completion_enabled=True)
         self.pipeline.completion.analyze.assert_not_called()
         self.assertTrue(self.pipeline.dungeon_observer.analyze.call_args.kwargs['blocked'])
 
     def test_missing_confirmed_context_does_not_run_completion(self):
         self.pipeline.analyze(object(),12)
         self.pipeline.completion.analyze.assert_not_called()
+        self.pipeline.detector.locate_dungeon.assert_not_called()
+        self.pipeline.dungeon_observer.analyze.assert_not_called()
 
     def test_selection_changed_before_overlay_discards_frame(self):
-        self.assertIsNone(self.pipeline.analyze(object(),12,completion_enabled=True,still_current=lambda:False))
+        self.assertIsNone(self.pipeline.analyze(object(),12,confirmed_name='캐릭터',completion_enabled=True,still_current=lambda:False))
         self.pipeline.completion.analyze.assert_not_called()
 
     def test_selection_changed_during_overlay_discards_frame(self):
         current=Mock(side_effect=[True,False])
-        self.assertIsNone(self.pipeline.analyze(object(),12,completion_enabled=True,still_current=current))
+        self.assertIsNone(self.pipeline.analyze(object(),12,confirmed_name='캐릭터',completion_enabled=True,still_current=current))
         self.pipeline.completion.analyze.assert_called_once()
 
 
@@ -123,7 +126,8 @@ class RecognitionServiceTests(unittest.TestCase):
                 return FrameRecognition(dict(currentName=dict(text='테스트',confidence=.99)),
                     dict(dungeonName=dict(text='단일 관문',confidence=.99),difficulty=dict(text='하드',confidence=.99),dungeonVisible=True,raidKind='gated',currentRaidPanel=True),
                     [dict(state=state,confidence=.99,xyxy=[0,0,20,20])],args[1],args[1])
-            pipeline.analyze.side_effect=analyze
+            pipeline.analyze_character.side_effect=lambda frame,seconds,**kwargs: ({},dict(currentName=dict(text='테스트',confidence=.99)),seconds,seconds)
+            pipeline.analyze_dungeon.side_effect=lambda frame,regions,identity,seconds,**kwargs: (analyze(frame,seconds).dungeon,analyze(frame,seconds).gates)
             observations=[];errors=[]
             runtime.events.failed=errors.append
             def receive(state):
@@ -134,9 +138,10 @@ class RecognitionServiceTests(unittest.TestCase):
             self.assertEqual(errors,[])
             records=store.state_records()
             self.assertEqual(len(records),1)
-            self.assertEqual(records[0]['evidenceType'],'direct')
+            self.assertEqual(records[0]['gateNumber'],1)
             self.assertEqual(records[0]['characterName'],'테스트')
             self.assertEqual(observations[-1]['generation'],1)
+            self.assertEqual(pipeline.analyze_dungeon.call_count,6)
             capture.close.assert_called_once();proxy.close.assert_called_once();watch.join.assert_called_once()
             self.assertTrue(watch.stop_event.is_set())
 

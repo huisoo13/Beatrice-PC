@@ -18,6 +18,7 @@ from beatrice.drive_data import (decode_records, encode_records, export_records,
 from beatrice.google_auth import AuthError, DRIVE_SCOPE, drive_access_token, authenticate
 from beatrice.google_drive import DriveClient, DriveError
 from beatrice.storage import Store
+from beatrice.completion_record import recognition_record
 
 
 def row(**kwargs):
@@ -34,21 +35,21 @@ class DataTests(unittest.TestCase):
     def restore(self, records):
         return restore_records(self.store, records, Path(self.temp.name) / 'backups')
 
-    def test_json_roundtrip_exact_five_fields_and_gateless(self):
+    def test_json_roundtrip_canonical_fields_and_gateless(self):
         rows = [row(gate=0), row(characterName='다른캐릭터')]
         self.restore(rows)
         actual, omitted = export_records(self.store)
         self.assertEqual(actual, validate_records(rows))
         self.assertEqual(decode_records(encode_records(actual)), actual)
         self.assertEqual(omitted, 0)
-        self.assertIn('raid', [r['completionScope'] for r in self.store.state_records()])
+        self.assertIn('raid', [recognition_record(r)['completionScope'] for r in self.store.state_records()])
 
     def test_replacement_and_backup_include_previous_wal_records(self):
         self.restore([row()])
         backup = self.restore([row(state='진행 전')])
         old = Store(backup)
         try:
-            self.assertEqual(old.state_records()[0]['state'], '완료')
+            self.assertEqual(old.state_records()[0]['gateNumber'], 1)
         finally:
             old.close()
         self.assertEqual(self.store.state_records(), [])
@@ -60,7 +61,7 @@ class DataTests(unittest.TestCase):
         self.store.db.execute("CREATE TRIGGER fail_import BEFORE INSERT ON gate_states BEGIN SELECT RAISE(ABORT, 'test'); END")
         with self.assertRaises(sqlite3.IntegrityError):
             self.restore([row(difficulty='노말')])
-        self.assertEqual(self.store.state_records()[0]['state'], '완료')
+        self.assertEqual(self.store.state_records()[0]['gateNumber'], 1)
 
     def test_failed_backup_does_not_change_records(self):
         self.restore([row()])
@@ -68,7 +69,7 @@ class DataTests(unittest.TestCase):
         path.write_text('test')
         with self.assertRaises(OSError):
             restore_records(self.store, [row(state='진행 전')], path)
-        self.assertEqual(self.store.state_records()[0]['state'], '완료')
+        self.assertEqual(self.store.state_records()[0]['gateNumber'], 1)
 
     def test_invalid_import_leaves_records_intact(self):
         self.restore([row()])
@@ -78,7 +79,7 @@ class DataTests(unittest.TestCase):
         for records in invalid:
             with self.subTest(records=records), self.assertRaises(ValueError):
                 self.restore(records)
-        self.assertEqual(self.store.state_records()[0]['state'], '완료')
+        self.assertEqual(self.store.state_records()[0]['gateNumber'], 1)
 
     def test_mixed_difficulty_per_gate_and_complete_array(self):
         rows = [row(), row(gate=2, difficulty='노말', state='진행중')]
@@ -88,18 +89,18 @@ class DataTests(unittest.TestCase):
     def test_sparse_completion_import_does_not_invent_total_gate_count(self):
         self.restore([row(state='진행 전'),row(gate=2),row(gate=3,state='진행중')])
         records=self.store.state_records()
-        self.assertEqual([r['gate'] for r in records],[2])
+        self.assertEqual([r['gateNumber'] for r in records],[2])
         self.assertEqual(records[0]['expectedGates'],0)
         self.assertEqual(export_records(self.store)[0],validate_records([row(gate=2)]))
 
     def test_pending_and_test_records_are_not_exported(self):
         self.restore([row()])
-        base = self.store.state_records()[0]
-        self.store.save_states('pending:test', '기타', [dict(base, characterName=None, dungeonName='기타')])
-        self.store.save_states('test', '테스트', [dict(base, characterName='테스트데이터', dungeonName='테스트', isTest=True)])
+        base = recognition_record(self.store.state_records()[0])
+        self.store.save_states('pending:test', '기타', [dict(row(characterName=None,dungeonName='기타'))])
+        self.store.save_states('test', '테스트', [dict(row(characterName='테스트데이터',dungeonName='테스트'),isTest=True)])
         records, omitted = export_records(self.store)
         self.assertEqual(records, validate_records([row()]))
-        self.assertEqual(omitted, 2)
+        self.assertEqual(omitted, 1)
 
     def test_corrupt_duplicate_keys_and_large_json_rejected(self):
         for body in (b'{', b'\xff', b'[{"gate":1,"gate":2}]', b' ' * (MAX_BYTES + 1)):
@@ -164,7 +165,7 @@ class DriveTests(unittest.TestCase):
         backups = list(Path(self.temp.name).glob('PC-*.json'))
         self.assertEqual(decode_records(backups[0].read_bytes()), validate_records([row()]))
         self.assertEqual(first['parents'], ['appDataFolder'])
-        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '3'})
+        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '4'})
 
     def test_ios_and_old_snapshot_files_are_never_replaced(self):
         fake=FakeDrive()

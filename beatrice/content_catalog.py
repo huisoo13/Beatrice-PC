@@ -11,7 +11,7 @@ def _label(value):
     return isinstance(value, str) and 0 < len(value.strip()) <= 200 and not any(ord(c) < 32 for c in value)
 
 
-def _reward(value):
+def validate_reward(value):
     if not isinstance(value, dict) or set(value) != {'gold', 'fee', 'bound_percentage'}:
         raise ContentError('각 관문에는 gold, fee, bound_percentage가 필요합니다.')
     if any(type(value[k]) is not int or not 0 <= value[k] <= 10**12 for k in ('gold', 'fee')):
@@ -72,7 +72,7 @@ def validate_content(content):
             if set(gates) != {f'{i}관문' for i in range(1, len(gates) + 1)}:
                 raise ContentError('공용 관문은 1관문부터 순서대로 필요합니다.')
             for value in gates.values():
-                _reward(value)
+                validate_reward(value)
                 count += 1
     if count > 10000:
         raise ContentError('공용 관문 데이터가 너무 많습니다.')

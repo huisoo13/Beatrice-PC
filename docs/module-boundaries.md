@@ -1,7 +1,7 @@
-# 모듈 경계 정리 (2026-10-10)
+# 모듈 경계 정리 (최종 갱신: 2026-10-11)
 
 앱 제어, 화면 표시, SQLite 저장, 캡처 중단 처리, 오프라인 평가 계산의 책임을 분리했습니다.
-기존 JSON 통신 형식, 완료 판정, 수요일 오전 6시 주간 구분, Drive 기록 형식은 유지합니다.
+화면용 통신 형식과 관문 아이콘·배너 판단은 유지합니다. 완료 DB와 Drive 형식은 [완료 기록 계약](63-completion-record-schema.md)에 따라 갱신하며, 캐릭터 확정 이후에만 던전 모델을 실행합니다. 주간 구분은 수요일 오전 6시 한국 시간입니다.
 
 ## 구성
 
@@ -12,8 +12,9 @@
 | 던전 이름·기록 별칭 | `beatrice/content_match.py`의 `ContentMatcher` | OCR은 field_name에 비교해 name을 제공한다. Store는 record_candidates로 중복을 검사하고 native_presentation은 display_record_context와 record_detail로 현재 이름·보상을 표시한다. |
 | 공용 데이터 갱신 | `beatrice/catalog_service.py`의 `CatalogService` | Host는 시작 준비·명령 허용·종료 시점을 결정합니다. 서비스는 네트워크 작업, 취소, 캐시, 매칭기, 갱신 주기와 수동 갱신 제한을 관리합니다. |
 | 화면용 데이터 변환 | `beatrice/native_presentation.py` | 기록·캐릭터·던전 표시 데이터를 생성합니다. Host·작업자·UI 프레임워크에 의존하지 않습니다. 기존 native_bridge의 표시 함수 import는 유지합니다. |
+| 완료 JSON 계약 | `beatrice/completion_record.py` | validate·canonical·new_record·recognition_record·period·deduplicate를 제공합니다. DB·Drive는 canonical 완료 JSON을 사용하고 OCR/관문 추적 모듈은 명시적 임시 어댑터를 사용합니다. SQL·HTTP·UI에 의존하지 않습니다. |
 | 스키마·이전 데이터 변환 | `beatrice/storage_schema.py` | Store가 연결을 생성한 뒤 스키마 초기화와 이전 메타데이터 변환을 호출합니다. |
-| 저장·복원·보류 기록 귀속 | `beatrice/storage.py`의 `Store` | 세션과 Drive 어댑터는 SQL을 실행하지 않고 저장소 API를 호출합니다. 주간 DB 복구 SQL도 저장소에서 관리합니다. |
+| 저장·복원·주간 중복 | `beatrice/storage.py`의 `Store` | 세션과 Drive 어댑터는 SQL을 실행하지 않고 저장소 API를 호출합니다. 주간 DB 복구 SQL도 저장소에서 관리합니다. |
 | SVG 문양 렌더링 | `ui/Beatrice.App/EmblemImageSource.cs` | `Load(path, size, color)`로 검증된 로컬 SVG 착색·크기 명시 디코딩을 기록과 하단 이미지에서 재사용합니다. 실패하면 null을 반환합니다. UI 배치와 실패 표시는 호출 화면이 소유합니다. |
 | 캐릭터 이미지 | `ui/Beatrice.App/CharacterPortraitView.cs` | 현재 캐릭터의 검증된 로컬 SVG를 로딩·착색하며 기본 이미지와 비동기 전환을 관리합니다. |
 | 기록 화면 | `ui/Beatrice.App/RecordsView.cs` | 주간 탐색, 기록 렌더링, 날짜·문장 배치, 캐시 아이템 레벨과 주간 변경 타이머를 관리합니다. 상세 보기와 스크롤·변경 알림은 콜백으로 전달합니다. |
@@ -75,3 +76,15 @@ Drive 복원은 JSON 검증과 백업을 먼저 수행하고, 기록 교체 실�
 ## ContentJSON 배열·field_name/name 전환 (2026-10-11)
 
 [세부 규칙과 검증](content-catalog.md). ContentCatalog가 형식 검증·인덱스를 소유하고 ContentMatcher가 이름·별칭을 소유한다. CatalogService, Store, native_presentation은 공개 API를 사용한다. Host는 같은 매칭기 전달만 담당한다. 주간 현황과 보상표에는 name을 전달하며 기존 기록 ID·시각·Drive 스키마는 유지한다. Python 테스트 450개와 .NET 표시·프로토콜·주간 현황 77개, 실제 새 JSON 63개 관문 매칭과 별도 DB의 저장·중복·표시 연결이 통과했다.
+
+
+## 완료 기록과 캐릭터 확정 경계 — 2026-10-11
+
+RecognitionService는 analyze_character → LiveCoordinator.observe_character → recordingAllowed 확인 → analyze_dungeon 순서를 소유합니다. 미확정이면 던전 모델·OCR·배너를 호출하지 않고 DungeonTracker와 DungeonObserver의 reset 공개 API로 이전 문맥을 비웁니다. LiveCoordinator.update에는 이미 갱신한 identity를 전달해 같은 프레임의 캐릭터 추적을 두 번 하지 않습니다.
+
+StateSession은 확정 캐릭터의 진행 상태를 메모리로 유지합니다. 미확정 관측·배너는 저장하지 않으며 과거 임시 완료를 귀속하지 않습니다. 이전 prepare_pending_run·assign_pending_character 호환 진입점은 소급 동작 없이 반환합니다. 독립된 이전 오프라인 Session/DeferredSession은 현재 실시간 경로에서 호출하지 않습니다.
+
+Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약 트랜잭션, 주간 잠금과 별칭 조회를 소유합니다. snapshot_existing은 원본을 읽기 전용으로 열어 WAL 포함 복사본을 만들며 원본을 변환하지 않습니다. Drive 어댑터는 새 JSON v4를 쓰고 이전 JSON은 읽기 변환만 합니다. 상세 형식·제약·검증 범위는 [완료 기록 계약](63-completion-record-schema.md)을 참고합니다.
+
+
+보상 매칭 보완 (2026-10-11): ContentMatcher.record는 새 완료 JSON도 받고 같은 형식으로 반환합니다. 저장·표시 name을 OCR 매칭 별칭으로 사용하지 않으며 OCR 원문을 field_name으로 비교합니다. refresh_record_match는 기존 미매칭 완료의 원문·난이도·관문에 정확한 보상만 연결하는 순수 API입니다. Store.refresh_catalog_matches가 이력·체크포인트·전송 예약을 원자적으로 갱신합니다. Host는 시작 시와 공용 갱신 완료 후 해당 API 호출만 담당합니다. 실제 ContentJSON v16의 지평의 성당 3단계 두 관문 매칭과 Python 473개 회귀를 검증했습니다.

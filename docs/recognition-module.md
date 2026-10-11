@@ -55,11 +55,13 @@ pipeline = RecognitionPipeline(root, progress=print)
 pipeline.prepare()
 result = pipeline.analyze(
     frame, time.monotonic(),  # OpenCV BGR 배열
-    confirmed_name=None,
+    confirmed_name='확정된캐릭터명',
     completion_enabled=False,
 )
 print(result.character, result.dungeon, result.gates)
 ```
+
+`confirmed_name=None`이면 캐릭터만 분석하며 던전·관문·배너는 분석하지 않습니다. 실시간 서비스는 `analyze_character(frame, seconds, confirmed_name)`의 `(regions, identity, detected_at, character_at)`를 캐릭터 추적기에 먼저 전달한 뒤, 확정된 경우만 `analyze_dungeon(frame, regions, identity, seconds, completion_enabled, still_current)`를 호출합니다. 이 API는 `(dungeon, gates)` 또는 이전 선택이 된 경우 `None`을 반환합니다.
 
 `completion_enabled`는 상위 로직에서 현재 던전 문맥을 확정했을 때만 켠다. `still_current` 콜백으로 클라이언트 변경 여부를 검사할 수 있다. 분석 중 선택이 바뀌면 `None`을 반환하여 이전 클라이언트의 관측을 저장하지 않는다. 분석 결과 자체가 완료 기록은 아니며 기존 반복 확인·문맥 검증 경로를 거쳐야 한다.
 
@@ -68,7 +70,7 @@ print(result.character, result.dungeon, result.gates)
 - 스플래시의 모델·OCR 준비 → 내장 OBS 준비 → 클라이언트 연결 순서와 자동 분석.
 - 콜백의 기존 결과 형식, 세대 번호, 분석 시간, 캐릭터·던전 진단.
 - 짧은 OBS 대기에서는 후보 유지, 실제 캡처 중단에서는 연속 확인 후보 초기화.
-- 관문 배너 재확인, 완료 아이콘 반복 확인, 중복 방지 및 기존 기록 형식.
+- 관문 배너 재확인, 완료 아이콘 반복 확인, 중복 방지. 기록 형식은 [완료 JSON v4](63-completion-record-schema.md)로 갱신했습니다.
 - 종료·준비 취소·OBS 오류에서 캡처·DB 자원 정리. 캡처 정리가 실패해도 DB와 감시 스레드 정리를 수행.
 - 모듈 경계 테스트 10개: UI·모델의 지연 로딩, 메뉴 중 완료 분석 차단, 분석 중 선택 변경 폐기, 준비 취소·실패, UI 없이 실제 SQLite 완료 저장, 종료 정리.
 - 전체 Python 테스트 400개 통과. 모델 출력 모의 입력과 실제 완료 판단·DB를 연결한 통합 검증이며 이번 작업에서 실제 게임 캡처를 새로 실행하지 않았다.
@@ -93,3 +95,6 @@ PySide6-Essentials 요구사항과 Qt 플러그인 필수 배포 목록을 제�
 - 검사 결과: `outputs/embedded-obs-probe/shutdown-main.json`, `shutdown-splash.json`.
 
 로컬 개발 가상환경에 이미 설치된 PySide6 패키지는 제거하지 않았으며, 실행 코드·요구사항·향후 배포에는 사용하지 않는다. 과거 문서의 Qt 설명은 당시 구현 이력이다.
+
+
+2026-10-11 변경: 캐릭터 미확정 상태의 던전 분석과 소급 기록을 제거했습니다. 캐릭터가 던전 안에서 확정돼도 해당 프레임부터 던전 관측을 시작하며, 완료 아이콘은 새 반복 확인을 거쳐 저장합니다. OBS 캡처와 캐릭터 모델은 계속 실행됩니다. 새로운 완료·Drive 계약과 검증 결과는 [완료 기록 정리](63-completion-record-schema.md)에 있습니다.

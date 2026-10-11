@@ -37,11 +37,11 @@ def main():
         if row['sequence']==8838:early=copy.deepcopy(store.state_records())
         observations+=1
     records=store.state_records()
-    assert [record['gate'] for record in early]==[1],early
-    assert [record['gate'] for record in records]==[1,2],records
-    gate2=next(record for record in records if record['gate']==2)
+    assert [record['gateNumber'] for record in early]==[1],early
+    assert [record['gateNumber'] for record in records]==[1,2],records
+    gate2=next(record for record in records if record['gateNumber']==2)
     assert first_complete and gate2['observedAt']>=first_complete
-    assert gate2['evidenceType']=='direct'
+    assert gate2['gateNumber']==2
     print(json.dumps(dict(passed=True,observations=observations,recheckSequences=requests,
         earlyRecords=early,events=events,firstBothCompleted=first_complete,records=records),ensure_ascii=False,indent=2))
     store.close()

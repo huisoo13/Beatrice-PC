@@ -67,14 +67,14 @@ class ContentMatchTests(unittest.TestCase):
 
     def test_db_canonical_identity_dedup_lock_and_drive_contract(self):
         first = self.save(row())[0]
-        self.assertEqual(first['dungeonName'], NAME)
+        self.assertEqual(first['contentName'], NAME)
         self.assertEqual(self.save(row(NAME)), [])
         self.assertEqual(self.save(row('4막 파멸의 성채')), [])
         self.assertEqual(self.store.state_records(), [first])
         self.assertEqual(len(self.store.state_records('name:캐릭터', key(TYPO))), 1)
         exported, _ = export_records(self.store)
-        self.assertEqual(decode_records(encode_records(exported))[0]['dungeonName'], NAME)
-        self.assertEqual(exported[0]['gate'], 1)
+        self.assertEqual(decode_records(encode_records(exported))[0]['contentName'], NAME)
+        self.assertEqual(exported[0]['gateNumber'], 1)
 
     def test_offline_save_then_catalog_download_does_not_duplicate_or_rewrite(self):
         self.matcher = ContentMatcher()
@@ -90,13 +90,13 @@ class ContentMatchTests(unittest.TestCase):
         context = dict(dungeonName=TYPO,difficulty='싱글모드',contextStatus='ocr_verified')
         boxes = [dict(state='완료', confidence=.99,xyxy=[i*40,0,i*40+20,20]) for i in range(2)]
         for i in range(7):live.update(now+timedelta(seconds=i),{},boxes,context)
-        self.assertEqual(len(self.store.state_records()),2)
-        for i in range(7,11):
+        self.assertEqual(len(self.store.state_records()),0)
+        for i in range(7,13):
             live.update(now+timedelta(seconds=i),dict(currentName=dict(text='캐릭터',confidence=.99)),boxes,context)
         rows = self.store.state_records()
         self.assertEqual(len(rows),2)
-        self.assertTrue(all(r['characterName']=='캐릭터' and r['dungeonName']==NAME for r in rows))
-        self.assertEqual(live.session.complete_banner(now+timedelta(seconds=12),context,2),[])
+        self.assertTrue(all(r['characterName']=='캐릭터' and r['contentName']==NAME for r in rows))
+        self.assertEqual(live.session.complete_banner(now+timedelta(seconds=14),context,2),[])
         self.assertEqual(self.store.state_records(),rows)
 
     def test_detail_current_snapshot_and_unmatched_not_rematched(self):
@@ -133,8 +133,8 @@ class ContentMatchTests(unittest.TestCase):
         result=session.complete_banner(datetime.now(timezone.utc),
                                        dict(dungeonName=TYPO,difficulty='싱글모드'),1)
         self.assertEqual(len(result),1)
-        self.assertEqual(result[0]['dungeonName'],NAME)
-        self.assertEqual(result[0]['evidenceType'],'completion_banner')
+        self.assertEqual(result[0]['contentName'],NAME)
+        self.assertEqual(result[0]['gateNumber'],1)
         self.assertEqual(len(self.store.state_records()),1)
 
     def test_unknown_dungeon_and_ambiguous_names_preserve_ocr(self):
@@ -142,7 +142,7 @@ class ContentMatchTests(unittest.TestCase):
             self.store.clear_all()
             saved=self.save(source)[0]
             self.assertEqual(saved['catalogMatch']['status'],'unmatched')
-            self.assertEqual(saved['dungeonName'], NAME if source['dungeonName'] == TYPO else source['dungeonName'])
+            self.assertEqual(saved['contentName'], NAME if source['dungeonName'] == TYPO else source['dungeonName'])
             self.assertEqual(saved['difficulty'],source['difficulty'])
         self.store.clear_all()
         multiple=copy.deepcopy(CACHED)
@@ -150,7 +150,7 @@ class ContentMatchTests(unittest.TestCase):
         self.matcher=ContentMatcher(multiple)
         saved=self.save(row())[0]
         self.assertEqual(saved['catalogMatch']['status'],'ambiguous')
-        self.assertEqual(saved['dungeonName'],TYPO)
+        self.assertEqual(saved['contentName'],TYPO)
 
     def test_file_cache_refresh_and_corruption_preserve_last_good(self):
         settings=dict(rootFolderID='root',fileName='ContentJSON.json',jsonFolderName='JSON',refreshSeconds=3600)

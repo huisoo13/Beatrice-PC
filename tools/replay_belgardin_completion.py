@@ -60,9 +60,9 @@ def main():
     records = store.state_records()
     report = dict(purpose='same_session_real_models_memory_database_replay', rows=rows, records=records)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(dict(frames=len(rows), records=[dict(gate=r['gate'], state=r['state'], evidenceType=r['evidenceType']) for r in records]))
+    print(dict(frames=len(rows), records=[dict(gateNumber=r['gateNumber'],observedAt=r['observedAt']) for r in records]))
     store.close()
-    if sorted(r['gate'] for r in records) != [1, 2]:
+    if sorted(r['gateNumber'] for r in records) != [1, 2]:
         raise SystemExit('Missing completion in replay')
 
 

@@ -40,7 +40,7 @@ ContentMatcher는 이름 비교와 기록 별칭을 소유한다. Store는 매�
 
 기존 기록의 DB 이름, recordID, updatedAt과 저장 시각을 일괄 재작성하지 않는다. 표시할 때 저장된 name, 이전 field_name, 저장된 fieldName과 OCR 원문의 정확한 별칭을 확인해 현재 name으로 표시한다. 같은 필드의 표시 name이 바뀌어도 현재 주의 완료 체크포인트가 새 완료로 중복 저장되지 않는다. 이전 기록과 새 기록은 같은 표시명으로 주간 집계된다.
 
-새 완료 기록의 dungeonName과 PC.json 내보내기는 name을 사용한다. 기존 기록 내보내기의 ID·시각·이름은 유지하며 Drive 공유 스키마를 변경하지 않는다. iOS 소스는 이 저장소에 없으므로 기존 이름의 표시·집계와 ContentJSON 배열 읽기는 iOS에서도 별도 적용이 필요하다.
+새 완료 기록의 contentName과 PC.json 내보내기는 name을 사용한다. 기존 ID·시각·이름과 fieldName·OCR 별칭을 보존한다. 후속 [완료 기록 계약](63-completion-record-schema.md)에서 DB v5·Drive JSON v4와 catalogMatch.gateNumber로 전환했다. iOS 소스는 이 저장소에 없으므로 기존 이름의 표시·집계와 ContentJSON 배열 읽기는 iOS에서도 별도 적용이 필요하다.
 
 기존 정상 보상 연결은 fieldName이나 이전 이름으로 현재 보상을 조회한다. 현재 공용 데이터에서 연결이 사라지거나 모호하면 저장 당시 보상을 유지한다. 이전에 unmatched·ambiguous로 저장된 보상 결정을 후대에 자동으로 추측해 덮어쓰지 않는다. 현재 데이터에 직접 연결할 수 있는 이전·Drive 가져오기 기록은 정확한 별칭으로 보상을 조회한다. 주간 현황은 기존 일반/귀속 골드 계산 정책을 유지하며 더보기 fee는 자동 차감하지 않는다.
 
@@ -59,3 +59,6 @@ ContentMatcher는 이름 비교와 기록 별칭을 소유한다. Store는 매�
 2026-10-11 원격 JSON을 다시 받아 3막의 name과 field_name이 모두 `3막: 칠흑, 폭풍의 밤`으로 수정된 것을 확인했다. 새 기록과 보상표는 수정된 name을 사용하며, 이전 `퐁풍의 밤` OCR도 기존 오탈자 보정으로 현재 필드에 연결된다. 별도 메모리 DB에서 이전 표기의 완료 기록이 수정된 표기의 재관측을 중복으로 차단하고, 기존 기록의 ID·시각·본문은 그대로 유지되는 것을 확인했다.
 
 기존 기록 표시는 정확한 별칭만 사용하므로 name과 field_name을 함께 바꿔 이전 별칭이 사라진 경우 기존 `퐁풍의 밤` 표기를 유지한다. 이 경우 표시 보정이나 데이터 이관은 별도 정책이 필요하며, 원본 갱신만으로 기록을 재작성하지 않는다.
+
+
+2026-10-11 후속 보완: 새 완료 JSON의 ocrOriginal.contentName을 field_name으로 비교합니다. ContentMatcher.refresh_record_match와 Store.refresh_catalog_matches는 기존 미매칭 기록에 정확히 확인한 보상을 연결합니다. 공용 name인 contentName은 저장·표시용이며 화면 이름의 인식 별칭으로 사용하지 않습니다. 기록 ID·관측 시각·생성 시각은 유지하고 updatedAt과 Drive 전송 예약만 갱신합니다. [완료 기록 계약과 실제 지평의 성당 JSON](63-completion-record-schema.md)을 참고합니다.

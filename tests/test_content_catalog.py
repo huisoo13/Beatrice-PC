@@ -73,12 +73,12 @@ class ContentCatalogTests(unittest.TestCase):
         matcher = ContentMatcher(CACHED)
         with closing(Store(':memory:', catalog=lambda:matcher)) as store:
             first = store.save_completions('name:캐릭터', key('구원의 종탑'), [row()], 2)[0]
-            self.assertEqual(first['dungeonName'], '지평의 성당')
+            self.assertEqual(first['contentName'], '지평의 성당')
             self.assertEqual(store.save_completions('name:캐릭터', key('지평의 성당'), [row()], 2), [])
             self.assertEqual(store.save_completions('name:캐릭터', key('구원의 종탑'), [row()], 2), [])
             self.assertEqual(store.state_records(), [first])
             exported, _ = export_records(store)
-            self.assertEqual(decode_records(encode_records(exported))[0]['dungeonName'], '지평의 성당')
+            self.assertEqual(decode_records(encode_records(exported))[0]['contentName'], '지평의 성당')
 
     def test_offline_old_field_record_still_blocks_new_name_without_rewriting_history(self):
         matcher = ContentMatcher()

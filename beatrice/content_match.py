@@ -6,6 +6,7 @@ import unicodedata
 
 from .public_content import ContentCache, ContentError, load_settings
 from .content_catalog import ContentCatalog
+from .completion_record import recognition_record,canonical,validate
 
 
 def normalized(text):
@@ -47,6 +48,7 @@ class ContentMatcher:
         return self._candidates(text, stored=True, exact_only=True)
 
     def record_candidates(self, record, *, exact_only=True):
+        record=recognition_record(record)
         sources = [record.get('dungeonName'),
                    (record.get('catalogMatch') or {}).get('fieldName'),
                    (record.get('ocrOriginal') or {}).get('dungeonName')]
@@ -54,6 +56,7 @@ class ContentMatcher:
                     for name in self._candidates(source, stored=True, exact_only=exact_only)))
 
     def display_record_context(self, record):
+        record=recognition_record(record)
         names = self.record_candidates(record)
         difficulty = record.get('difficulty')
         if len(names) != 1:
@@ -92,6 +95,8 @@ class ContentMatcher:
         return self.catalog.rows()
 
     def saved_reward(self, match):
+        if 'contentName' in match:
+            match=dict(match,dungeonName=match['contentName'],gateName=f"{match['gateNumber'] or 1}관문")
         names = self.stored_candidates(match.get('fieldName') or match['dungeonName'])
         if len(names) != 1:
             return None
@@ -99,21 +104,38 @@ class ContentMatcher:
         return self.content[names[0]][modes[0]].get(match['gateName']) if len(modes) == 1 else None
 
     def record(self, record):
-        row = copy.deepcopy(record)
-        # Pending-character promotion must preserve the original matching decision.
+        canonical_input='contentName' in record and 'dungeonName' not in record
+        row = recognition_record(record) if canonical_input else copy.deepcopy(record)
+        # Re-observation preserves the saved decision; explicit refresh is separate.
         if 'catalogMatch' in row:
-            return row
-        row['ocrOriginal'] = {k: row.get(k) for k in ('dungeonName', 'difficulty', 'gate')}
-        result = self.match(row['dungeonName'], row['difficulty'], row['gate'],
-                            row.get('completionScope') == 'raid')
+            return copy.deepcopy(record)
+        if 'ocrOriginal' not in row:
+            row['ocrOriginal'] = {k: row.get(k) for k in ('dungeonName', 'difficulty', 'gate')}
+        source=(row.get('ocrOriginal') or {}).get('dungeonName') or row['dungeonName']
+        result = self.match(source, row['difficulty'], row['gate'],
+                            row.get('completionScope') == 'raid',exact_only=canonical_input)
         row['catalogMatch'] = result
-        names = self.dungeon_candidates(row['dungeonName'])
+        names = self.dungeon_candidates(source)
         if len(names) == 1:
             row['dungeonName'] = names[0]
         if result['status'] == 'matched':
             row.update(dungeonName=result['dungeonName'], difficulty=result['difficulty'],
                        gateName=result['gateName'])
-        return row
+        return canonical(row) if canonical_input else row
+
+    def refresh_record_match(self, record):
+        """Attach an exact, unique catalog reward to an unmatched canonical record."""
+        value=validate(record)
+        if (value.get('catalogMatch') or {}).get('status')=='matched':return value
+        source=(value.get('ocrOriginal') or {}).get('contentName') or (value.get('catalogMatch') or {}).get('fieldName') or value['contentName']
+        names=self._candidates(source,exact_only=True)
+        if len(names)!=1:return value
+        row=recognition_record(value)
+        match=self.match(source,value['difficulty'],row['gate'],
+                         value['gateNumber']==0,exact_only=True)
+        if match['status']!='matched':return value
+        row.update(dungeonName=match['dungeonName'],difficulty=match['difficulty'],catalogMatch=match)
+        return validate(canonical(row))
 
 
 class FileContentMatcher:
@@ -139,6 +161,7 @@ class FileContentMatcher:
 def record_detail(record, cached=None, *, matcher=None):
     """Use a saved link exactly; never fuzzy-remap an unmatched historical record."""
     matcher = ContentMatcher(cached) if matcher is None else matcher
+    record=recognition_record(record)
     match = record.get('catalogMatch')
     if match is None:  # Ignore formatting in older/imported names, but don't guess typos.
         result = matcher.match(record['dungeonName'], record['difficulty'],

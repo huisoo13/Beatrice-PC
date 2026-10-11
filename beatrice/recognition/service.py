@@ -127,14 +127,20 @@ class RecognitionService:
                     continue
                 self.capture_pause=None
                 current=lambda: self.requested()==(generation,client) and client_alive(client)
-                analysis=pipeline.analyze(frame,started,
-                    confirmed_name=coordinator.identity.current if not coordinator.identity.blocked else None,
-                    completion_enabled=coordinator.completion_context is not None,
-                    still_current=current)
-                if analysis is None:continue
-                identity=analysis.character
-                dungeon_observation=analysis.dungeon;boxes=analysis.gates
-                detected_at=analysis.detected_at;character_at=analysis.character_at
+                regions,identity,detected_at,character_at=pipeline.analyze_character(frame,started,
+                    confirmed_name=coordinator.identity.current if not coordinator.identity.blocked else None)
+                if not current():continue
+                character_state=coordinator.observe_character(at,identity)
+                suspended=any(action['type']=='suspend' for action in character_state['actions'])
+                if suspended or not character_state['recordingAllowed']:
+                    tracker.reset();dungeon_observer.reset()
+                if character_state['recordingAllowed']:
+                    analysis=pipeline.analyze_dungeon(frame,regions,identity,started,
+                        completion_enabled=coordinator.completion_context is not None,still_current=current)
+                    if analysis is None:continue
+                    dungeon_observation,boxes=analysis
+                else:
+                    dungeon_observation={};boxes=[]
                 write_diagnostic=started-last_diagnostic>=2
                 if write_diagnostic:
                     (self.data/'character-diagnostic.json').write_text(json.dumps(dict(
@@ -148,7 +154,7 @@ class RecognitionService:
                         mode='ui_yolo',observedAt=at.isoformat(),observation=dungeon_observation),
                         ensure_ascii=False,indent=2),encoding='utf-8')
                 try:
-                    state=coordinator.update(at,identity,boxes,context)
+                    state=coordinator.update(at,identity,boxes,context,identity=character_state)
                 except Exception as error:
                     # Preserve the triggering frame even if the DB transaction fails.
                     try:

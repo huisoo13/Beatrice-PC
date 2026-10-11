@@ -3,7 +3,8 @@ import json
 from contextlib import nullcontext, contextmanager, closing
 import sqlite3
 from pathlib import Path
-from .record_identity import record_id, existing_time, stamp_local
+from .record_identity import existing_time
+from .completion_record import canonical, validate, new_record, recognition_record, period, deduplicate
 
 
 class Store:
@@ -14,8 +15,15 @@ class Store:
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.execute('PRAGMA journal_mode=WAL')
         self.db.execute('PRAGMA busy_timeout=5000')
+        if str(path) != ':memory:' and self.db.execute('PRAGMA user_version').fetchone()[0]<5 and self.db.execute("SELECT 1 FROM sqlite_master WHERE name='gate_states'").fetchone():
+            from datetime import datetime, timezone
+            backup = Path(path).with_name(Path(path).name + '.pre-v5-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%f') + '.bak')
+            self.backup_to(backup)
         from .storage_schema import initialize_schema
-        initialize_schema(self.db)
+        try:initialize_schema(self.db)
+        except Exception:
+            self.db.close()
+            raise
 
         # Preserve existing completions independently of weekly recognition checkpoints.
         with self.db:
@@ -23,32 +31,26 @@ class Store:
                 self.remember_completion(json.loads(payload))
 
     def remember_completion(self, row):
-        if not row.get('recordID') or not row.get('characterName') or not row.get('dungeonName'):
+        if row.get('state', '완료') != '완료' or not row.get('characterName'):
             return False
-        row = dict(row)
-        previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordID'],)).fetchone()
+        row = validate(canonical(row))
+        previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordId'],)).fetchone()
         if previous:
             previous = json.loads(previous[0])
-            from .weekly import week_start
-            from datetime import datetime
-            old_time, new_time = existing_time(previous), existing_time(row)
-            if row['recordID'].startswith('br1_') and week_start(datetime.fromisoformat(old_time.replace('Z','+00:00'))) != week_start(datetime.fromisoformat(new_time.replace('Z','+00:00'))):
+            new_time = existing_time(row)
+            if row['recordId'].startswith('br1_') and period(previous) is not None and period(row) is not None and period(previous)!=period(row):
                 from .record_identity import occurrence_id
-                row['recordID'] = occurrence_id(row['recordID'], new_time)
-                previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordID'],)).fetchone()
+                row['recordId'] = occurrence_id(row['recordId'], row['observedAt'])
+                previous = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (row['recordId'],)).fetchone()
                 previous = json.loads(previous[0]) if previous else None
             if previous and existing_time(previous) >= new_time:
                 return False
         self.db.execute('INSERT INTO completion_history VALUES(?,?) ON CONFLICT(record_id) DO UPDATE SET payload=excluded.payload',
-                        (row['recordID'], json.dumps(row,ensure_ascii=False)))
+                        (row['recordId'], json.dumps(row,ensure_ascii=False)))
         return True
 
     def history_records(self):
-        rows = [json.loads(payload) for payload, in self.db.execute('SELECT payload FROM completion_history ORDER BY record_id')]
-        identities = {r['recordID'] for r in rows}
-        # Include unconfirmed/test checkpoints for existing omission and diagnostic behavior.
-        rows.extend(r for r in self.state_records() if not r.get('recordID') or r['recordID'] not in identities)
-        return rows
+        return [json.loads(payload) for payload, in self.db.execute('SELECT payload FROM completion_history ORDER BY record_id')]
 
     def repeat_start(self):
         return self.db.execute('SELECT period_start FROM weekly_repeat WHERE id=1').fetchone()[0]
@@ -126,7 +128,7 @@ class Store:
         rows = [json.loads(row[0]) for row in self.db.execute(sql+' ORDER BY owner,dungeon_key,gate',values)]
         start = self.repeat_start()
         if start:
-            rows = [r for r in rows if existing_time(r) >= start]
+            rows = [r for r in rows if period(r)==start]
         if dungeon_key is not None and self.catalog is not None:
             from .dungeon import key
             matcher = self.catalog()
@@ -134,11 +136,11 @@ class Store:
             names = {dungeon_key}
             if len(candidates) == 1:names.add(key(candidates[0]))
             def belongs(row):
-                aliases = {key(row['dungeonName']),
-                           key(row.get('ocrOriginal', {}).get('dungeonName') or row['dungeonName'])}
+                aliases = {key(row['contentName']),
+                           key(row.get('ocrOriginal', {}).get('contentName') or row['contentName'])}
                 # A later catalog download must not create a second completion
                 # beside a previously saved OCR-only record. Do not rewrite it.
-                candidates = matcher.record_candidates(row, exact_only=False)
+                candidates = matcher.record_candidates(recognition_record(row), exact_only=False)
                 if len(candidates) == 1:
                     aliases.add(key(candidates[0]))
                 return bool(names.intersection(aliases))
@@ -148,44 +150,64 @@ class Store:
     def save_states(self,owner,dungeon_key,records,transactional=True):
         """검증된 전체 배열에서 완료만 저장합니다. 진행 상태는 호출자 메모리에 남습니다."""
         from .gates import STATES
+        records=[recognition_record(r) for r in records]
         if not records or [r['gate'] for r in records]!=list(range(1,len(records)+1)):
             raise ValueError('전체 관문 배열이 필요합니다.')
         if any(r['state'] not in STATES for r in records):raise ValueError('관문 상태 오류')
         return self.save_completions(owner,dungeon_key,[r for r in records if r['state']=='완료'],len(records),transactional)
 
     def save_completions(self,owner,dungeon_key,records,expected_gates,transactional=True):
-        """완료 행만 원자적으로 추가합니다. 기존 완료의 내용과 시각은 보존합니다."""
+        """Only confirmed characters produce durable completions. Weekly lockout ignores difficulty."""
         if not records:return []
+        records=[recognition_record(r) for r in records]
         gates=[r['gate'] for r in records]
         if (not 1<=expected_gates<=8 or len(set(gates))!=len(gates) or
             any(type(g) is not int or not 1<=g<=expected_gates for g in gates) or
             any(r['state']!='완료' for r in records)):raise ValueError('완료 관문 배열 오류')
+        if any(not r.get('characterName') for r in records):return []
         changed=[]
         matcher = self.catalog() if self.catalog is not None else None
         with self.db if transactional else nullcontext():
-            old={r['gate']:r for r in self.state_records(owner,dungeon_key)}
-            if max((r.get('expectedGates',r['gate']) for r in old.values()),default=0)>expected_gates:
-                raise ValueError('기존 전체 관문보다 적은 배열입니다.')
+            if transactional and not self.db.in_transaction:self.db.execute('BEGIN IMMEDIATE')
             for record in records:
                 from .dungeon import key
                 record = matcher.record(record) if matcher is not None else record
-                storage_key = key(record['dungeonName']) if matcher is not None else dungeon_key
-                previous=old.get(record['gate'])
-                if previous is None and storage_key != dungeon_key:
-                    previous=next((r for r in self.state_records(owner,storage_key) if r['gate']==record['gate']),None)
-                if previous and previous['state']=='완료':continue
-                if previous and all(previous.get(f)==record.get(f) for f in
-                        ('state','difficulty','characterName','dungeonName','completionScope')):continue
-                row=dict(record,expectedGates=expected_gates,recordType='gate_state')
-                row=stamp_local(row,previous)
+                number=0 if record.get('completionScope')=='raid' else record['gate']
+                test=bool(record.get('isTest') or record.get('timeBasis')=='synthetic_test')
+                owner=('test:' if test else '')+'name:'+record['characterName']
+                storage_key = key(record['dungeonName'])
+                known=self.state_records(owner,dungeon_key)+self.state_records(owner,storage_key)
+                if max((r['expectedGates'] for r in known),default=0)>expected_gates:
+                    raise ValueError('기존 전체 관문보다 적은 배열입니다.')
+                if any(r['gateNumber']==number for r in known):continue
+                row=new_record(record,0 if number==0 else expected_gates)
                 self.db.execute('INSERT INTO gate_states VALUES (?,?,?,?) ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload',
-                    (owner,storage_key,row['gate'],json.dumps(row,ensure_ascii=False)))
+                    (owner,storage_key,number,json.dumps(row,ensure_ascii=False)))
                 self.remember_completion(row)
                 changed.append(row)
-            if any(r['state']=='완료' and r.get('characterName') and r.get('dungeonName')
-                   and r.get('difficulty') and not r.get('isTest')
-                   and r.get('timeBasis')!='synthetic_test' for r in changed):
-                # Persist the upload obligation in the same transaction as completion.
+            if any(not r['isTest'] for r in changed):
+                self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+        return changed
+
+    def refresh_catalog_matches(self, matcher):
+        """Backfill exact rewards atomically, preserving completion identity and observed time."""
+        from datetime import datetime,timedelta,timezone
+        changed=[]
+        with self.db:
+            if not self.db.in_transaction:self.db.execute('BEGIN IMMEDIATE')
+            for identity,payload in self.db.execute('SELECT record_id,payload FROM completion_history').fetchall():
+                previous=json.loads(payload)
+                row=matcher.refresh_record_match(previous)
+                if row==previous:continue
+                now=datetime.now(timezone.utc)
+                old=datetime.fromisoformat(previous['updatedAt'].replace('Z','+00:00'))
+                row['updatedAt']=max(now,old+timedelta(milliseconds=1)).isoformat(timespec='milliseconds').replace('+00:00','Z')
+                row=validate(row)
+                encoded=json.dumps(row,ensure_ascii=False)
+                self.db.execute('UPDATE completion_history SET payload=? WHERE record_id=?',(encoded,identity))
+                self.db.execute("UPDATE gate_states SET payload=? WHERE json_extract(payload,'$.recordId')=?",(encoded,row['recordId']))
+                changed.append(row)
+            if any(not row['isTest'] for row in changed):
                 self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
         return changed
 
@@ -228,6 +250,17 @@ class Store:
                 self.db.execute('BEGIN')
             yield
 
+    @staticmethod
+    def snapshot_existing(source, destination):
+        """Read-only SQLite snapshot including WAL; never migrate or change the source."""
+        source=Path(source).resolve()
+        destination=Path(destination).resolve()
+        if source==destination:raise ValueError('원본과 백업 경로는 달라야 합니다.')
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        with closing(sqlite3.connect(source.as_uri()+'?mode=ro',uri=True)) as original:
+            with closing(sqlite3.connect(destination)) as target:original.backup(target)
+        return destination
+
     def backup_to(self, path):
         with closing(sqlite3.connect(path)) as destination:
             self.db.backup(destination)
@@ -238,35 +271,31 @@ class Store:
         self.db.execute("UPDATE pending_segments SET status='resolved' WHERE segment_id=?", (segment,))
 
     def assign_pending_character(self, previous_owner, character_key, character_name):
-        from .dungeon import key
-        with self.transaction():
-            pending = self.state_records(previous_owner) if previous_owner.startswith('pending:') else []
-            for group in {key(r['dungeonName']) for r in pending}:
-                rows = [dict(r, characterKey=character_key, characterName=character_name)
-                        for r in pending if key(r['dungeonName']) == group]
-                known = self.state_records(character_key, group)
-                expected = max(r.get('expectedGates') or r['gate'] for r in rows)
-                if max((r.get('expectedGates', r['gate']) for r in known), default=0) > expected:
-                    continue
-                self.save_completions(character_key, group, rows, expected, transactional=False)
-                self.db.execute('DELETE FROM gate_states WHERE owner=? AND dungeon_key=?', (previous_owner, group))
+        """Legacy compatibility API: unconfirmed completions are never promoted."""
+        return None
 
     def import_completion(self, owner, dungeon, row):
-        """Preserve history and the latest weekly checkpoint in the caller's transaction."""
+        """Preserve incoming identifiers and times; unknown observations don't enter a weekly lockout."""
+        row=validate(canonical(row))
+        owner=('test:' if row['isTest'] else '')+'name:'+row['characterName']
         changed = self.remember_completion(row)
-        if existing_time(row) >= self.repeat_start():
+        if not self.repeat_start() or period(row)==self.repeat_start():
             self.db.execute("""INSERT INTO gate_states VALUES (?,?,?,?)
                 ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
                 WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
-                (owner, dungeon, row['gate'], json.dumps(row, ensure_ascii=False)))
+                (owner, dungeon, row['gateNumber'], json.dumps(row, ensure_ascii=False)))
         return changed
 
     def replace_history(self, rows):
         from .dungeon import key
         with self.transaction():
             self.clear_all(transactional=False)
-            for row in rows:
-                self.import_completion(row['characterKey'], key(row['dungeonName']), row)
+            matcher=self.catalog() if self.catalog is not None else None
+            def name(row):
+                candidates=matcher.record_candidates(row,exact_only=False) if matcher else []
+                return candidates[0] if len(candidates)==1 else row['contentName']
+            for row in deduplicate(rows,name):
+                self.import_completion('name:'+row['characterName'], key(row['contentName']), row)
 
     def recover_weekly_history(self, data, now=None):
         from .weekly import week_start
@@ -283,23 +312,13 @@ class Store:
                 with closing(sqlite3.connect(source.resolve().as_uri()+'?mode=ro',uri=True)) as old:
                     for payload, in old.execute('SELECT payload FROM gate_states'):
                         row=json.loads(payload)
-                        if not row.get('recordID'):
-                            from .record_identity import record_id
-                            if not row.get('characterName') or not row.get('dungeonName'):
-                                continue
-                            row=dict(row,recordID=record_id(row['characterName'],row['dungeonName'],0 if row.get('completionScope')=='raid' else row['gate']),updatedAt=existing_time(row))
-                        changed = self.remember_completion(row) or changed
-                        if existing_time(row) >= week_start(now):
-                            from .dungeon import key
-                            owner = row.get('characterKey') or 'name:' + row['characterName']
-                            self.db.execute("""INSERT INTO gate_states VALUES(?,?,?,?)
-                                ON CONFLICT(owner,dungeon_key,gate) DO UPDATE SET payload=excluded.payload
-                                WHERE json_extract(excluded.payload,'$.updatedAt') > json_extract(gate_states.payload,'$.updatedAt')""",
-                                (owner,key(row['dungeonName']),row['gate'],json.dumps(row,ensure_ascii=False)))
+                        if row.get('state','완료')!='완료' or not row.get('characterName'):continue
+                        row=validate(canonical(row))
+                        from .dungeon import key
+                        changed=self.import_completion('name:'+row['characterName'],key(row['contentName']),row) or changed
                 self.db.execute('INSERT INTO imported_weekly_sources VALUES(?)', (name,))
             publish_legacy = first_history_export and any(
-                r.get('state')=='완료' and r.get('characterName') and r.get('dungeonName') and r.get('difficulty')
-                and not r.get('isTest') and r.get('timeBasis')!='synthetic_test'
+                r.get('characterName') and r.get('contentName') and r.get('difficulty') and not r.get('isTest')
                 for r in self.history_records())
             if changed or publish_legacy:
                 self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')

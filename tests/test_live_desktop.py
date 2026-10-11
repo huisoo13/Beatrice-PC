@@ -18,7 +18,7 @@ class LiveTests(unittest.TestCase):
         for i in range(8,12): result=feed(i,['완료','진행중'])
         self.assertEqual(result['result']['stableStates'],('완료','완료'))
         self.assertEqual(result['result']['observedStates'],('완료','진행중'))
-        self.assertEqual([r['state'] for r in store.state_records()],['완료','완료'])
+        self.assertEqual([r['gateNumber'] for r in store.state_records()],[1,2])
 
     def test_capture_gap_preserves_owner_and_consumed_banner_but_breaks_confirmation(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
@@ -68,16 +68,16 @@ class LiveTests(unittest.TestCase):
             if i>=5:self.assertEqual(live.context[1],2)
             if 6<=i<=10:self.assertIn('관문 수 불일치',state['recordingStatus'])
         self.assertEqual(len(store.state_records()),1)
-        self.assertEqual([r['state'] for r in store.state_records()],['완료'])
+        self.assertEqual([r['gateNumber'] for r in store.state_records()],[1])
 
     def test_display_explains_held_context_without_claiming_current_detection(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
         context=dict(dungeonName='기존 던전',difficulty='하드',contextStatus='ocr_held',diagnosticStatus='region_missing')
         state=live.update(datetime(2026,9,23,tzinfo=timezone.utc),{},[],context)
-        self.assertIn('이전 던전명 유지',state['recordingStatus'])
-        self.assertIn('관문 영역 재탐지',state['recordingStatus'])
+        self.assertIn('던전 탐지 중지',state['recordingStatus'])
+        self.assertEqual(state['dungeon'],{})
         self.assertFalse(state['result'].get('changedRecords'))
-        self.assertEqual(state['result']['completionDecision']['reason'],'missing')
+        self.assertNotIn('completionDecision',state['result'])
 
     def test_starting_with_completed_gate_creates_one_state_record(self):
         store=Store(':memory:');self.addCleanup(store.close);live=LiveCoordinator(store)
@@ -86,7 +86,7 @@ class LiveTests(unittest.TestCase):
         for i in range(15):
             live.update(now+timedelta(seconds=i),dict(normalMenu=True,currentName=dict(text='테스트',confidence=.99)),
                 [dict(xyxy=[40,130,60,160],state='완료',confidence=.99)],context)
-        self.assertEqual(len(store.state_records()),1);self.assertEqual(store.state_records()[0]['state'],'완료')
+        self.assertEqual(len(store.state_records()),1);self.assertEqual(store.state_records()[0]['gateNumber'],1)
 
     def test_held_dungeon_does_not_record_gate_completion(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -107,12 +107,12 @@ class LiveTests(unittest.TestCase):
                 return live.update(now+timedelta(seconds=i),char or {},[dict(xyxy=[40,130,60,160],state=state,confidence=.99)],context)
             for i in range(6):feed(i,'진행중')
             for i in range(6,9):feed(i,'완료')
-            self.assertEqual(len(store.state_records()),1);self.assertIsNone(store.state_records()[0]['characterName'])
-            for i in range(9,12):feed(i,'완료',dict(currentName=dict(text='테베체',confidence=.99),normalMenu=True))
+            self.assertEqual(len(store.state_records()),0)
+            for i in range(9,14):feed(i,'완료',dict(currentName=dict(text='테베체',confidence=.99),normalMenu=True))
             self.assertEqual(len(store.state_records()),1)
             self.assertEqual(store.state_records()[0]['characterName'],'테베체')
-            self.assertEqual(store.state_records()[0]['timeBasis'],'live_capture')
-            for i in range(12,18):feed(i,'완료')
+            self.assertEqual(store.state_records()[0]['isTest'],False)
+            for i in range(14,20):feed(i,'완료')
             self.assertEqual(len(store.state_records()),1)
             store.clear_all()
             for table in ('gate_states','events','outbox','sessions','pending_events','pending_segments'):
@@ -129,7 +129,6 @@ class LiveTests(unittest.TestCase):
             live.update(now+timedelta(seconds=9),dict(switchDialog=True),[],{})
             live.update(now+timedelta(seconds=9.5),dict(switchLoading=True),[],{})
             for i in range(10,13):live.update(now+timedelta(seconds=i),dict(currentName=dict(text='다른캐릭터',confidence=.99),normalMenu=True),[],{})
-            self.assertEqual(len(store.state_records()),1)
-            self.assertIsNone(store.state_records()[0]['characterName']);store.close()
+            self.assertEqual(store.state_records(),[]);store.close()
 
 if __name__=='__main__':unittest.main()

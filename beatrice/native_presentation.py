@@ -5,7 +5,9 @@ from .content_match import ContentMatcher, record_detail
 
 def record_view(row, cached=None, *, matcher=None):
     """Retain the stored matching decision and expose completed records only."""
-    when = datetime.fromisoformat(row['observedAt']).astimezone().strftime('%Y.%m.%d %H:%M')
+    from .completion_record import recognition_record
+    row=recognition_record(row)
+    when = datetime.fromisoformat(row['observedAt']).astimezone().strftime('%Y.%m.%d %H:%M') if row.get('observedAt') else '완료 시각 미상'
     matcher = ContentMatcher(cached) if matcher is None else matcher
     detail = record_detail(row, cached, matcher=matcher)
     dungeon, mode = matcher.display_record_context(row)
@@ -63,6 +65,9 @@ class DungeonFooter:
         self.last_panel_seen = None
 
     def update(self, value, now):
+        if value.get('identity',{}).get('recordingAllowed') is False:
+            self.context=None;self.unit='';self.last_panel_seen=None
+            return
         dungeon = value.get('dungeon', {})
         panel = dungeon.get('raidPanelVisible', dungeon.get('currentRaidPanel', False))
         if panel: self.last_panel_seen = now

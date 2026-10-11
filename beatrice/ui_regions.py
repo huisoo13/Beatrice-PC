@@ -67,18 +67,25 @@ class UIRegionDetector:
         if self.config.get('elementConfig'):
             self.element_detector=UIRegionDetector(json.loads((ROOT/self.config['elementConfig']).read_text(encoding='utf-8')),progress=progress)
 
+    def locate_character(self,frame):
+        """Run only the character model in the production split architecture."""
+        return self.character_detector.locate(frame) if hasattr(self,'character_detector') else self.locate(frame)
+
+    def locate_dungeon(self,frame,character):
+        if not hasattr(self,'dungeon_detector'):return character
+        visible=any(character.get(k,{}).get('status','missing')!='missing' for k in
+                    ('game_menu','switch_dialog','server_table','loading_progress'))
+        card=get_box(character,'selected_character_card')
+        name=get_box(character,'selected_character_name')
+        visible=visible or bool(card and (get_box(character,'game_start_button') or
+                                         (name and contained(name,card))))
+        dungeon=({k:dict(status='missing',candidates=[],reason='character_ui_visible') for k in self.dungeon_detector.config['classes']}
+                 if visible else self.dungeon_detector.locate(frame))
+        return dict(character,**dungeon)
+
     def locate(self,frame):
         if hasattr(self,'character_detector'):
-            character=self.character_detector.locate(frame)
-            visible=any(character.get(k,{}).get('status','missing')!='missing' for k in
-                        ('game_menu','switch_dialog','server_table','loading_progress'))
-            card=get_box(character,'selected_character_card')
-            name=get_box(character,'selected_character_name')
-            visible=visible or bool(card and (get_box(character,'game_start_button') or
-                                             (name and contained(name,card))))
-            dungeon=({k:dict(status='missing',candidates=[],reason='character_ui_visible') for k in self.dungeon_detector.config['classes']}
-                     if visible else self.dungeon_detector.locate(frame))
-            return dict(character,**dungeon)
+            return self.locate_dungeon(frame,self.locate_character(frame))
         regions=self._locate(frame,self.model)
         menu=get_box(regions,'game_menu')
         if menu is not None and get_box(regions,'current_name_line') is None and regions.get('switch_dialog',{}).get('status')=='missing':

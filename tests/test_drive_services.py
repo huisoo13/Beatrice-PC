@@ -121,14 +121,14 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(preview['completedCount'],1)
         self.assertFalse(self.drive.resolve('stale',True))
         self.assertTrue(self.drive.resolve(preview['previewId'],False))
-        self.assertEqual(self.store.state_records()[0]['gate'],2)
+        self.assertEqual(self.store.state_records()[0]['gateNumber'],2)
         self.finish_download('offline');self.assertIsNone(self.drive.preview)
-        self.assertEqual(self.store.state_records()[0]['gate'],2)
+        self.assertEqual(self.store.state_records()[0]['gateNumber'],2)
 
     def test_restore_replaces_snapshot_and_backs_up_previous_db(self):
         self.account.session=session();self.seed(2);self.finish_download()
         preview_id=self.drive.preview['id'];self.assertTrue(self.drive.resolve(preview_id,True))
-        self.assertEqual(self.store.state_records()[0]['gate'],1)
+        self.assertEqual(self.store.state_records()[0]['gateNumber'],1)
         self.assertEqual(export_records(self.store)[0][0]['characterName'],'캐릭터')
         self.assertTrue(list((Path(self.temp.name)/'drive-backups').glob('*.sqlite3')))
         self.assertIsNone(self.store.drive_pending('person'))
@@ -136,11 +136,11 @@ class ServiceTests(unittest.TestCase):
     def test_wrong_account_and_backup_failure_never_apply(self):
         self.account.session=session();self.seed(2);self.finish_download()
         self.account.session['account']['sub']='other';self.drive.resolve(self.drive.preview['id'],True)
-        self.assertEqual(self.store.state_records()[0]['gate'],2)
+        self.assertEqual(self.store.state_records()[0]['gateNumber'],2)
         self.account.session=session();self.finish_download()
         with patch('beatrice.drive_service.restore_records',side_effect=OSError('backup failure')):
             self.drive.resolve(self.drive.preview['id'],True)
-        self.assertEqual(self.store.state_records()[0]['gate'],2)
+        self.assertEqual(self.store.state_records()[0]['gateNumber'],2)
 
     def test_shutdown_finishes_upload_and_ignores_download_result(self):
         self.account.session=session();self.seed()

@@ -15,7 +15,7 @@ def at(value):return datetime.fromisoformat(value.replace('Z','+00:00'))
 
 
 def row(gate=1, updated='2026-10-07T00:00:00.000Z', **changes):
-    return validate_records([dict(dict(characterName='캐릭터',dungeonName='던전',difficulty='하드',gate=gate,state='완료'),**changes)])[0] | {'updatedAt':updated}
+    return validate_records([dict(dict(characterName='캐릭터',dungeonName='던전',difficulty='하드',gate=gate,state='완료'),**changes)])[0] | {'updatedAt':updated,'observedAt':updated}
 
 
 class WeeklyTests(unittest.TestCase):
@@ -40,7 +40,7 @@ class WeeklyTests(unittest.TestCase):
             try:
                 def save(timestamp):
                     value=dict(row(),observedAt=timestamp)
-                    value.pop('recordID');value.pop('updatedAt')
+
                     with patch('beatrice.record_identity.datetime',wraps=datetime) as clock:
                         clock.now.return_value=at(timestamp)
                         return store.save_completions('name:캐릭터','던전',[value],1)
@@ -54,12 +54,12 @@ class WeeklyTests(unittest.TestCase):
                 store.acknowledge_drive('account',*before[2])
                 self.assertIsNone(store.drive_pending('account'))
                 second=save('2026-10-14T00:00:00Z')[0]
-                self.assertNotEqual(first['recordID'],second['recordID'])
+                self.assertNotEqual(first['recordId'],second['recordId'])
                 self.assertEqual(len(store.state_records()),1)
                 exported=export_records(store)[0]
                 self.assertEqual(len(exported),2)
-                self.assertEqual(len({r['recordID'] for r in exported}),2)
-                self.assertTrue(all(set(r)=={'characterName','dungeonName','difficulty','gate','state','recordID','updatedAt'} for r in exported))
+                self.assertEqual(len({r['recordId'] for r in exported}),2)
+                self.assertTrue(all(set(r)==set(__import__('beatrice.completion_record',fromlist=['FIELDS']).FIELDS) for r in exported))
                 # Acknowledging the old snapshot cannot acknowledge the later completion.
                 store.acknowledge_drive('account',*before[2])
                 self.assertIsNotNone(store.drive_pending('account'))
@@ -92,7 +92,7 @@ class WeeklyTests(unittest.TestCase):
             old.close()
             new=open_week(data,now=at('2026-10-08T00:00:00Z'))
             try:
-                self.assertEqual([r['gate'] for r in new.state_records()],[2])
+                self.assertEqual([r['gateNumber'] for r in new.state_records()],[2])
                 self.assertEqual(len(export_records(new)[0]),2)
                 before=export_snapshot(new)
                 new.roll_week(at('2026-10-14T06:00:00+09:00'))

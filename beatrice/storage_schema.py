@@ -5,7 +5,7 @@ from .record_identity import record_id, existing_time
 
 def initialize_schema(db):
     version = db.execute('PRAGMA user_version').fetchone()[0]
-    if version not in (0, 1, 2, 3, 4):
+    if version not in (0, 1, 2, 3, 4, 5):
         raise ValueError('지원하지 않는 DB 버전')
     db.executescript('''
     CREATE TABLE IF NOT EXISTS sessions (
@@ -56,14 +56,19 @@ def initialize_schema(db):
             db.execute('PRAGMA user_version=3')
     if version<4:
         with db:
-            db.execute("DELETE FROM gate_states WHERE json_extract(payload,'$.state') IS NOT '완료'")
+            db.execute("DELETE FROM gate_states WHERE json_extract(payload,'$.state') IS NOT '완료' AND json_extract(payload,'$.contentName') IS NULL")
             db.execute('PRAGMA user_version=4')
+    if version>=5:
+        completion_constraints(db)
+        return
+    db.execute('DROP TRIGGER IF EXISTS completion_only_insert')
+    db.execute('DROP TRIGGER IF EXISTS completion_only_update')
     db.executescript('''
     CREATE TRIGGER IF NOT EXISTS completion_only_insert BEFORE INSERT ON gate_states
-    WHEN json_extract(NEW.payload,'$.state') IS NOT '완료'
+    WHEN json_extract(NEW.payload,'$.state') IS NOT '완료' AND json_extract(NEW.payload,'$.contentName') IS NULL
     BEGIN SELECT RAISE(ABORT,'Only completed gates may be stored'); END;
     CREATE TRIGGER IF NOT EXISTS completion_only_update BEFORE UPDATE ON gate_states
-    WHEN json_extract(NEW.payload,'$.state') IS NOT '완료'
+    WHEN json_extract(NEW.payload,'$.state') IS NOT '완료' AND json_extract(NEW.payload,'$.contentName') IS NULL
     BEGIN SELECT RAISE(ABORT,'Only completed gates may be stored'); END;
     ''')
     # Add metadata without changing record contents or scheduling an upload.
@@ -75,3 +80,46 @@ def initialize_schema(db):
                 row['updatedAt']=existing_time(row)
                 db.execute('UPDATE gate_states SET payload=? WHERE owner=? AND dungeon_key=? AND gate=?',
                     (json.dumps(row,ensure_ascii=False),owner,dungeon,gate))
+
+    from .completion_record import canonical,validate
+    with db:
+        db.execute('DROP TRIGGER IF EXISTS completion_only_insert')
+        db.execute('DROP TRIGGER IF EXISTS completion_only_update')
+        db.execute("CREATE TABLE gate_states_v5 (owner TEXT NOT NULL,dungeon_key TEXT NOT NULL,gate INTEGER NOT NULL CHECK(gate>=0),payload TEXT NOT NULL,PRIMARY KEY(owner,dungeon_key,gate))")
+        for owner,dungeon,gate,payload in db.execute('SELECT owner,dungeon_key,gate,payload FROM gate_states').fetchall():
+            old=json.loads(payload)
+            if not old.get('characterName') or old.get('state','완료')!='완료':continue
+            row=validate(canonical(old))
+            owner=('test:' if row['isTest'] else '')+'name:'+row['characterName']
+            db.execute('INSERT OR REPLACE INTO gate_states_v5 VALUES(?,?,?,?)',(owner,dungeon,row['gateNumber'],json.dumps(row,ensure_ascii=False)))
+        db.execute('DROP TABLE gate_states')
+        db.execute('ALTER TABLE gate_states_v5 RENAME TO gate_states')
+        for identity,payload in db.execute('SELECT record_id,payload FROM completion_history').fetchall():
+            old=json.loads(payload)
+            if not old.get('characterName') or old.get('state','완료')!='완료':
+                db.execute('DELETE FROM completion_history WHERE record_id=?',(identity,));continue
+            row=validate(canonical(old))
+            db.execute('UPDATE completion_history SET payload=? WHERE record_id=?',(json.dumps(row,ensure_ascii=False),identity))
+        if any(not json.loads(payload)['isTest'] for payload, in db.execute('SELECT payload FROM gate_states UNION ALL SELECT payload FROM completion_history')):
+            db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+        db.execute('PRAGMA user_version=5')
+
+    completion_constraints(db)
+
+
+def completion_constraints(db):
+    from .completion_record import validate
+    def valid(payload,gate):
+        try:
+            row=validate(json.loads(payload))
+            return int(row['gateNumber']==gate)
+        except (ValueError,TypeError,KeyError):return 0
+    db.create_function('valid_completion',2,valid)
+    db.executescript("""
+        CREATE TRIGGER IF NOT EXISTS completion_only_insert BEFORE INSERT ON gate_states
+        WHEN valid_completion(NEW.payload,NEW.gate)=0
+        BEGIN SELECT RAISE(ABORT,'Canonical completion required'); END;
+        CREATE TRIGGER IF NOT EXISTS completion_only_update BEFORE UPDATE ON gate_states
+        WHEN valid_completion(NEW.payload,NEW.gate)=0
+        BEGIN SELECT RAISE(ABORT,'Canonical completion required'); END;
+    """)

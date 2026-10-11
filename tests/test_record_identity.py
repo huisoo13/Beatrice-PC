@@ -9,7 +9,7 @@ from beatrice.storage import Store
 
 
 def row(**kwargs):
-    return dict(dict(characterName='테스트', dungeonName='던전', difficulty='하드', gate=1, state='진행중'), **kwargs)
+    return dict(dict(characterName='테스트', dungeonName='던전', difficulty='하드', gate=1, state='완료'), **kwargs)
 
 
 def synced(at='2026-09-27T01:00:00.000Z', **kwargs):
@@ -48,7 +48,7 @@ class IdentityTests(unittest.TestCase):
 
     def test_same_timestamp_conflict_and_forged_identity_rejected(self):
         with self.assertRaises(ValueError):
-            validate_records([synced(), synced(state='완료')])
+            validate_records([synced(), synced(difficulty='노말')])
         wrong = synced()
         wrong['recordID'] = 'some-uuid'
         with self.assertRaises(ValueError):
@@ -76,13 +76,13 @@ class StoredIdentityTests(unittest.TestCase):
         self.assertEqual(first['updatedAt'], repeated['updatedAt'])
         changed = self.save(difficulty='노말')
         completed = self.save(state='완료', difficulty='노말')
-        self.assertEqual(first['recordID'], completed['recordID'])
-        self.assertEqual(first['recordID'], changed['recordID'])
+        self.assertEqual(first['recordId'], completed['recordId'])
+        self.assertEqual(first['recordId'], changed['recordId'])
         self.assertEqual(first,changed)
         self.assertEqual(first,completed)
         self.assertEqual(changed['difficulty'], '하드')
         self.assertEqual(len(self.store.state_records()), 1)
-        self.assertEqual(self.save(state='진행중', difficulty='노말'), completed)
+        self.assertEqual(self.save(state='완료', difficulty='노말'), completed)
         self.assertEqual(self.save(state='완료', difficulty='하드'), completed)
 
     def test_export_restore_and_restart_preserve_both_fields(self):
@@ -94,25 +94,27 @@ class StoredIdentityTests(unittest.TestCase):
         self.store = Store(self.path)
         self.assertEqual(export_records(self.store)[0], rows)
 
-    def test_legacy_local_metadata_uses_saved_time_without_queueing(self):
+    def test_legacy_local_metadata_uses_saved_time_and_schedules_new_drive_json(self):
         legacy = dict(row(state='완료'), savedAt='2026-09-26T15:00:00+09:00')
         with self.store.db:
+            self.store.db.execute('DROP TRIGGER completion_only_insert')
+            self.store.db.execute('PRAGMA user_version=4')
             self.store.db.execute('INSERT INTO gate_states VALUES (?,?,?,?)',
                 ('name:테스트', '던전', 1, json.dumps(legacy)))
         self.store.close()
         self.store = Store(self.path)
         actual = self.store.state_records()[0]
         self.assertEqual(actual['updatedAt'], '2026-09-26T06:00:00.000Z')
-        self.assertEqual(actual['recordID'], record_id('테스트', '던전', 1))
-        self.assertIsNone(self.store.drive_pending('account'))
+        self.assertEqual(actual['recordId'], record_id('테스트', '던전', 1))
+        self.assertIsNotNone(self.store.drive_pending('account'))
 
     def test_gateless_id_uses_external_zero(self):
         self.save(completionScope='raid')
         rows, _ = export_records(self.store)
-        self.assertEqual(rows[0]['gate'], 0)
-        self.assertEqual(rows[0]['gate'], 0)
-        self.assertEqual(rows[0]['recordID'], self.store.history_records()[0]['recordID'])
-        self.assertRegex(rows[0]['recordID'], r'^br2_[0-9a-f]{32}$')
+        self.assertEqual(rows[0]['gateNumber'], 0)
+        self.assertEqual(rows[0]['gateNumber'], 0)
+        self.assertEqual(rows[0]['recordId'], self.store.history_records()[0]['recordId'])
+        self.assertRegex(rows[0]['recordId'], r'^br2_[0-9a-f]{32}$')
         restore_records(self.store, rows, Path(self.temp.name) / 'backups')
         self.assertEqual(export_records(self.store)[0], rows)
 

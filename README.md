@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-11: [완료 기록 형식·캐릭터 확정 후 탐지](docs/63-completion-record-schema.md). 캐릭터 미확정 상태에서는 던전 YOLO·OCR·관문·배너 탐지를 중지합니다. 완료 기록은 characterName·contentName·gateNumber와 세 시각으로 통일하며 DB v5·Drive JSON v4로 변환합니다. 전체 관문 수 미상은 0, 소급 귀속은 제거하고 관측 시각 기준 주간 중복 방지를 유지합니다. DB 변환 전 백업과 Drive 원본 백업을 제공합니다. 새 JSON의 OCR 원문도 field_name으로 보상을 매칭하며 기존 미매칭 기록은 정확한 보상 확인 후 ID·완료 시각을 보존해 갱신합니다. iOS 적용은 후속 작업입니다.
+
 2026-10-11: [ContentJSON 배열 구조와 이름 매칭](docs/content-catalog.md). OCR은 field_name으로 비교하고 name을 새 기록·화면·주간 현황·보상표에 사용합니다. 이전 캐시와 기록 ID·시각을 보존하며, 별칭 사이의 주간 중복 판정을 유지합니다.
 
 2026-10-10: [모듈 경계 정리](docs/module-boundaries.md). 공용 데이터 갱신·화면 표시 변환·DB 스키마와 저장소 API·기록/보상표 UI·엔진 메시지 모델·추적기 중단 처리·평가 계산을 분리했습니다. Python 테스트 409개, 표시·프로토콜 검사 45개, UI 자동 검증과 실제 모델/OBS 시작·종료 검사를 통과했습니다.
@@ -112,7 +114,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 로스트아크 화면에서 관문 상태를 읽고 캐릭터별 완료 기록을 로컬에 저장하는 Windows 앱을 단계적으로 개발합니다. 현재 Windows 실게임 환경에서 인식 동작을 확인하고 있으며, 다양한 화면과 전환 경로는 계속 검증합니다.
 
-현재 저장 정책·실게임 확인·로그 위치는 [전체 관문 현재 상태](docs/28-whole-gate-state.md), 인식 구조는 [역할별 모델과 확정 정보 유지](docs/25-role-models-and-stable-context.md)를 확인합니다. [YOLO·OCR 통합 정리](docs/21-yolo-ocr-current.md)와 이전 단계별 문서는 작성 당시 구현 기록입니다.
+현재 저장 정책은 [완료 기록 형식](docs/63-completion-record-schema.md), 이전 실게임 확인·로그 위치는 [전체 관문 현재 상태](docs/28-whole-gate-state.md), 인식 구조는 [역할별 모델과 확정 정보 유지](docs/25-role-models-and-stable-context.md)를 확인합니다. [YOLO·OCR 통합 정리](docs/21-yolo-ocr-current.md)와 이전 단계별 문서는 작성 당시 구현 기록입니다.
 
 이전 전환 단계: [던전 패널 YOLO 전환 준비](docs/22-dungeon-panel-yolo.md).
 
@@ -140,18 +142,19 @@ Beatrice-PC/
 │  ├─ public_assets.py            # EmblemJSON·Drive 이미지 버전 캐시
 │  ├─ emblem_cache.py             # CDN SVG 조건부 갱신·직업별 로컬 경로
 │  ├─ content_catalog.py          # 신규·이전 ContentJSON 검증·보상 인덱스
-│  ├─ content_match.py            # OCR field_name → name·기존 기록 별칭·보상 매칭
+│  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
-│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 저장
-│  ├─ storage_schema.py           # DB 스키마·이전 데이터 변환
+│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 저장·보상 매칭 갱신
+│  ├─ storage_schema.py           # DB v5 스키마·이전 완료 JSON 변환
+│  ├─ completion_record.py        # 완료 JSON 검증·변환·주간 중복 규칙
 │  ├─ weekly.py                   # 주간 기준·저장소 열기
-│  ├─ drive_data.py               # 공유 JSON·내보내기·복원
+│  ├─ drive_data.py               # Drive JSON v4·이전 형식 읽기·복원
 │  │
 │  ├─ recognition/               # 실시간 인식
 │  │  ├─ __init__.py              # 공개 진입점
 │  │  ├─ service.py               # 캡처·인식 실행 생명주기
-│  │  └─ pipeline.py              # 프레임별 YOLO·OCR 분석
+│  │  └─ pipeline.py              # 캐릭터/던전 분리 분석 공개 API
 │  ├─ character_vision.py         # 캐릭터 영역 OCR
 │  ├─ dungeon_observer.py         # 던전 영역 관측
 │  ├─ character.py               # 캐릭터 상태 추적·중단 처리
@@ -159,7 +162,7 @@ Beatrice-PC/
 │  ├─ completion_banner.py       # 완료 배너 추적·중단 처리
 │  ├─ live.py                    # 관측 결과·완료 판단·기록 연결
 │  ├─ state_session.py           # 완료 기록 세션
-│  ├─ deferred_session.py        # 캐릭터 미확정 기록 세션
+│  ├─ deferred_session.py        # 이전 오프라인 이벤트 세션 (실시간 경로 미사용)
 │  │
 │  ├─ drive/                     # Google Drive API
 │  │  ├─ __init__.py              # 공개 진입점
@@ -213,10 +216,14 @@ MainWindow
 │                 │                  └─ PublicAssetCache → EmblemCache → CDN SVG
 │                 ├─ native_presentation → 화면 표시 데이터
 │                 ├─ Store → ContentMatcher → name 저장·별칭 중복 검사
-│                 │          └─ 스키마·트랜잭션·기록 ID·시각 보존
+│                 │          ├─ refresh_catalog_matches → 미매칭 보상·Drive 전송 예약
+│                 │          ├─ completion_record → 완료 JSON·관측 시각의 주간 판정
+│                 │          └─ storage_schema → 변환·트랜잭션·기록 ID·시각 보존
 │                 ├─ GoogleAccount / PersonalDrive → 인증·Drive API
 │                 └─ Worker → RecognitionService
-│                             ├─ RecognitionPipeline → YOLO·OCR
+│                             ├─ RecognitionPipeline.analyze_character → 캐릭터 YOLO·OCR
+│                             ├─ LiveCoordinator.observe_character → 확정 여부
+│                             ├─ 확정 시 analyze_dungeon → 던전 YOLO·OCR·관문·배너
 │                             └─ LiveCoordinator → StateSession → Store
 ├─ RecordsView
 ├─ CharacterPortraitView

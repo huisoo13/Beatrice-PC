@@ -31,28 +31,18 @@ class PersistenceBoundaryTests(unittest.TestCase):
             finally:
                 store.close()
 
-    def test_failed_assignment_rolls_back_all_pending_groups(self):
+    def test_unconfirmed_rows_are_not_persisted_or_promoted(self):
         with tempfile.TemporaryDirectory() as folder:
-            store = Store(Path(folder) / 'records.sqlite3')
+            store=Store(Path(folder)/'records.sqlite3')
             try:
-                for dungeon in ('던전A', '던전B'):
-                    store.save_completions('pending:token', dungeon, [dict(characterName=None,
-                        dungeonName=dungeon, difficulty='하드', gate=1, state='완료',
-                        observedAt='2026-10-08T00:00:00Z')], 1)
-                before = store.state_records()
-                save, count = store.save_completions, 0
-                def fail_second(*args, **kwargs):
-                    nonlocal count
-                    count += 1
-                    if count == 2: raise sqlite3.IntegrityError('second group failed')
-                    return save(*args, **kwargs)
-                with patch.object(store, 'save_completions', side_effect=fail_second):
-                    with self.assertRaises(sqlite3.IntegrityError):
-                        store.assign_pending_character('pending:token', 'name:캐릭터', '캐릭터')
-                self.assertEqual(store.state_records(), before)
-                self.assertEqual(store.state_records('name:캐릭터'), [])
-            finally:
-                store.close()
+                for dungeon in ('던전A','던전B'):
+                    store.save_completions('pending:token',dungeon,[dict(characterName=None,
+                        dungeonName=dungeon,difficulty='하드',gate=1,state='완료',observedAt='2026-10-08T00:00:00Z')],1)
+                store.assign_pending_character('pending:token','name:캐릭터','캐릭터')
+                self.assertEqual(store.history_records(),[])
+                self.assertEqual(store.state_records(),[])
+                self.assertIsNone(store.drive_pending('account'))
+            finally:store.close()
 
 class InterruptionBoundaryTests(unittest.TestCase):
     def test_character_keeps_identity_and_clears_partial_evidence(self):

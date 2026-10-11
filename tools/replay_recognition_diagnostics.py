@@ -73,7 +73,7 @@ def main():
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
     summary=dict(identityInitialization='recorded_confirmed_identity' if args.restore_recorded_identity else 'fresh',
-                 sessions={sid:dict(states=values[3].state_records(),events=[r for r in values[3].state_records() if r['state']=='완료' and r.get('characterName')],pendingEvents=[r for r in values[3].state_records() if not r.get('characterName')]) for sid,values in sessions.items()})
+                 sessions={sid:dict(states=values[3].state_records(),events=[r for r in values[3].state_records() if not r['isTest'] and r.get('characterName')],pendingEvents=[r for r in values[3].state_records() if not r.get('characterName')]) for sid,values in sessions.items()})
     args.output.with_suffix('.summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
     for values in sessions.values():values[3].close()
     print('DONE',len(results),flush=True)

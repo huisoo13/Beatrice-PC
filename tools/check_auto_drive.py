@@ -60,13 +60,13 @@ def main():
                         if len(created) != complete_gate:
                             raise DriveError('완료 변경당 자동 업로드 횟수가 일치하지 않습니다.')
                         cloud = client.download()['records']
-                        if cloud[complete_gate - 1]['state'] != '완료':
+                        if cloud[complete_gate - 1]['gateNumber'] != complete_gate:
                             raise DriveError('Drive의 최신 완료 상태가 일치하지 않습니다.')
-                        if any(not r.get('recordID') or not r.get('updatedAt') for r in cloud):
-                            raise DriveError('Drive에 recordID 또는 updatedAt이 없습니다.')
+                        if any(not r.get('recordId') or not r.get('updatedAt') for r in cloud):
+                            raise DriveError('Drive에 recordId 또는 updatedAt이 없습니다.')
                         if previous_cloud:
-                            if cloud[0]['recordID'] != previous_cloud[0]['recordID']:
-                                raise DriveError('기존 관문의 recordID가 달라졌습니다.')
+                            if cloud[0]['recordId'] != previous_cloud[0]['recordId']:
+                                raise DriveError('기존 관문의 recordId가 달라졌습니다.')
                             if cloud[0]['updatedAt'] != previous_cloud[0]['updatedAt']:
                                 raise DriveError('변경 없는 기록의 시각이 달라졌습니다.')
                         previous_cloud = cloud
@@ -74,7 +74,7 @@ def main():
                     store.save_states('name:자동연결테스트', '테스트던전', rows)
                     if store.drive_pending(session['account']['sub']):
                         raise DriveError('같은 완료를 다시 관측하면 안 됩니다.')
-                    print('PASS: recordID 유지 / 변경된 기록만 updatedAt 갱신 / 동일 완료 중복 전송 없음', flush=True)
+                    print('PASS: recordId 유지 / 변경된 기록만 updatedAt 갱신 / 동일 완료 중복 전송 없음', flush=True)
             finally:
                 panel.shutdown()
                 login.shutdown()
