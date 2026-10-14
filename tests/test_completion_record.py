@@ -152,7 +152,7 @@ class RecordContractTests(unittest.TestCase):
         self.assertEqual(store.history_records(),[])
         live.update(at+timedelta(seconds=8),{},boxes,context)
         self.assertEqual(store.history_records()[0]['observedAt'],'2026-10-08T00:00:08.000Z')
-        live.update(at+timedelta(seconds=9),dict(serverSelection=True),boxes,context)
+        for i in range(9,12):live.update(at+timedelta(seconds=i),dict(serverSelection=True),boxes,context)
         self.assertIsNone(live.context);self.assertIsNone(live.session.tracker)
         self.assertEqual(len(store.history_records()),1)
 

@@ -77,8 +77,7 @@ class UIRegionDetector:
                     ('game_menu','switch_dialog','server_table','loading_progress'))
         card=get_box(character,'selected_character_card')
         name=get_box(character,'selected_character_name')
-        visible=visible or bool(card and (get_box(character,'game_start_button') or
-                                         (name and contained(name,card))))
+        visible=visible or bool(card and name and contained(name,card))
         dungeon=({k:dict(status='missing',candidates=[],reason='character_ui_visible') for k in self.dungeon_detector.config['classes']}
                  if visible else self.dungeon_detector.locate(frame))
         return dict(character,**dungeon)

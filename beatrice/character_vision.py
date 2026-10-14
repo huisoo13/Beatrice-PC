@@ -58,14 +58,14 @@ class CharacterVision:
             return None
         # 레벨과 이름 사이 공백도 같은 줄로 묶어야 이름만 남고 Lv가 사라지지 않습니다.
         max_gap=max(12,crop.shape[0]) if includes_level else None
+        # Normalize dim names before component selection: a partial bright
+        # glyph group is not proof that the entire name was extracted.
+        values=np.max(crop,axis=2)
+        peak=float(np.percentile(values,98))
+        contrast=peak-float(np.percentile(values,5))
+        if 24<=peak<160 and contrast>=8:
+            crop=np.clip(crop.astype(np.float32)*(200/peak),0,255).astype(np.uint8)
         trimmed=trim_name_line(crop,max_gap=max_gap)
-        if trimmed is None:
-            # Modal overlays dim the already detected name. Normalize luminance
-            # locally, without choosing another screen region or guessing text.
-            peak=float(np.percentile(np.max(crop,axis=2),98))
-            if 24<=peak<120:
-                brighter=np.clip(crop.astype(np.float32)*(200/peak),0,255).astype(np.uint8)
-                trimmed=trim_name_line(brighter,max_gap=max_gap)
         crop=trimmed
         if crop is None:
             return dict(accepted=None,raw=[],status='no_text_pixels')

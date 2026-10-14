@@ -38,6 +38,8 @@ class CharacterTracker:
         self.login_recovery=0
         self.login_seen_at=None
         self.login_card=None
+        self.selection_candidate=None
+        self.selection_count=0
 
     def capture_interrupted(self):
         self.candidate = None
@@ -45,6 +47,8 @@ class CharacterTracker:
         self.recovery_count = 0
         self.login_count = 0
         self.login_recovery = 0
+        self.selection_candidate=None
+        self.selection_count=0
 
     def update(self, seconds, observation):
         if not math.isfinite(seconds) or (self.last_time is not None and seconds <= self.last_time):
@@ -54,8 +58,36 @@ class CharacterTracker:
             self.count=0
             self.recovery_count=0
             self.login_count=0;self.login_recovery=0
+            self.selection_candidate=None;self.selection_count=0
         self.last_time=seconds
         actions=[]
+        # Two valid selection-name frames plus actual loading are sufficient
+        # for a fast real login transition, even before a third selection frame.
+        if (not self.blocked and observation.get('loginLoading') and self.selection_count>=2
+                and self.selection_candidate and self.selection_candidate[0]=='character'):
+            self.login_target=self.selection_candidate[1];self.login_loading=True
+            self.login_recovery=0;self.login_seen_at=seconds
+            self.blocked=True;self.current=None;self.switching=False;self.target=None
+            self.switch_deadline=None
+            actions.append(dict(type='suspend'))
+        selection=bool(observation.get('serverSelection') or observation.get('characterSelection'))
+        if not selection:
+            self.selection_candidate=None;self.selection_count=0
+        elif not self.blocked:
+            selected=valid_name(observation.get('selectedName'))
+            evidence=('server',None) if observation.get('serverSelection') else ('character',selected)
+            if evidence[0]=='character' and selected is None:
+                self.selection_candidate=None;self.selection_count=0
+            else:
+                self.selection_count=self.selection_count+1 if self.selection_candidate==evidence else 1
+                self.selection_candidate=evidence
+            if self.selection_count<self.confirmations:
+                return dict(currentName=self.current,pendingName=None,previewName=None,
+                            recordingAllowed=True,status='confirmed',actions=[])
+            if evidence[0]=='character':
+                self.login_candidate=selected;self.login_count=self.confirmations-1
+                self.login_card=None
+            self.selection_candidate=None;self.selection_count=0
         # 메뉴 재관측은 최초 접속 흐름을 놓쳤을 때도 항상 사용할 수 있습니다.
         if observation.get('normalMenu') and valid_name(observation.get('currentName')):
             self.login_target=None;self.login_loading=False;self.login_recovery=0

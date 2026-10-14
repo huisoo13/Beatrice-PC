@@ -129,8 +129,9 @@ class NativeBridgeTests(unittest.TestCase):
             api.characters.profile.assert_not_called()
 
     def seed(self):
+        from datetime import datetime, timezone
         row = dict(characterName='캐릭터', dungeonName='던전', difficulty='하드', gate=1,
-                   state='완료', observedAt='2026-10-07T12:00:00+00:00')
+                   state='완료', observedAt=datetime.now(timezone.utc).isoformat())
         self.host.store.save_completions('name:캐릭터', '던전', [row], 2)
         return row
 

@@ -7,12 +7,11 @@ CLASSES=['server_table','selected_character_card','selected_character_name','gam
 def observe_login(frame, regions, vision):
     card=get_box(regions,'selected_character_card')
     name=get_box(regions,'selected_character_name')
-    start=get_box(regions,'game_start_button')
     # A blue selected card with its own name is sufficient, including under
-    # the password overlay. The start button is supporting evidence only.
+    # the password overlay. A start button never substitutes for the name.
     name_inside=bool(card and name and contained(name,card))
     in_game_menu=get_box(regions,'game_menu') or get_box(regions,'switch_dialog')
-    selection=bool(not in_game_menu and card and (name_inside or start))
+    selection=bool(not in_game_menu and name_inside)
     reading=None
     if selection and name_inside:
         reading=vision.read_name(frame,name)

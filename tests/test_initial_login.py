@@ -35,9 +35,62 @@ class InitialLoginTests(unittest.TestCase):
         self.assertEqual(result['currentName'],'테베체')
     def test_server_return_clears_old_character(self):
         for _ in range(3):self.feed(currentName=dict(text='후이수',confidence=.99))
+        for _ in range(2):self.assertTrue(self.feed(serverSelection=True)['recordingAllowed'])
         result=self.feed(serverSelection=True)
         self.assertFalse(result['recordingAllowed']);self.assertIsNone(result['currentName'])
         self.assertEqual(result['actions'],[dict(type='suspend')])
+
+    def test_single_selection_frame_does_not_erase_confirmed_character(self):
+        for _ in range(3):self.feed(currentName=dict(text='테베체',confidence=.99))
+        result=self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        self.assertEqual(result['currentName'],'테베체');self.assertTrue(result['recordingAllowed'])
+        self.feed()
+        result=self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        self.assertTrue(result['recordingAllowed'])
+
+    def test_repeated_nameless_selection_cannot_erase_character(self):
+        for _ in range(3):self.feed(currentName=dict(text='테베체',confidence=.99))
+        for _ in range(5):
+            result=self.feed(characterSelection=True)
+            self.assertEqual(result['currentName'],'테베체');self.assertTrue(result['recordingAllowed'])
+
+    def test_stable_named_selection_suspends_then_requires_fresh_target(self):
+        for _ in range(3):self.feed(currentName=dict(text='테베체',confidence=.99))
+        for _ in range(2):self.assertTrue(self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))['recordingAllowed'])
+        result=self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        self.assertFalse(result['recordingAllowed']);self.assertEqual(result['actions'],[dict(type='suspend')])
+        for _ in range(2):result=self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        self.assertEqual(result['pendingName'],'후이수')
+        self.feed(loginLoading=True)
+        for _ in range(3):result=self.feed(loginLoadingAbsent=True)
+        self.assertEqual(result['currentName'],'후이수');self.assertTrue(result['recordingAllowed'])
+
+    def test_selection_evidence_resets_on_capture_interruption_and_name_change(self):
+        for _ in range(3):self.feed(currentName=dict(text='테베체',confidence=.99))
+        for _ in range(2):self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        self.tracker.capture_interrupted()
+        self.assertTrue(self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))['recordingAllowed'])
+        self.assertTrue(self.feed(characterSelection=True,selectedName=dict(text='힐레우스',confidence=.99))['recordingAllowed'])
+
+    def test_fast_real_selection_requires_two_names_and_loading(self):
+        for _ in range(3):self.feed(currentName=dict(text='테베체',confidence=.99))
+        for _ in range(2):self.feed(characterSelection=True,selectedName=dict(text='후이수',confidence=.99))
+        result=self.feed(loginLoading=True)
+        self.assertEqual(result['pendingName'],'후이수');self.assertFalse(result['recordingAllowed'])
+        self.assertEqual(result['actions'],[dict(type='suspend')])
+        for _ in range(3):result=self.feed(loginLoadingAbsent=True)
+        self.assertEqual(result['currentName'],'후이수');self.assertTrue(result['recordingAllowed'])
+
+    def test_actual_popup_detections_without_name_are_not_selection(self):
+        import numpy as np
+        from unittest.mock import Mock
+        from beatrice.initial_login import observe_login
+        for card,start in (([1305,736,1523,798],[1568,1013,1878,1093]),([0,284,2626,1148],[3210,1336,3409,1406])):
+            regions={kind:dict(status='detected',xyxy=box,confidence=.99) for kind,box in
+                     (('selected_character_card',card),('game_start_button',start))}
+            vision=Mock()
+            result=observe_login(np.zeros((1440,3440,3),dtype=np.uint8),regions,vision)
+            self.assertFalse(result['characterSelection']);vision.read_name.assert_not_called()
     def test_menu_fallback_after_missing_loading(self):
         self.select()
         for _ in range(3):result=self.feed(normalMenu=True,currentName=dict(text='테베체',confidence=.99))
@@ -176,6 +229,26 @@ class InitialLoginTests(unittest.TestCase):
         self.assertEqual(reader.recognize.call_count,2)
         reader.reset_mock()
         result=vision.read_name(np.zeros_like(frame),[30,30,150,60])
+        self.assertEqual(result['status'],'no_text_pixels');reader.recognize.assert_not_called()
+
+    def test_dim_name_normalizes_before_trimming_partial_bright_letters(self):
+        import cv2,numpy as np
+        from unittest.mock import Mock
+        from beatrice.character_vision import CharacterVision
+        frame=np.zeros((60,150,3),dtype=np.uint8)
+        cv2.putText(frame,'AB',(20,32),cv2.FONT_HERSHEY_SIMPLEX,.6,(140,140,140),1)
+        cv2.putText(frame,'CD',(45,32),cv2.FONT_HERSHEY_SIMPLEX,.6,(100,100,100),1)
+        reader=Mock();reader.recognize.return_value=[(None,'ABCD',.99)]
+        result=CharacterVision(reader=reader).read_name(frame,[18,16,74,34])
+        self.assertEqual(result['accepted']['text'],'ABCD')
+        self.assertGreaterEqual(reader.recognize.call_args_list[0].args[0].shape[1],45)
+
+    def test_flat_dim_background_is_not_promoted_to_name_pixels(self):
+        import numpy as np
+        from unittest.mock import Mock
+        from beatrice.character_vision import CharacterVision
+        reader=Mock()
+        result=CharacterVision(reader=reader).read_name(np.full((40,100,3),80,dtype=np.uint8),[10,10,80,30])
         self.assertEqual(result['status'],'no_text_pixels');reader.recognize.assert_not_called()
 
     def test_missing_animated_marker_is_not_loading_exit_in_same_scene(self):

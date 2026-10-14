@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-10-14: [캐릭터 선택 오탐 보완](docs/67-character-selection-false-positives.md). 영지 이동·팔찌 팝업 음성 학습을 추가하고, 카드 내부 이름 및 연속 관측으로 기존 캐릭터 확정 해제를 검증합니다. dim 이름의 부분 글자 누락도 보완했습니다.
+
 2026-10-11: [골드 보상 여부 인식·기록](docs/65-gold-reward-recognition.md). 관문 보상표를 전용 YOLO로 탐지하고 제목 OCR·새 완료 기록·반복 관측을 확인해 `goldReward`를 저장합니다. 주간 합계는 획득·미확인 기록의 공용 골드를 더하고, 미획득은 0으로 처리합니다. 최종 보상표는 현재 전체 관문 완료를 확인한 뒤 마지막 관문에 연결합니다.
 
 2026-10-11: [던전 제목 첫 숫자 탐지 보강](docs/64-title-first-digit-training.md). 실제 1막 화면과 dim·크기 변형으로 던전 요소 YOLO를 추가 학습했습니다. 같은 플레이 OCR 56/56, 기존 요소 89/89, EX 하드 29/29를 통과했으며 OCR·공용 매칭·저장 규칙은 유지합니다. 앱 재실행 후 새 모델을 불러옵니다.
@@ -137,7 +139,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 ## 모듈 구조
 
-최종 갱신: 2026-10-11. 주요 실행 모듈과 관련 파일을 표시합니다.
+최종 갱신: 2026-10-14. 주요 실행 모듈과 관련 파일을 표시합니다.
 모듈의 추가·삭제·이동, 책임 또는 연결 관계를 변경할 때 이 구조와 설명을 함께 갱신합니다.
 각 모듈의 API와 검증 근거는 [모듈 경계 정리](docs/module-boundaries.md)를 참고하세요.
 
@@ -167,9 +169,11 @@ Beatrice-PC/
 │  │  ├─ __init__.py              # 공개 진입점
 │  │  ├─ service.py               # 캡처·인식 실행 생명주기
 │  │  └─ pipeline.py              # 캐릭터/던전 분리 분석 공개 API
-│  ├─ character_vision.py         # 캐릭터 영역 OCR
+│  ├─ character_vision.py         # 캐릭터 영역 OCR·dim 전체 글자 보존
+│  ├─ initial_login.py            # 카드 내부 이름으로 최초 접속 관측
+│  ├─ ui_regions.py               # YOLO 영역·카드/이름 관계·던전 분석 분리
 │  ├─ dungeon_observer.py         # 던전 영역 관측
-│  ├─ character.py               # 캐릭터 상태 추적·중단 처리
+│  ├─ character.py               # 캐릭터 상태 추적·선택 화면 연속 확인·중단 처리
 │  ├─ dungeon.py                 # 던전 OCR·상태 추적·중단 처리
 │  ├─ completion_banner.py       # 완료 배너 추적·중단 처리
 │  ├─ gold_reward.py             # 보상표·통화 영역 YOLO·관문 제목 OCR·dim 정규화
@@ -230,6 +234,8 @@ Beatrice-PC/
 │
 └─ tools/
    ├─ evaluation_geometry.py     # 공통 IoU 계산
+   ├─ prepare_character_false_positives.py  # 선택 화면 오탐 음성 자료·기존 라벨 보존
+   ├─ evaluate_character_false_positives.py # 기존 라벨 탐지·팝업 오탐 비교
    ├─ review_title_elements.py   # 제목 첫 숫자 학습 자료·YOLO/OCR 재생 검증
    ├─ train_gold_reward.py       # 검토한 보상표·dim·크기 변형 학습 자료 준비
    ├─ evaluate_gold_reward.py    # 실제 보상표·같은 세션 별도 프레임·음성 평가
@@ -240,7 +246,7 @@ Beatrice-PC/
 
 주요 연결 관계:
 
-로스트아크 HTTP 503은 `LostArkMaintenanceError`로 구분합니다. 공통 클라이언트는 최소 5분(더 긴 Retry-After는 존중) 동안 추가 전송을 보류하며, CharacterCatalog는 캐시를 유지하고 전체 조회를 보류합니다. LostArkRegistration은 기존 키를 유지하며 점검·서비스 중단 안내를 전달합니다. 최종 갱신: 2026-10-11.
+로스트아크 HTTP 503은 `LostArkMaintenanceError`로 구분합니다. 공통 클라이언트는 최소 5분(더 긴 Retry-After는 존중) 동안 추가 전송을 보류하며, CharacterCatalog는 캐시를 유지하고 전체 조회를 보류합니다. LostArkRegistration은 기존 키를 유지하며 점검·서비스 중단 안내를 전달합니다. 최종 갱신: 2026-10-14.
 
 ```text
 MainWindow

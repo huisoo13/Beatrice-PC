@@ -16,15 +16,15 @@
   "confidence": 0.7,
   "imageSize": 960,
   "nmsIou": 0.4,
-  "trainingRun": "character-dim-1006",
-  "trainingManifest": "data/annotations/login-dim-1006.json",
+  "trainingRun": "character-false-positive-1014",
+  "trainingManifest": "data/annotations/character-false-positive-1014.json",
   "classConfidence": {
     "target_name_line": 0.5,
-    "selected_character_card": 0.25,
+    "selected_character_card": 0.5,
     "selected_character_name": 0.35,
-    "game_start_button": 0.2,
+    "game_start_button": 0.4,
     "loading_progress": 0.6,
     "current_name_line": 0.6
   },
-  "modelSha256": "4c41ad0a17f3a3fa1e1d15e35679da8fe289b5cc7a177ed2752266279de4ac8c"
+  "modelSha256": "712bbc98d2c2497c6719266727814f0a9aa16a561bc8cb12c23e926d315c0dbe"
 }

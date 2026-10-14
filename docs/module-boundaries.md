@@ -1,4 +1,4 @@
-# 모듈 경계 정리 (최종 갱신: 2026-10-11)
+# 모듈 경계 정리 (최종 갱신: 2026-10-14)
 
 ## 로스트아크 점검 응답 분류 (2026-10-11)
 
@@ -144,3 +144,13 @@ Assets/beatrice.ico는 실행 파일 ApplicationIcon과 MainWindow의 AppWindow.
 API 등록 검증 (2026-10-11): LostArkClient.news.events → NewsApi → 고정 공식 호스트의 GET /news/events를 재사용합니다. LostArkRegistration은 후보 키 검증 스레드와 결과 큐를 소유하고 begin/view/poll/stop/settled를 공개합니다. 네트워크 스레드는 저장소를 변경하지 않으며 owner thread의 poll에서만 LostArkApiKey.save를 호출합니다. Host는 명령 lostark_api_verify(기존 save도 동일 검증 경로), snapshot.lostArkApi의 configured/busy/message, lostark_api_saved 결과를 연결합니다. 성공 시 CharacterCatalog.credentials_changed를 호출하고 종료 시 등록 작업을 취소·정리합니다. MainWindow.LostArkApi는 명시적 검증·등록·변경·발급 안내 상태만 표시합니다. ApiKeyRequiredView는 공통 미등록 안내와 등록 진입 버튼을 렌더링하고 MainWindow는 메뉴 전환을 연결합니다. 미검증 입력의 자동 저장은 제거했습니다.
 
 API 미등록 안내 중앙 배치: ApiKeyRequiredView.Render는 본문 StackPanel과 ScrollViewer를 받아 타이틀 아래 가용 높이를 계산합니다. 안내 문구·버튼을 Grid 안에서 가로·세로 중앙에 표시하고, 뷰가 로드·언로드될 때 viewport SizeChanged 연결을 등록·해제합니다. MainWindow는 화면 진입 연결만 유지합니다.
+
+## 캐릭터 선택 오탐 방어 (2026-10-14)
+
+initial_login.observe_login은 탐지된 카드 안의 이름 영역을 요구합니다. 카드와 게임 시작 버튼만으로 선택 화면을 선언하지 않습니다. UIRegionDetector.locate_dungeon도 같은 카드·이름 포함 관계를 사용합니다. CharacterTracker는 이미 확정된 캐릭터를 해제할 때 같은 유효 선택 이름(또는 서버 선택 화면)의 3회 연속 관측을 요구합니다. 이름 없는 관측, 다른 이름, 화면 증거 중단, 캡처 중단, 관측 간격 초과는 누적 증거를 초기화합니다. 이미 미확정인 최초 접속 흐름과 비밀번호 가림 이후 기존 선택 대상 보존은 유지합니다.
+
+학습 준비·평가는 tools의 prepare_character_false_positives와 evaluate_character_false_positives가 담당합니다. 런타임에 학습용 좌표·이미지를 사용하지 않습니다. 상세 검증은 [캐릭터 선택 오탐 보완](67-character-selection-false-positives.md)을 참고하세요.
+
+빠른 실제 선택은 유효한 같은 이름 2회에 이어 실제 loginLoading이 관측될 때에도 전환을 인정합니다. 단일 선택 프레임이나 이름 없는 카드·버튼은 이 경로를 사용할 수 없습니다. 이는 빠른 선택에서 세 번째 선택 화면을 놓치는 경우를 위한 독립된 추가 증거입니다.
+
+CharacterVision.read_name은 탐지된 이름 crop의 명암차를 확인해 dim 정규화를 글자 군집 선택 전에 적용합니다. 새로운 모델의 박스가 1픽셀 달라져도 어두운 끝 글자를 잘라 짧은 이름으로 확정하는 일을 방지하며, 이름 추측이나 저장된 캐릭터명 보정은 사용하지 않습니다.
