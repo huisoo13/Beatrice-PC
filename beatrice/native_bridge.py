@@ -24,6 +24,7 @@ from .drive_service import PersonalDrive
 from .native_presentation import record_view, empty_profile, character_view, progress_unit, observation_view, DungeonFooter
 from .catalog_service import CatalogService
 from .character_catalog import CharacterCatalog
+from .character_record_service import CharacterRecordService
 
 
 class Host:
@@ -47,6 +48,7 @@ class Host:
         self.lostark_api = LostArkApiKey(engine.DATA)
         self.lostark_registration = LostArkRegistration(self.lostark_api)
         self.character_catalog = CharacterCatalog(engine.DATA, key_available=lambda: self.lostark_api.view()["configured"])
+        self.character_records = CharacterRecordService(self.store, self.character_catalog)
         self.account = GoogleAccount(engine.ROOT, engine.DATA)
         self.drive = PersonalDrive(engine.ROOT, engine.DATA, self.account, self.store)
         self.startup_step = 0
@@ -153,7 +155,10 @@ class Host:
 
     def snapshot(self):
         if self.closed: return
-        records = [record_view(row, self.catalog.cached, matcher=self.catalog.matcher) for row in self.store.history_records() if not row['isTest']]
+        history = [row for row in self.store.history_records() if not row['isTest']]
+        if self.character_records.sync(self.profile['character'], history):
+            history = [row for row in self.store.history_records() if not row['isTest']]
+        records = [record_view(row, self.catalog.cached, matcher=self.catalog.matcher) for row in history]
         self.character_catalog.ensure([self.profile['character']] + [row['character'] for row in records])
         self.character_catalog.decorate(records, self.catalog.emblem_path)
         records.sort(key=lambda row: datetime.fromisoformat(row['observedAt']).timestamp() if row.get('observedAt') else float('-inf'), reverse=True)

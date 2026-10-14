@@ -165,7 +165,7 @@ public partial class MainWindow
         EndSplash(); await WaitForMainFrame();
         if (!ReferenceEquals(Content, Root) || AppWindow.Size.Width != mainWidth || AppWindow.Size.Height != mainHeight)
             throw new InvalidOperationException("Splash transition failed");
-        File.WriteAllText(Path.Combine(directory, "splash-status.txt"), "PASS: 256x256 splash, 128px bottom-up image fill, 32px per-pixel alpha corners, animated progress, main size restored");
+        File.WriteAllText(Path.Combine(directory, "splash-status.txt"), "PASS: 256x256 surface, 24px transparent shadow inset, 128px bottom-up image fill, 32px per-pixel alpha corners, animated progress, main size restored");
         Close();
     }
 }

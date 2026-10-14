@@ -92,6 +92,14 @@ var sortedReceipt=WeeklySummary.Build(new[]{
     Sample("누락","A","하드","1관문","2026.10.08 10:00",level:null)},start);
 Equal(string.Join(",",sortedReceipt.Characters.Select(c => c.Name)),"높음,소수차이,동일레벨,낮음,미확인,누락","numeric level descending, stable ties and unknown levels last");
 Equal(sortedReceipt.Money.Gold,48000m,"sorting preserves reward totals");
+var growing=WeeklySummary.Build(new[]{
+    Sample("후이수","A","하드","1관문","2026.10.08 10:00",level:"1,780.16"),
+    Sample("후이수","B","하드","1관문","2026.10.08 11:00",level:"1,774.99"),
+    Sample("후이수","C","하드","1관문","2026.10.08 12:00",level:null),
+    Sample("후이수","D","하드","1관문","2026.10.15 12:00",level:"1,900.00")},start);
+Equal(growing.Characters.Count,1,"different record levels group as one character");
+Equal(growing.Characters[0].Level,"Lv.1780","highest selected-week record level wins over latest");
+Equal(growing.Money.Gold,24000m,"level consolidation preserves all weekly rewards");
 Equal(bard.Dungeons.Count,2,"same dungeon modes stay separate");
 Equal(bard.Dungeons.Single(d => d.Mode=="하드").Gates,"1–2관문","contiguous gates grouped");
 Equal(bard.Level,"Lv.1774","receipt level uses cached truncated item level");

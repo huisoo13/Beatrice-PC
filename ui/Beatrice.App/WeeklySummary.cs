@@ -27,8 +27,9 @@ internal static class WeeklySummary
             var dungeons=rows.GroupBy(r => (r.Dungeon,r.Mode)).Select(group => new WeeklyDungeon(
                 group.Key.Dungeon,group.Key.Mode,GateLabel(group.Select(r => r.Gate)),
                 WeeklyMoney.Sum(group.Select(r => ReadMoney(r.Detail))))).ToArray();
-            var level=rows.Select(r => ReadLevel(r.ItemLevel)).FirstOrDefault(v => v > 0);
-            return (Level:level,Character:new WeeklyCharacter(character.Key,rows.Select(r => r.CharacterClass).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)),
+            var representative=rows.OrderByDescending(r => ReadLevel(r.ItemLevel)).First();
+            var level=ReadLevel(representative.ItemLevel);
+            return (Level:level,Character:new WeeklyCharacter(character.Key,representative.CharacterClass ?? rows.Select(r => r.CharacterClass).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)),
                 RecordPresentation.ItemLevel(level.ToString(CultureInfo.InvariantCulture)),
                 dungeons,WeeklyMoney.Sum(dungeons.Select(d => d.Money))));
         }).OrderByDescending(c => c.Level).Select(c => c.Character).ToArray();

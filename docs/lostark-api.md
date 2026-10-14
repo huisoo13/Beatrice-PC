@@ -136,7 +136,9 @@ API 오류들은 `LostArkError`를 상속하고 `status`에 HTTP 상태 코드�
 
 ## 관문 기록의 캐릭터 캐시
 
-앱은 `CharacterCatalog`(`beatrice/character_catalog.py`)를 통해 `characters.siblings(name)` 응답의 모든 캐릭터 정보를 저장합니다. 캐릭터명별 `profile`(원본 응답 필드)과 `fetchedAt`을 `%LOCALAPPDATA%/BeatricePC/lostark/characters.json`에 보관하며 `BEATRICE_DATA_DIR`가 있으면 해당 경로를 사용합니다. 성공한 캐릭터는 기록·주간 이동·앱 재시작 시 재조회하지 않습니다. 다른 계정이나 새 캐릭터만 추가 조회합니다.
+앱은 `CharacterCatalog`(`beatrice/character_catalog.py`)를 통해 `characters.siblings(name)` 응답의 모든 캐릭터 정보를 저장합니다. 캐릭터명별 `profile`(원본 응답 필드)과 `fetchedAt`을 `%LOCALAPPDATA%/BeatricePC/lostark/characters.json`에 보관하며 `BEATRICE_DATA_DIR`가 있으면 해당 경로를 사용합니다. 2026-10-14부터 좌측 표시 이름 변경과 새 완료 기록 저장에는 캐시가 있어도 해당 이름으로 재조회합니다. 반복 화면 갱신·주간 이동·기존 기록 수정은 재조회 원인이 아닙니다. 빠르게 연속 발생한 동일 이름 요청은 합치고, 조회 시작 후 생긴 저장 요청은 다음 조회에서 처리합니다.
+
+CharacterRecordService는 Store.set_character_info로 기존 기록의 누락 필드를 현재 캐시로 한 번 보완하고 새 기록은 내부 DB에 조회 대기 상태를 기록합니다. 새 조회 완료 시 그 새 기록만 API 결과 또는 실패 시 캐시·빈 값으로 한 번 확정합니다. characterInfo는 className·itemLevel·serverName·fetchedAt만 포함합니다. source는 제거하고 과거 파일에서 읽을 때도 새 출력에서 제외합니다. 확정된 기록은 이후 캐시 갱신으로 변경하지 않습니다. 조회 대기 표식은 기록 JSON과 별도인 record_character_pending 테이블에 보존해 앱 재실행 후 이어서 확정합니다. API 키가 없으면 캐시 또는 빈 값으로 즉시 확정합니다. 점검·인증·네트워크 실패 후 현재 캐릭터 재시도는 기존 대기 정책을 따릅니다. 현재 캐릭터는 캐시, 완료 일지와 주간 현황은 기록의 characterInfo를 사용합니다.
 
 `ensure(names)`는 이름을 중복 제거하고 비동기 조회를 시작하며 `poll()`이 응답을 저장합니다. `decorate(records, catalog.emblem_path)`는 캐릭터의 직업·검증된 공용 SVG·ItemAvgLevel을 표시 데이터에 추가합니다. 관문 기록에서는 아이템 레벨 표시를 생략하지만 캐시 원본 필드는 유지하며, `character_view(name, catalog.emblem_path)`는 현재 캐릭터의 하단 이미지용 직업 문양을 제공합니다. 현재 캐릭터는 기록이 없어도 조회 대상에 포함합니다. `credentials_changed()`는 키 변경 시 실패 대기를 해제하고 진행 중 응답을 폐기합니다. `stop()`과 `settled`로 종료를 관리합니다. API 키 초기화는 캐릭터 캐시를 지우지 않습니다.
 

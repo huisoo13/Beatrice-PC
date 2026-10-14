@@ -49,7 +49,7 @@ class DriveClient:
             raise DriveError('Drive 파일 정보가 올바르지 않습니다.')
         if metadata.get('mimeType') != 'application/json':
             raise DriveError('지원하지 않는 Drive 파일 형식입니다.')
-        if metadata.get('appProperties', {}).get('schemaVersion', '1') not in ('1', '2', '3', '4'):
+        if metadata.get('appProperties', {}).get('schemaVersion', '1') not in ('1', '2', '3', '4', '5'):
             raise DriveError('더 새로운 앱에서 만든 파일입니다. 앱을 업데이트해주세요.')
         body = self.api.files.download(metadata['id'])
         decode_records(body)
@@ -79,7 +79,7 @@ class DriveClient:
                 raise DriveError('기존 PC 기록의 백업을 검증하지 못했습니다.')
         metadata = dict(name='PC.json' if self.namespace == VERSION else 'beatrice-records-' + self.namespace + '-' + secrets.token_hex(16) + '.json',
                         mimeType='application/json', parents=['appDataFolder'],
-                        appProperties={PROPERTY: self.namespace, 'schemaVersion': '4'})
+                        appProperties={PROPERTY: self.namespace, 'schemaVersion': '5'})
         if previous:
             metadata.pop('parents')
         options = dict(mime_type='application/json; charset=UTF-8',

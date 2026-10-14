@@ -35,6 +35,8 @@ def initialize_schema(db):
         payload TEXT NOT NULL, PRIMARY KEY(owner,dungeon_key,gate));
     CREATE TABLE IF NOT EXISTS completion_history (
         record_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS record_character_pending (
+        record_id TEXT PRIMARY KEY REFERENCES completion_history(record_id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS weekly_repeat (
         id INTEGER PRIMARY KEY CHECK(id=1), period_start TEXT NOT NULL);
     INSERT OR IGNORE INTO weekly_repeat VALUES(1,'');

@@ -13,7 +13,8 @@ def record_view(row, cached=None, *, matcher=None):
     detail['goldReward']=row.get('goldReward')
     dungeon, mode = matcher.display_record_context(row)
     if row.get('ocrOriginal'): detail['ocrOriginal'] = row['ocrOriginal']
-    return dict(character=row.get('characterName') or '캐릭터 확인 대기',
+    return dict(characterInfo=row.get('characterInfo'),
+                character=row.get('characterName') or '캐릭터 확인 대기',
                 dungeon=dungeon or '확인 대기', mode=mode or '확인 대기',
                 gate=row.get('gateName') or ('레이드 전체' if row.get('completionScope') == 'raid' else f"{row['gate']}관문"),
                 date=when, observedAt=row['observedAt'], detail=detail)

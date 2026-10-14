@@ -55,6 +55,55 @@ class Store:
     def repeat_start(self):
         return self.db.execute('SELECT period_start FROM weekly_repeat WHERE id=1').fetchone()[0]
 
+    def pending_character_records(self):
+        return [json.loads(payload) for payload, in self.db.execute(
+            'SELECT h.payload FROM completion_history h JOIN record_character_pending p USING(record_id)')]
+
+    def remove_character_info_source(self):
+        """Remove legacy source only, preserving values and pending state locally."""
+        changed = 0
+        with self.transaction():
+            for row in self.history_records():
+                info = row.get('characterInfo')
+                if not isinstance(info, dict) or 'source' not in info: continue
+                if info['source'] == 'pending':
+                    self.db.execute('INSERT OR IGNORE INTO record_character_pending VALUES(?)', (row['recordId'],))
+                cleaned = dict(info)
+                cleaned.pop('source')
+                self._write_character_info(row, cleaned)
+                changed += 1
+        return changed
+
+    def set_character_info(self, record_id, info, *, pending=False, finalize_pending=False):
+        """Attach once, or finalize this new record's pending API snapshot once."""
+        from .character_info import validate_info
+        info = validate_info(info)
+        with self.transaction():
+            found = self.db.execute('SELECT payload FROM completion_history WHERE record_id=?', (record_id,)).fetchone()
+            if found is None: return False
+            row = json.loads(found[0])
+            waiting = self.db.execute('SELECT 1 FROM record_character_pending WHERE record_id=?', (record_id,)).fetchone()
+            if 'characterInfo' in row and not (finalize_pending and waiting):
+                return False
+            self._write_character_info(row, info)
+            if pending:
+                self.db.execute('INSERT OR IGNORE INTO record_character_pending VALUES(?)', (record_id,))
+            else:
+                self.db.execute('DELETE FROM record_character_pending WHERE record_id=?', (record_id,))
+        return True
+
+    def _write_character_info(self, row, info):
+        from datetime import datetime, timezone, timedelta
+        row['characterInfo'] = info
+        previous = datetime.fromisoformat(row['updatedAt'].replace('Z', '+00:00'))
+        updated = max(datetime.now(timezone.utc), previous + timedelta(microseconds=1))
+        row['updatedAt'] = updated.isoformat(timespec='microseconds').replace('+00:00', 'Z')
+        row = validate(row)
+        body = json.dumps(row, ensure_ascii=False)
+        self.db.execute('UPDATE completion_history SET payload=? WHERE record_id=?', (body, row['recordId']))
+        self.db.execute("UPDATE gate_states SET payload=? WHERE json_extract(payload,'$.recordId')=?", (body, row['recordId']))
+        if not row['isTest']:self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
+
     def roll_week(self, now=None):
         from .weekly import week_start
         start = week_start(now)

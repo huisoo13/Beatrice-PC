@@ -42,6 +42,8 @@ internal sealed class StartupWindow
     private TaskCompletionSource<bool>? settled;
     private static readonly Dictionary<IntPtr, StartupWindow> windows = new();
     private static readonly WindowProc callback = DispatchWindow;
+    private const int SurfaceSize = 256, ShadowInset = 24;
+    private const double ShadowOpacity = .10, ShadowBlur = 8, ShadowOffsetY = 4;
     private const string ClassName = "BeatriceSmoothSplash";
     private static bool registered;
 
@@ -49,7 +51,7 @@ internal sealed class StartupWindow
     {
         background = ((SolidColorBrush)surfaceBrush).Color;
         scale = GetDpiForWindow(owner) / 96.0;
-        PixelSize = (int)Math.Round(256 * scale);
+        PixelSize = (int)Math.Round((SurfaceSize + ShadowInset * 2) * scale);
         basePixels = new byte[PixelSize * PixelSize * 4]; pixels = new byte[basePixels.Length];
         iconSize=(int)Math.Round(128*scale);
         iconPixels=AppIconRasterizer.Load(iconSize);
@@ -147,7 +149,7 @@ internal sealed class StartupWindow
         for (var y=0; y<PixelSize; y++)
         for (var x=0; x<PixelSize; x++)
         {
-            var px = (x+.5)/scale; var py = (y+.5)/scale;
+            var px = (x+.5)/scale-ShadowInset; var py = (y+.5)/scale-ShadowInset;
             var qx = Math.Abs(px-128)-96; var qy = Math.Abs(py-128)-96;
             var distance = Math.Sqrt(Math.Pow(Math.Max(qx,0),2)+Math.Pow(Math.Max(qy,0),2)) + Math.Min(Math.Max(qx,qy),0) - 32;
             var alpha = Math.Clamp(.5-distance*scale,0,1);
@@ -156,7 +158,16 @@ internal sealed class StartupWindow
             basePixels[offset] = (byte)Math.Round(background.B*alpha);
             basePixels[offset+1] = (byte)Math.Round(background.G*alpha);
             basePixels[offset+2] = (byte)Math.Round(background.R*alpha);
-            basePixels[offset+3] = (byte)Math.Round(255*alpha);
+            // Black Gaussian falloff behind the rounded surface; cache once per DPI.
+            var shadowQy = Math.Abs(py-128-ShadowOffsetY)-96;
+            var shadowDistance = Math.Sqrt(Math.Pow(Math.Max(qx,0),2)+Math.Pow(Math.Max(shadowQy,0),2))
+                + Math.Min(Math.Max(qx,shadowQy),0)-32;
+            var outside = Math.Max(shadowDistance,0);
+            var shadow = ShadowOpacity*Math.Exp(-outside*outside/(2*ShadowBlur*ShadowBlur));
+            // Fade the final two pixels to fully transparent, avoiding a rectangular edge.
+            var edge = Math.Min(Math.Min(x, y), Math.Min(PixelSize-1-x, PixelSize-1-y));
+            shadow *= Math.Clamp(edge/(2*scale),0,1);
+            basePixels[offset+3] = (byte)Math.Round(255*(alpha+shadow*(1-alpha)));
         }
     }
     public async Task SaveCaptureAsync(Windows.Storage.StorageFolder folder,string name="splash-native.png")

@@ -6,6 +6,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from .character_info import from_cache
 from .lostark import (LostArkClient, LostArkAuthError, LostArkNotFoundError,
                      LostArkRateLimitError, LostArkMaintenanceError)
 
@@ -37,6 +38,9 @@ class CharacterCatalog:
         self.pending = None
         self.client = None
         self.closed = False
+        self._refresh_requests = {}
+        self._refresh_version = 0
+        self._refresh_results = []
         self.blocked_until = self.next_request = 0
         try:
             with self.path.open('rb') as stream: body = stream.read(MAX_BYTES + 1)
@@ -68,15 +72,31 @@ class CharacterCatalog:
             try: temporary.unlink(missing_ok=True)
             except OSError: pass
 
+    def refresh(self, name):
+        """Queue an explicit cached-character refresh without bypassing backoff."""
+        if self.closed or not _label(name) or name.strip() == '캐릭터 확인 대기': return
+        self._refresh_version += 1
+        self._refresh_requests[name.strip()] = self._refresh_version
+
+    def info(self, name):
+        return from_cache(self.characters.get(name.strip()))
+
+    def take_refresh_results(self):
+        results, self._refresh_results = self._refresh_results, []
+        return results
+
     def ensure(self, names):
         if self.closed or self.pending or not self.key_available() or self.clock() < max(self.blocked_until, self.next_request): return
-        name = next((name.strip() for name in dict.fromkeys(names) if _label(name)
-                     and name.strip() != '캐릭터 확인 대기' and name.strip() not in self.characters
+        candidates = list(self._refresh_requests) + list(names)
+        name = next((name.strip() for name in dict.fromkeys(candidates) if _label(name)
+                     and name.strip() != '캐릭터 확인 대기'
+                     and (name.strip() in self._refresh_requests or name.strip() not in self.characters)
                      and self.retry_at.get(name.strip(), 0) <= self.clock()), None)
         if name is None: return
         if self.client is None: self.client = self.client_factory()
         results, cancel = queue.Queue(), threading.Event()
         client = self.client
+        refresh_version = self._refresh_requests.get(name, 0)
         def run():
             try:
                 profiles = _profiles(client.characters.siblings(name))
@@ -92,13 +112,13 @@ class CharacterCatalog:
             except Exception:
                 results.put((None, 'network', 300))
         thread = threading.Thread(target=run, daemon=True, name='LostArkCharacters')
-        self.pending = (name, results, cancel, thread)
+        self.pending = (name, results, cancel, thread, refresh_version)
         self.next_request = self.clock() + .7
         thread.start()
 
     def poll(self):
         if self.pending is None: return False
-        name, results, cancel, thread = self.pending
+        name, results, cancel, thread, refresh_version = self.pending
         if thread.is_alive(): return False
         profiles, error, delay = results.get_nowait()
         self.pending = None
@@ -112,6 +132,10 @@ class CharacterCatalog:
                 self.characters[character] = dict(profile=profile, fetchedAt=fetched)
                 self.retry_at.pop(character, None)
             if name not in profiles: self.retry_at[name] = self.clock() + 86400
+        if self._refresh_requests.get(name, 0) == refresh_version:
+            success = not error and name in profiles
+            self._refresh_results.append((name, self.info(name)))
+            if success: self._refresh_requests.pop(name, None)
         self._save()
         return True
 
@@ -119,10 +143,11 @@ class CharacterCatalog:
         """Use only cached profiles and CatalogService's verified local assets."""
         paths = {}
         for row in records:
-            profile = self.characters.get(row['character'].strip(), {}).get('profile', {})
-            job = profile.get('CharacterClassName', '').strip()
+            info = row.get('characterInfo') if 'characterInfo' in row else self.info(row['character'])
+            info = info or {}
+            job = (info.get('className') or '').strip()
             row['characterClass'] = job
-            level = str(profile.get('ItemAvgLevel') or '').strip()
+            level = str(info.get('itemLevel') or '').strip()
             try:
                 number = Decimal(level.replace(',', ''))
                 if not number.is_finite() or number <= 0 or len(level) > 30: level = ''

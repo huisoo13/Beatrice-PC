@@ -27,7 +27,18 @@ internal sealed class WeeklySummaryView : IDisposable
         if(gold==goldImage && bound==boundGoldImage) return;
         goldImage=gold; boundGoldImage=bound; imageSources.Clear(); Changed?.Invoke();
     }
-    private Grid? headingGrid;
+    private Grid? headingGrid, weekNavigation;
+    private TextBlock? weekRange;
+    private Button? olderWeekButton, newerWeekButton;
+    internal int WeekOffset { get; private set; }
+    internal Button? OlderWeekButton => olderWeekButton;
+    internal Button? NewerWeekButton => newerWeekButton;
+    internal void ChangeWeek(int delta)
+    {
+        var next=Math.Max(0,WeekOffset+delta);
+        if(next==WeekOffset)return;
+        WeekOffset=next; Changed?.Invoke();
+    }
     private readonly List<Grid> rows=new();
     internal event Action? Changed;
     internal WeeklyReceipt? Receipt { get; private set; }
@@ -36,7 +47,7 @@ internal sealed class WeeklySummaryView : IDisposable
     {
         this.page=page; this.theme=theme; this.clock=clock; anchor=RecordPresentation.WeekStart(clock());
         timer=new DispatcherTimer { Interval=TimeSpan.FromSeconds(30) };
-        timer.Tick+=(_,_) => { var next=RecordPresentation.WeekStart(clock()); if(next==anchor)return; anchor=next; Changed?.Invoke(); };
+        timer.Tick+=(_,_) => { var next=RecordPresentation.WeekStart(clock()); if(next==anchor)return; if(WeekOffset>0)WeekOffset+=(int)((next-anchor).TotalDays/7); anchor=next; Changed?.Invoke(); };
         timer.Start();
     }
     public void Dispose() => timer.Stop();
@@ -74,23 +85,35 @@ internal sealed class WeeklySummaryView : IDisposable
     }
     internal void Render(IReadOnlyList<Raid> records)
     {
-        rows.Clear(); page.Spacing=0; Receipt=WeeklySummary.Build(records,clock()); anchor=Receipt.Start;
+        rows.Clear(); page.Spacing=0;
+        anchor=RecordPresentation.WeekStart(clock());
+        Receipt=WeeklySummary.Build(records,anchor.AddDays(-7L*WeekOffset));
         var heading=new Grid { ColumnSpacing=12,Margin=new Thickness(0,0,0,24) };
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(1,GridUnitType.Star) });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(1,GridUnitType.Star) });
         headingGrid=heading;
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(1,GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width=new GridLength(1,GridUnitType.Star) });
         heading.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
         heading.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
-        heading.Children.Add(Text("주간 현황",20,bold:true));
-        var dates=Text($"{Receipt.Start.ToString("yyyy. M. d",CultureInfo.InvariantCulture)} ~ {Receipt.Start.AddDays(7).ToString("yyyy. M. d",CultureInfo.InvariantCulture)}",14,"muted");
-        dates.TextAlignment=TextAlignment.Right; dates.VerticalAlignment=VerticalAlignment.Center; Grid.SetColumn(dates,1); heading.Children.Add(dates); page.Children.Add(heading);
+        var title=Text("주간 현황",20,bold:true);title.VerticalAlignment=VerticalAlignment.Top;heading.Children.Add(title);
+        weekNavigation=new Grid { ColumnSpacing=12,RowSpacing=8,HorizontalAlignment=HorizontalAlignment.Right };
+        foreach(var width in new[]{new GridLength(44),GridLength.Auto,new GridLength(44)})
+            weekNavigation.ColumnDefinitions.Add(new ColumnDefinition { Width=width });
+        for(var i=0;i<3;i++)weekNavigation.RowDefinitions.Add(new RowDefinition { Height=GridLength.Auto });
+        olderWeekButton=WeekNavigationButton.Create(theme,true,"이전 주 현황 보기",()=>ChangeWeek(1));
+        newerWeekButton=WeekNavigationButton.Create(theme,false,"다음 주 현황 보기",()=>ChangeWeek(-1));
+        newerWeekButton.IsEnabled=WeekOffset>0;
+        weekRange=Text($"{Receipt.Start.ToString("yyyy. M. d",CultureInfo.InvariantCulture)} ~ {Receipt.Start.AddDays(7).ToString("yyyy. M. d",CultureInfo.InvariantCulture)}",14,"muted");
+        weekRange.VerticalAlignment=VerticalAlignment.Center;weekRange.TextAlignment=TextAlignment.Center;weekRange.Margin=new Thickness(8,0,8,0);
+        Grid.SetColumn(weekRange,1);Grid.SetColumn(newerWeekButton,2);
+        weekNavigation.Children.Add(olderWeekButton);weekNavigation.Children.Add(weekRange);weekNavigation.Children.Add(newerWeekButton);
+        Grid.SetColumn(weekNavigation,1);heading.Children.Add(weekNavigation);page.Children.Add(heading);
         var goldLabel=Text("골드",12,"muted"); goldLabel.HorizontalAlignment=HorizontalAlignment.Right;
         var boundLabel=Text("귀속 골드",12,"muted"); boundLabel.HorizontalAlignment=HorizontalAlignment.Right;
         var labels=Row(Text(""),goldLabel,boundLabel,0); labels.Margin=new Thickness(0,0,0,8); page.Children.Add(labels);
         var total=Row(Text("총합",14,bold:true),Number(Receipt.Money.Gold,"총 일반 골드",bold:true,color:"warning",size:20,total:true),Number(Receipt.Money.BoundGold,"총 귀속 골드",bold:true,size:20,bound:true,total:true));
         page.Children.Add(new Border { Child=total,BorderThickness=new Thickness(0,1,0,1),BorderBrush=theme.Brush("border"),Padding=new Thickness(0,16,0,16),Margin=new Thickness(0,0,0,16) });
         if(Receipt.Characters.Count==0) {
-            var empty=Text("이번 주에는 클리어 기록이 없습니다.",14,"muted"); empty.Margin=new Thickness(0,48,0,48); empty.TextAlignment=TextAlignment.Center; page.Children.Add(empty); return;
+            var empty=Text("이 주에는 클리어 기록이 없습니다.",14,"muted"); empty.Margin=new Thickness(0,48,0,48); empty.TextAlignment=TextAlignment.Center; page.Children.Add(empty); return;
         }
         foreach(var character in Receipt.Characters) {
             var section=new StackPanel { Spacing=0 };
@@ -114,12 +137,25 @@ internal sealed class WeeklySummaryView : IDisposable
     }
     internal void Adapt(double width)
     {
-        if(headingGrid is not null) {
-            var stacked=width<440;
-            headingGrid.ColumnDefinitions[1].Width=stacked ? new GridLength(0) : new GridLength(1,GridUnitType.Star);
-            Grid.SetRow((FrameworkElement)headingGrid.Children[1],stacked ? 1 : 0);
-            Grid.SetColumn((FrameworkElement)headingGrid.Children[1],stacked ? 0 : 1);
-            ((TextBlock)headingGrid.Children[1]).TextAlignment=stacked ? TextAlignment.Left : TextAlignment.Right;
+        if(weekNavigation is not null && weekRange is not null && olderWeekButton is not null && newerWeekButton is not null) {
+            width=Math.Max(0,width);
+            var headingStacked=width<440;
+            if(headingGrid is not null) {
+                headingGrid.ColumnDefinitions[1].Width=headingStacked ? new GridLength(0) : new GridLength(1,GridUnitType.Star);
+                Grid.SetRow(weekNavigation,headingStacked ? 1 : 0);Grid.SetColumn(weekNavigation,headingStacked ? 0 : 1);
+                weekNavigation.HorizontalAlignment=headingStacked ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+            }
+            var available=headingStacked ? width : Math.Max(0,(width-12)/2);
+            var stacked=available<300;var tiny=available<112;
+            weekNavigation.MaxWidth=available;
+            weekNavigation.ColumnDefinitions[0].Width=tiny ? new GridLength(1,GridUnitType.Star) : new GridLength(44);
+            weekNavigation.ColumnDefinitions[2].Width=new GridLength(tiny ? 0 : 44);
+            weekNavigation.ColumnDefinitions[1].Width=tiny ? new GridLength(0) : stacked ? new GridLength(1,GridUnitType.Star) : GridLength.Auto;
+            Grid.SetColumn(weekRange,stacked ? 0 : 1);Grid.SetColumnSpan(weekRange,stacked ? 3 : 1);
+            Grid.SetColumn(newerWeekButton,tiny ? 0 : 2);
+            Grid.SetRow(olderWeekButton,stacked ? 1 : 0);Grid.SetRow(newerWeekButton,tiny ? 2 : stacked ? 1 : 0);
+            olderWeekButton.HorizontalAlignment=newerWeekButton.HorizontalAlignment=HorizontalAlignment.Center;
+            weekRange.MaxWidth=Math.Max(0,available-(stacked ? 16 : 128));
         }
         foreach(var grid in rows) {
             grid.Width=Math.Max(0,width);

@@ -62,7 +62,7 @@ def export_records(store):
 
 
 def encode_records(records):
-    body=json.dumps({'schemaVersion':4,'records':[row for row in validate_records(records) if not row['isTest']]},ensure_ascii=False,indent=2).encode('utf-8')
+    body=json.dumps({'schemaVersion':5,'records':[row for row in validate_records(records) if not row['isTest']]},ensure_ascii=False,indent=2).encode('utf-8')
     if len(body)>MAX_BYTES:raise ValueError('JSON 파일은 4 MiB 이하여야 합니다.')
     return body
 
@@ -90,7 +90,7 @@ def decode_records(body):
     except (UnicodeError, ValueError, RecursionError):
         raise ValueError('올바른 UTF-8 JSON 파일이 아닙니다.') from None
     if isinstance(value,dict):
-        if set(value)!={'schemaVersion','records'} or type(value['schemaVersion']) is not int or value['schemaVersion']!=4:raise ValueError('지원하지 않는 기록 JSON 버전')
+        if set(value)!={'schemaVersion','records'} or type(value['schemaVersion']) is not int or value['schemaVersion'] not in (4,5):raise ValueError('지원하지 않는 기록 JSON 버전')
         value=value['records']
     return validate_records(value)
 

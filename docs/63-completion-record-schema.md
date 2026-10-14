@@ -1,6 +1,6 @@
 # 완료 기록 형식과 캐릭터 확정 이후 탐지
 
-최종 갱신: 2026-10-11. 이전 저장·Drive 문서보다 이 계약을 우선합니다.
+최종 갱신: 2026-10-14. 이전 저장·Drive 문서보다 이 계약을 우선합니다.
 
 ## 탐지와 기록 정책
 
@@ -11,10 +11,30 @@
 
 ## 저장 필드
 
+2026-10-14: `characterInfo`를 추가하고 Drive 출력은 v5로 전환했습니다. v4 문서와 이전 배열은 계속 읽습니다. 이전 앱은 v5를 지원하지 않을 수 있으므로 공유 앱도 새 계약에 맞춰야 합니다. DB 버전은 기존 v5를 유지하며 선택 JSON 필드만 확장합니다.
+
+```json
+{
+ "characterInfo": {
+  "className": "바드",
+  "itemLevel": "1,774.16",
+  "serverName": "아만",
+  "fetchedAt": "2026-10-14T07:00:00+00:00"
+ }
+}
+```
+
+알 수 없는 값은 null입니다. characterInfo에는 className·itemLevel·serverName·fetchedAt만 저장합니다. source는 제거했으며 이전 파일에서 읽으면 무시하고 새 출력에는 포함하지 않습니다. fetchedAt은 캐시/API 조회 시각이며 완료 시각으로 간주하지 않습니다. API 원문 전체·키·PC 로컬 아이콘 경로는 넣지 않습니다. 아이콘은 저장된 className과 검증된 로컬 에셋을 연결합니다.
+
+기존 누락 필드는 현재 캐시로 한 번 보완합니다. 저장된 필드는 덮어쓰지 않습니다. 새 완료는 먼저 안전하게 저장하고 기존 캐시 정보를 임시로 표시하며 내부 DB의 조회 대기 표식으로 API를 기다립니다. API 성공 또는 실패 결과가 오면 이번 새 기록만 한 번 확정하며 이후에는 유지합니다. 조회 대기 상태는 record_character_pending 테이블에 기록 ID로 보관하므로 로컬 앱 재실행 후 조회를 이어갑니다. 이 상태는 기록 JSON이나 Drive에 노출하지 않습니다. 키가 없으면 캐시 또는 빈 값으로 즉시 확정합니다. API 조회 시점에 캐릭터 정보가 업데이트되지 않았다면 반환된 값을 저장하며 실제 처치 순간의 장비 상태를 보장하지 않습니다.
+
+Store.set_character_info(pending=True/finalize_pending=True), pending_character_records, remove_character_info_source는 공개 저장 API입니다. source 제거는 직업·레벨·서버·조회 시각을 보존하며 과거 대기 표식은 내부 테이블로 옮깁니다. history와 gate_states를 한 트랜잭션에서 갱신하며 recordId·observedAt·createdAt·기존 보상은 유지합니다. 필드 추가/확정은 실제 변경이므로 updatedAt을 증가시키고 실제 기록의 Drive revision을 올립니다. 이미 확정된 필드는 다시 갱신하지 않습니다. 신규 조회·저장 감지는 CharacterRecordService가 담당하고 Host는 sync와 표시 연결만 수행합니다. 주간 현황은 선택 주의 같은 캐릭터명을 합쳐 최고 레벨을 표시하며 완료 일지는 각 기록의 고정 정보를 사용합니다.
+
 | 필드 | 의미 |
 | --- | --- |
 | recordId | 완료별 ID. 신규는 br2 UUID, 기존 br1 ID는 보존 |
 | characterName | 확정 캐릭터명. 미확정 행은 저장하지 않음 |
+| characterInfo | 선택 필드. 당시 확정한 캐릭터 직업·레벨·서버·API 조회 시각 |
 | contentName | 공용 데이터 name 또는 매칭되지 않은 OCR 이름 |
 | difficulty | 확정 난이도 |
 | gateNumber | 1~8; 관문 없는 콘텐츠 전체 완료는 0 |
@@ -27,7 +47,7 @@
 | catalogMatch | 저장 당시 매칭과 보상·버전; 있는 경우 보존 |
 | goldReward | 선택 bool: true 획득, false 미획득. null 또는 필드 없음은 미확인 |
 
-골드 여부는 완료 후 보상표의 관문 번호와 현재 완료 아이콘을 반복 확인하여 연결합니다. `goldReward`를 추가해도 DB v5·Drive JSON v4는 유지합니다. 이전 기록은 그대로 읽으며 누락된 여부를 추정하거나 일괄 생성하지 않습니다. 구버전 PC의 엄격한 JSON 검증기는 새 필드를 읽지 못하므로 이 작업 이후 앱을 재시작해야 합니다. iOS는 추후 새 선택 필드를 지원해야 합니다. 주간 합계는 true 또는 미확인이고 공용 금액이 연결된 기록을 합산하고 false는 0으로 처리합니다. 미확인 상태는 저장 데이터에 유지하며 금액 미연결만 누락 건수로 표시합니다. 상세 정책은 [골드 보상 인식](65-gold-reward-recognition.md)을 참고합니다.
+골드 여부는 완료 후 보상표의 관문 번호와 현재 완료 아이콘을 반복 확인하여 연결합니다. `goldReward`는 선택 필드이며 DB v5는 유지합니다. 현재 Drive 출력은 characterInfo 추가로 JSON v5입니다. 이전 기록은 그대로 읽으며 누락된 여부를 추정하거나 일괄 생성하지 않습니다. 구버전 PC의 엄격한 JSON 검증기는 새 필드를 읽지 못하므로 이 작업 이후 앱을 재시작해야 합니다. iOS는 추후 새 선택 필드를 지원해야 합니다. 주간 합계는 true 또는 미확인이고 공용 금액이 연결된 기록을 합산하고 false는 0으로 처리합니다. 미확인 상태는 저장 데이터에 유지하며 금액 미연결만 누락 건수로 표시합니다. 상세 정책은 [골드 보상 인식](65-gold-reward-recognition.md)을 참고합니다.
 
 시간은 UTC ISO 문자열입니다. 관측·생성 시각을 알 수 없는 이전 Drive 기록은 observedAt·createdAt을 null로 둡니다. 이전 updatedAt이 없으면 기존 UNKNOWN_UPDATED_AT(1970년)을 유지합니다. 복원 시각을 완료 시각으로 만들지 않습니다. UI는 날짜 미상 기록을 별도로 보여주며, 관측 시각 미상은 현재 주 완료를 막지 않습니다.
 
@@ -45,7 +65,7 @@ Drive에서는 먼저 같은 recordId의 updatedAt을 비교합니다. 같은 �
 
 DB v5는 완료 JSON과 gateNumber=0을 허용하는 제약으로 교체합니다. 변환 전 같은 디렉터리에 `records.sqlite3.pre-v5-<UTC시각>.bak` SQLite 백업을 만들고 WAL까지 포함합니다. 백업 실패 시 변환하지 않습니다. 기존 완료 ID·알려진 시각·보상을 유지하며 전체 수를 모르면 0입니다. 이전 미완료·캐릭터 미확정 체크포인트는 새 완료 테이블로 옮기지 않습니다. 원본은 백업에 남습니다.
 
-Drive는 `{"schemaVersion":4,"records":[...]}` 문서를 사용합니다. 이전 5개/7개 필드 배열은 읽어서 완료만 변환합니다. 새 기록의 모든 필드·메타데이터를 전달합니다. 이전 PC.json 교체 전 파일 원본 bytes를 로컬에 백업하며 PATCH 후 재다운로드를 비교합니다. DB 변환 후 실제 기록이 있으면 새 형식 업로드를 한 번 예약합니다. iOS.json과 iOS 구현은 변경하지 않습니다.
+Drive는 `{"schemaVersion":5,"records":[...]}` 문서를 사용합니다. 이전 5개/7개 필드 배열은 읽어서 완료만 변환합니다. 새 기록의 모든 필드·메타데이터를 전달합니다. 이전 PC.json 교체 전 파일 원본 bytes를 로컬에 백업하며 PATCH 후 재다운로드를 비교합니다. DB 변환 후 실제 기록이 있으면 새 형식 업로드를 한 번 예약합니다. iOS.json과 iOS 구현은 변경하지 않습니다.
 
 ## JSON 예시
 
@@ -53,7 +73,7 @@ Drive는 `{"schemaVersion":4,"records":[...]}` 문서를 사용합니다. 이전
 
 ```json
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "records": [
     {
       "recordId": "br2_00000000000000000000000000000001",

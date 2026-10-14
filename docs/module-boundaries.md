@@ -18,7 +18,8 @@
 | --- | --- | --- |
 | 골드 보상 관측 | `beatrice/gold_reward.py`의 `GoldRewardDetector` | `analyze(frame, seconds)`는 부모 전용 YOLO로 보상표를, 요소 YOLO로 실제 탐지 crop의 관문 제목·통화 영역을 찾는다. 제목 OCR과 명시적 획득/미획득 클래스가 맞으면 verified를 반환한다. 0.75초 제한·dim 정규화를 소유하고 저장소·UI에는 의존하지 않는다. `config/gold-reward.json`과 그 parentConfig인 `config/gold-reward-panel.json`을 사용한다. |
 | 보상과 완료 연결 | `beatrice/gold_reward_session.py`의 `GoldRewardSession` | `register(rows, at)`는 이번 실행에서 새 저장된 ID만 등록한다. `observe(at, name, dungeon, boxes)`는 같은 캐릭터·던전·난이도·완료 관문과 두 번의 fresh 관측을 확인해 Store API로 갱신한다. 120초 만료와 `reset()`을 소유한다. LiveCoordinator는 호출 순서만 연결한다. |
-| 계정 캐릭터 캐시 | `beatrice/character_catalog.py`의 `CharacterCatalog` | `ensure(names)`는 저장되지 않은 캐릭터의 계정 목록을 비동기로 조회합니다. `poll()`이 전체 응답을 원자적으로 저장하고 `decorate(records, emblem_path)`가 캐시와 공용 엠블럼을 연결합니다. Host는 호출·종료 순서만 담당합니다. SQL이나 UI에 의존하지 않습니다. |
+| 계정 캐릭터 캐시 | `beatrice/character_catalog.py`의 `CharacterCatalog` | `ensure(names)`는 미보관 캐릭터와 `refresh(name)` 대기열을 조회합니다. `info(name)`는 복사한 기록용 정보를 반환하고 `take_refresh_results()`로 완료 결과를 전달합니다. `poll()`은 캐시를 저장하며 `decorate`는 기록의 characterInfo를 우선합니다. |
+| 기록별 캐릭터 정보 | `character_info.py` / `character_record_service.py` | 전자는 직업·레벨·서버·조회 시각 4개 필드 생성·검증, 후자의 sync는 좌측 이름 변경·새 recordId 감지·조회 결과를 Store 공개 API에 연결합니다. Host는 연결만 담당합니다. SQL·UI 로직은 포함하지 않습니다. |
 | 공용 던전 스키마·보상 인덱스 | `beatrice/content_catalog.py`의 `ContentCatalog` | 신규 배열과 이전 객체를 검증하고 보상표 rows를 제공한다. HTTP·SQL·UI에 의존하지 않는다. |
 | 던전 이름·기록 별칭 | `beatrice/content_match.py`의 `ContentMatcher` | OCR은 field_name에 비교해 name을 제공한다. Store는 record_candidates로 중복을 검사하고 native_presentation은 display_record_context와 record_detail로 현재 이름·보상을 표시한다. |
 | 공용 데이터 갱신 | `beatrice/catalog_service.py`의 `CatalogService` | Host는 시작 준비·명령 허용·종료 시점을 결정합니다. 서비스는 네트워크 작업, 취소, 캐시, 매칭기, 갱신 주기와 수동 갱신 제한을 관리합니다. |
@@ -84,7 +85,7 @@ Drive 복원은 JSON 검증과 백업을 먼저 수행하고, 기록 교체 실�
 - Host → CharacterCatalog → 기존 LostArkClient.characters.siblings로 계정의 전체 캐릭터 정보를 가져옵니다. 개별 profile API는 호출하지 않습니다.
 - 성공 응답의 모든 캐릭터와 원본 필드·조회 시각을 앱 데이터 `lostark/characters.json`에 저장하고 앱 재실행에도 재사용합니다. API 키와 Drive 기록에는 포함하지 않습니다.
 - API 요청은 동시에 하나만 실행하며 중복 이름을 합칩니다. 호출 간격은 최소 0.7초입니다. 인증·연결·호출 제한 오류는 전체 요청을 잠시 보류하고 없는 캐릭터는 24시간 재조회하지 않습니다. 키 변경은 실패 대기를 해제하지만 정상 캐시를 유지합니다.
-- CharacterCatalog.decorate는 캐시의 ItemAvgLevel을 기록의 itemLevel로 전달합니다. 잘못된 값은 생략하며 레벨은 클리어 당시 값이 아닌 캐시 조회 시점 값입니다. RecordsView는 아이템 레벨을 표시하지 않으며 API 캐시와 메시지의 레벨 값은 유지합니다. 캐릭터명 앞에는 캐릭터명과 같은 characterAccent 색상의 18px 직업 문양을 InlineUIContainer로 넣고 이름의 글자 중심에 맞춥니다. 문양과 캐릭터명 사이 간격은 2px이며 로딩 실패 시 문양만 생략합니다.
+- CharacterCatalog.decorate는 기록 JSON의 characterInfo를 직업·레벨·문양에 연결합니다. 현재 캐릭터 표시는 캐시를 사용합니다. 기존 기록은 시작 시 캐시로 한 번 보완하고 새 기록은 API 결과 또는 실패 시 캐시로 한 번 확정합니다. Store.set_character_info가 history·gate_states·updatedAt·Drive revision을 함께 갱신하며 확정된 필드는 다시 변경하지 않습니다. 기록 ID·관측·생성 시각·보상은 유지합니다. 주간 현황은 선택 주에서 같은 이름을 합치고 최대 레벨을 표시합니다. RecordsView는 레벨을 새로 표시하지 않으며 문양 표시를 유지합니다.
 - CharacterCatalog.character_view(name, catalog.emblem_path)는 현재 캐릭터의 직업과 검증된 로컬 SVG를 profile 메시지의 characterClass/characterEmblem에 전달합니다. Host는 기록이 없어도 현재 캐릭터를 ensure 대상에 포함합니다.
 - CharacterPortraitView는 하단 40px 이미지 영역의 SVG 로딩·색상 적용·실패 시 기본 이미지·캐릭터 전환 중 오래된 비동기 응답 폐기를 관리합니다. MainWindow는 profile을 전달하는 연결만 담당합니다. 문양과 미설정 임시 이미지 색상은 흰색(text)을 사용하고 원본 공용 에셋은 변경하지 않습니다. 상태 원형은 별도 UI로 유지합니다. EmblemImageSource가 SvgImageSource의 RasterizePixelWidth/Height를 표시 크기(기록 18px·하단 40px)의 논리 px로 명시해 자동 크기 렌더링에서 확인된 계단형 가장자리를 줄입니다.
 
@@ -100,7 +101,7 @@ RecognitionService는 analyze_character → LiveCoordinator.observe_character �
 
 StateSession은 확정 캐릭터의 진행 상태를 메모리로 유지합니다. 미확정 관측·배너는 저장하지 않으며 과거 임시 완료를 귀속하지 않습니다. 이전 prepare_pending_run·assign_pending_character 호환 진입점은 소급 동작 없이 반환합니다. 독립된 이전 오프라인 Session/DeferredSession은 현재 실시간 경로에서 호출하지 않습니다.
 
-Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약 트랜잭션, 주간 잠금과 별칭 조회를 소유합니다. snapshot_existing은 원본을 읽기 전용으로 열어 WAL 포함 복사본을 만들며 원본을 변환하지 않습니다. Drive 어댑터는 새 JSON v4를 쓰고 이전 JSON은 읽기 변환만 합니다. 상세 형식·제약·검증 범위는 [완료 기록 계약](63-completion-record-schema.md)을 참고합니다.
+Store가 스키마 변환 전 SQLite 백업, DB v5 변환, 완료·전송 예약 트랜잭션, 주간 잠금과 별칭 조회를 소유합니다. snapshot_existing은 원본을 읽기 전용으로 열어 WAL 포함 복사본을 만들며 원본을 변환하지 않습니다. Drive 어댑터는 새 JSON v5를 쓰고 v4 및 이전 배열을 읽습니다. 상세 형식·제약·검증 범위는 [완료 기록 계약](63-completion-record-schema.md)을 참고합니다.
 
 
 보상 매칭 보완 (2026-10-11): ContentMatcher.record는 새 완료 JSON도 받고 같은 형식으로 반환합니다. 저장·표시 name을 OCR 매칭 별칭으로 사용하지 않으며 OCR 원문을 field_name으로 비교합니다. refresh_record_match는 기존 미매칭 완료의 원문·난이도·관문에 정확한 보상만 연결하는 순수 API입니다. Store.refresh_catalog_matches가 이력·체크포인트·전송 예약을 원자적으로 갱신합니다. Host는 시작 시와 공용 갱신 완료 후 해당 API 호출만 담당합니다. 실제 ContentJSON v16의 지평의 성당 3단계 두 관문 매칭과 Python 473개 회귀를 검증했습니다.
@@ -145,6 +146,8 @@ API 등록 검증 (2026-10-11): LostArkClient.news.events → NewsApi → 고정
 
 API 미등록 안내 중앙 배치: ApiKeyRequiredView.Render는 본문 StackPanel과 ScrollViewer를 받아 타이틀 아래 가용 높이를 계산합니다. 안내 문구·버튼을 Grid 안에서 가로·세로 중앙에 표시하고, 뷰가 로드·언로드될 때 viewport SizeChanged 연결을 등록·해제합니다. MainWindow는 화면 진입 연결만 유지합니다.
 
+주간 현황 탐색 (2026-10-14): 기존 왼쪽 타이틀·오른쪽 14px muted 날짜 배치를 유지하고 날짜 양옆에 44px 원형 이전 주·다음 주 버튼만 추가합니다. WeekNavigationButton이 공통 버튼 모양·접근성 이름·클릭 연결을 소유하며 각 화면은 자신의 선택 주를 관리합니다. 수요일 06:00부터 다음 수요일 06:00 직전까지 집계하고 이번 주에서는 다음 버튼을 비활성화합니다. 화면 전환·기록 갱신에서 선택을 유지하며, 주가 바뀌면 과거 주의 절대 날짜를 유지합니다. 총합·캐릭터 합계·던전 내역은 선택한 주로 함께 갱신합니다.
+
 ## 캐릭터 선택 오탐 방어 (2026-10-14)
 
 initial_login.observe_login은 탐지된 카드 안의 이름 영역을 요구합니다. 카드와 게임 시작 버튼만으로 선택 화면을 선언하지 않습니다. UIRegionDetector.locate_dungeon도 같은 카드·이름 포함 관계를 사용합니다. CharacterTracker는 이미 확정된 캐릭터를 해제할 때 같은 유효 선택 이름(또는 서버 선택 화면)의 3회 연속 관측을 요구합니다. 이름 없는 관측, 다른 이름, 화면 증거 중단, 캡처 중단, 관측 간격 초과는 누적 증거를 초기화합니다. 이미 미확정인 최초 접속 흐름과 비밀번호 가림 이후 기존 선택 대상 보존은 유지합니다.
@@ -154,3 +157,5 @@ initial_login.observe_login은 탐지된 카드 안의 이름 영역을 요구�
 빠른 실제 선택은 유효한 같은 이름 2회에 이어 실제 loginLoading이 관측될 때에도 전환을 인정합니다. 단일 선택 프레임이나 이름 없는 카드·버튼은 이 경로를 사용할 수 없습니다. 이는 빠른 선택에서 세 번째 선택 화면을 놓치는 경우를 위한 독립된 추가 증거입니다.
 
 CharacterVision.read_name은 탐지된 이름 crop의 명암차를 확인해 dim 정규화를 글자 군집 선택 전에 적용합니다. 새로운 모델의 박스가 1픽셀 달라져도 어두운 끝 글자를 잘라 짧은 이름으로 확정하는 일을 방지하며, 이름 추측이나 저장된 캐릭터명 보정은 사용하지 않습니다.
+
+2026-10-14 source 제거: characterInfo에는 className·itemLevel·serverName·fetchedAt만 출력합니다. CharacterRecordService는 Store.pending_character_records와 set_character_info(pending/finalize_pending)를 사용하며 조회 대기 상태는 record_character_pending 테이블에만 보관합니다. remove_character_info_source는 기존 값과 ID·관측·생성 시각을 유지하며 과거 source를 제거합니다. 호환 읽기는 이전 source를 버리고 출력에서는 제거합니다.

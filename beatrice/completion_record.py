@@ -7,7 +7,7 @@ from .record_identity import existing_time,record_id,normalized_time
 
 FIELDS=('recordId','characterName','contentName','difficulty','gateNumber','expectedGates','isTest','observedAt','createdAt','updatedAt')
 META=('ocrOriginal','catalogMatch')
-OPTIONAL=('goldReward',)
+OPTIONAL=('goldReward','characterInfo')
 
 def utc(value):
     if value is None:return None
@@ -40,7 +40,8 @@ def canonical(row):
             if match:meta['gateNumber']=int(match[1])
         if gate==0 and 'gateNumber' in meta:meta['gateNumber']=0
         value[field]=meta
-    if 'goldReward' in row:value['goldReward']=row['goldReward']
+    for field in OPTIONAL:
+        if field in row:value[field]=copy.deepcopy(row[field])
     return value
 
 def recognition_record(row):
@@ -70,6 +71,9 @@ def new_record(row,expected_gates,previous=None):
 def validate(row):
     if not isinstance(row,dict) or not set(FIELDS)<=set(row) or set(row)-set(FIELDS+META+OPTIONAL):raise ValueError('완료 기록 필드를 확인해주세요.')
     value=copy.deepcopy(row)
+    if 'characterInfo' in value:
+        from .character_info import validate_info
+        value['characterInfo']=validate_info(value['characterInfo'])
     if value.get('goldReward') is not None and type(value['goldReward']) is not bool:raise ValueError('goldReward는 bool 또는 null이어야 합니다.')
     for field in ('characterName','contentName','difficulty'):
         text=value[field]

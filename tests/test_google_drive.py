@@ -165,7 +165,7 @@ class DriveTests(unittest.TestCase):
         backups = list(Path(self.temp.name).glob('PC-*.json'))
         self.assertEqual(decode_records(backups[0].read_bytes()), validate_records([row()]))
         self.assertEqual(first['parents'], ['appDataFolder'])
-        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '4'})
+        self.assertEqual(first['appProperties'], {'beatriceRecords': 'v1', 'schemaVersion': '5'})
 
     def test_ios_and_old_snapshot_files_are_never_replaced(self):
         fake=FakeDrive()

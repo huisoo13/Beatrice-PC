@@ -150,7 +150,9 @@ Beatrice-PC/
 │  ├─ native_bridge.py            # Host: 앱 제어·명령 처리·모듈 연결
 │  ├─ engine_worker.py            # 인식 서비스의 스레드·이벤트 어댑터
 │  │
-│  ├─ character_catalog.py       # 계정 전체 캐릭터 조회·영속 캐시·레벨·직업 문양 연결
+│  ├─ character_catalog.py       # 캐릭터 캐시·명시적 재조회·기록 스냅샷 문양 연결
+│  ├─ character_info.py          # 기록용 캐릭터 정보 4개 필드 생성·검증
+│  ├─ character_record_service.py # 이름 변경·새 완료 감지·기존 보완·새 기록 정보 확정
 │  ├─ catalog_service.py          # 공용 데이터 갱신·취소·갱신 주기
 │  ├─ public_content.py           # 공용 Drive 조회·JSON 캐시·설정
 │  ├─ public_assets.py            # EmblemJSON·Drive 이미지 버전 캐시·검증된 이미지 조회
@@ -159,11 +161,11 @@ Beatrice-PC/
 │  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
-│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 정정·골드 여부·보상 매칭 갱신
-│  ├─ storage_schema.py           # DB v5 스키마·이전 완료 JSON 변환
+│  ├─ storage.py                  # 저장소 API·트랜잭션·캐릭터 정보 확정·기록 정정·골드·보상 갱신
+│  ├─ storage_schema.py           # DB v5 스키마·캐릭터 조회 대기 표식·이전 완료 JSON 변환
 │  ├─ completion_record.py        # 완료 JSON 검증·변환·주간 중복 규칙
 │  ├─ weekly.py                   # 주간 기준·저장소 열기
-│  ├─ drive_data.py               # Drive JSON v4·이전 형식 읽기·복원
+│  ├─ drive_data.py               # Drive JSON v5·v4/이전 형식 읽기·복원
 │  │
 │  ├─ recognition/               # 실시간 인식
 │  │  ├─ __init__.py              # 공개 진입점
@@ -221,7 +223,8 @@ Beatrice-PC/
 │  ├─ Assets/beatrice-white.png  # 스플래시·상단바 투명 흰색 아이콘
 │  ├─ Assets/google-signin-light.png # Google 공식 로그인 버튼 원본 에셋
 │  ├─ WeeklySummary.cs           # 주간 캐릭터·던전 집계·미획득 제외·미확인 공용 금액 합산
-│  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·주간 변경 표시
+│  ├─ WeeklySummaryView.cs       # 영수증 내역·합계·선택 주 탐색·주간 변경 표시
+│  ├─ WeekNavigationButton.cs     # 완료 일지·주간 현황의 공통 주간 화살표 버튼
 │  ├─ RecordsView.cs             # 완료 일지·주간 탐색·읽기 전용 문장·직업 문양
 │  ├─ EmblemImageSource.cs       # 공용 SVG 착색·크기 명시 렌더링
 │  ├─ CharacterPortraitView.cs   # 현재 캐릭터 직업 문양·이미지 로딩
@@ -253,7 +256,9 @@ MainWindow
 ├─ EngineClient → EngineProcessLifetime → process_lifetime.join_owner_job
 │                 └─ UI 종료 시 분석·OBS 자식 프로세스 함께 종료
 ├─ EngineClient → Host(native_bridge)
-│                 ├─ CharacterCatalog → LostArkClient.characters.siblings → 캐릭터 정보 캐시
+│                 ├─ CharacterRecordService → CharacterCatalog.refresh → LostArkClient.characters.siblings
+│                 │                        └─ Store.set_character_info → characterInfo 확정 / 내부 조회 대기 표식
+│                 ├─ CharacterCatalog → 캐릭터 캐시(좌측) / 기록 characterInfo(일지·주간 현황)
 │                 │                      └─ CatalogService.emblem_path → 검증된 로컬 직업 SVG
 │                 ├─ CatalogService → PublicContentClient → Drive API
 │                 │                  └─ PublicAssetCache.image_path → currencyImages → WeeklySummaryView

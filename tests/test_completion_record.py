@@ -65,10 +65,10 @@ class RecordContractTests(unittest.TestCase):
     def test_drive_envelope_version_and_removed_fields_are_rejected(self):
         row=completed()
         body=json.loads(encode_records([row]))
-        self.assertEqual(body['schemaVersion'],4)
+        self.assertEqual(body['schemaVersion'],5)
         for field in ('state','characterKey','evidenceType','completionScope','timeBasis','gateName'):
             with self.subTest(field=field),self.assertRaises(ValueError):validate(dict(row,**{field:'old'}))
-        body['schemaVersion']=5
+        body['schemaVersion']=6
         with self.assertRaises(ValueError):decode_records(json.dumps(body).encode())
 
     def test_invalid_gate_count_types_and_metadata_abort(self):

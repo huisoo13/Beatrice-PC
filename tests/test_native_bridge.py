@@ -108,12 +108,15 @@ class NativeBridgeTests(unittest.TestCase):
                                                 dict(CharacterName='다른캐릭터', CharacterClassName='도화가')]
         with patch('beatrice.character_catalog.LostArkClient.from_saved_key',return_value=api), \
              patch.object(self.host.catalog,'emblem_path',return_value=Path(self.folder.name)/'bard.svg'):
-            self.seed()
             self.host.command(dict(type='lostark_api_save',key='dummy-profile-key'))
             self.host.lostark_registration.pending[2].join(timeout=2)
             self.host.drain_commands()
+            self.seed(); self.host.snapshot()
             deadline=time.monotonic()+2
-            while not self.host.character_catalog.settled and time.monotonic()<deadline: time.sleep(.001)
+            while time.monotonic()<deadline:
+                self.host.drain_commands(); self.host.snapshot()
+                if not self.host.store.pending_character_records() and (self.host.store.history_records()[0].get('characterInfo') or {}).get('className'): break
+                time.sleep(.001)
             self.host.drain_commands()
             self.host.snapshot();self.host.snapshot()
             latest=next(v for v in reversed(self.messages) if v['type']=='snapshot')
@@ -142,7 +145,7 @@ class NativeBridgeTests(unittest.TestCase):
         from datetime import datetime, timedelta, timezone
         from beatrice.weekly import week_start
         from beatrice.drive_data import export_snapshot
-        self.ready();self.seed()
+        self.ready();self.seed();self.host.snapshot()
         before=export_snapshot(self.host.store)
         future=datetime.now(timezone.utc)+timedelta(days=7)
         roll=self.host.store.roll_week

@@ -54,19 +54,7 @@ internal sealed class RecordsView : IDisposable
         recordWeekNavigation.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(44) });
         recordWeekNavigation.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         recordWeekNavigation.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        Button WeekButton(bool older)
-        {
-            var arrow = new Polyline { Points = older ? new Microsoft.UI.Xaml.Media.PointCollection { new(12,4),new(6,10),new(12,16) } : new Microsoft.UI.Xaml.Media.PointCollection { new(6,4),new(12,10),new(6,16) },
-                Stroke = Brush("muted"), StrokeThickness = 1.75, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Width = 20, Height = 20 };
-            var button = new Button { Width = 44, Height = 44, Padding = new Thickness(0), CornerRadius = new CornerRadius(22),
-                Background = new SolidColorBrush(Colors.Transparent), BorderBrush = Brush("border"), BorderThickness = new Thickness(1), Content = arrow };
-            var label = older ? "이전 주 기록 보기" : "다음 주 기록 보기";
-            AutomationProperties.SetName(button,label); ToolTipService.SetToolTip(button,label);
-            foreach (var state in new[]{"", "PointerOver", "Pressed"}) button.Resources["ButtonBackground" + state] = state == "" ? new SolidColorBrush(Colors.Transparent) : Brush("sidebar");
-            button.Click += (_,_) => ChangeRecordWeek(older ? 1 : -1);
-            return button;
-        }
-        olderWeekButton = WeekButton(true); newerWeekButton = WeekButton(false);
+        olderWeekButton = WeekNavigationButton.Create(theme,true,"이전 주 기록 보기",()=>ChangeRecordWeek(1)); newerWeekButton = WeekNavigationButton.Create(theme,false,"다음 주 기록 보기",()=>ChangeRecordWeek(-1));
         newerWeekButton.IsEnabled = recordWeekOffset > 0;
         recordWeekRange = Text($"{SelectedRecordWeek.ToString("yyyy. M. d",CultureInfo.InvariantCulture)} ~ {SelectedRecordWeek.AddDays(7).ToString("yyyy. M. d",CultureInfo.InvariantCulture)}",14,bold:true);
         recordWeekRange.VerticalAlignment = VerticalAlignment.Center; recordWeekRange.TextAlignment = TextAlignment.Center;
