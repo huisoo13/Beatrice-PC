@@ -9,7 +9,9 @@ models/*
 outputs/*
 !**/.gitkeep
 
-# Generated application bundles
+# Local distribution materials: embedded Python, wheel cache, VC/OBS/7-Zip
+# runtimes, copied models, published UI, license/source bundles and final packages.
+# Keep packaging scripts, version locks and documentation tracked instead.
 build/
 dist/
 

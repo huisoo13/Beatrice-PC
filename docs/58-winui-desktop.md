@@ -54,6 +54,8 @@ UI는 `ui/Beatrice.App`의 C# / WinUI 3 / XAML입니다. 실행기는 개발 빌
 
 ## 배포 명령
 
+2026-10-14: 현재 런타임·라이브러리·모델·WinUI·라이선스 준비 명령은 [Windows 배포 준비](windows-distribution.md)를 참고합니다. `packaging/prepare_windows.ps1`은 배포 폴더와 포함된 Python 검증까지만 수행하며 최종 EXE는 만들지 않습니다.
+
 최종 관문/상태 표시 수정 후 Python 회귀 테스트는 321개 통과했습니다. 최종 색상 적용 후 Release publish와 1280/640/375px 네이티브 화면 검증도 통과했습니다. 디자인 자료와 로컬 스킬의 Git 포함 기준은 `design/README.md`를 따릅니다.
 
 ```powershell

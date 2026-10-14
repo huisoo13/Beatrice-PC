@@ -1,5 +1,9 @@
 # 모듈 경계 정리 (최종 갱신: 2026-10-14)
 
+## Windows 배포 준비 경계 (2026-10-14)
+
+`packaging/prepare_windows.ps1`은 다운로드·WinUI 빌드·stage 구성·검증 순서만 연결합니다. `download_runtime.py`는 공식 런타임·VC++·7-Zip 해시 검증과 추출, `prepare_obs.py`는 내장 OBS, `prepare_sources.py`는 버전별 대응 소스 준비를 소유합니다. `build_single_exe.py`는 lock 해시와 일치하는 휠·활성 모델·앱 소스·라이선스를 모으며 `--stage-only`로 최종 EXE 생성 전에 종료합니다. `verify_windows_stage.py`는 포함된 Python으로 추론·DLL 로드를 검증합니다. 이 계층은 실행 앱의 Host·UI·저장소를 변경하지 않으며 개인 설정·기록을 복사하지 않습니다. 산출물·재사용·빌드 설정은 [Windows 배포 준비](windows-distribution.md)에 정리했습니다.
+
 ## 로스트아크 점검 응답 분류 (2026-10-11)
 
 - `lostark.client`가 HTTP 503을 공개 오류 `LostArkMaintenanceError(status=503, retry_after=초)`로 변환합니다. 점검 또는 일시적인 서비스 중단을 의미하며 500/502/504와 구분합니다. 응답 본문이나 키는 노출하지 않습니다.

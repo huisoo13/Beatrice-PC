@@ -235,6 +235,17 @@ Beatrice-PC/
 │  ├─ EngineProcessLifetime.cs   # UI 소유 Job Object·자식 프로세스 종료
 │  └─ RecordPresentation.cs      # 날짜·주간 구분·기록 문장·골드 여부·레벨 표시 형식
 │
+├─ packaging/                   # Windows 배포 재료 준비·패키징 (실행 앱과 독립)
+│  ├─ prepare_windows.ps1       # 런타임·라이브러리·WinUI·소스 준비와 stage 검증
+│  ├─ download_runtime.py       # Python·VC++·7-Zip 다운로드·SHA-256 검증
+│  ├─ prepare_obs.py            # 앱 내장 OBS·라이선스·대응 소스 준비
+│  ├─ prepare_sources.py        # GPL 계열 Python 라이브러리 버전별 대응 소스 준비
+│  ├─ requirements-windows.txt # 주요 Python 라이브러리 버전
+│  ├─ requirements-windows-lock.txt # 전체 Windows x64 휠 버전·해시 고정
+│  ├─ build_single_exe.py       # 배포 폴더 구성 / 선택적 SFX EXE 생성
+│  ├─ verify_windows_stage.py  # 포함된 Python·YOLO/OCR 추론·OBS DLL 검증
+│  └─ verify_single_exe.py      # 최종 SFX 파일·압축·해시 검증
+│
 └─ tools/
    ├─ evaluation_geometry.py     # 공통 IoU 계산
    ├─ prepare_character_false_positives.py  # 선택 화면 오탐 음성 자료·기존 라벨 보존
@@ -248,6 +259,8 @@ Beatrice-PC/
 ```
 
 주요 연결 관계:
+
+배포 준비는 `packaging/prepare_windows.ps1` → 런타임·휠·OBS·대응 소스 준비 → `ui/Beatrice.App/build.ps1 -Publish` → `build_single_exe.py --stage-only` → 포함된 Python의 `verify_windows_stage.py` 순서입니다. 생성 파일은 Git에서 제외한 `build/`에 저장하며, 준비 단계에서는 최종 EXE를 만들지 않습니다. 재사용·갱신 규칙은 [Windows 배포 준비](docs/windows-distribution.md)를 참고하세요.
 
 로스트아크 HTTP 503은 `LostArkMaintenanceError`로 구분합니다. 공통 클라이언트는 최소 5분(더 긴 Retry-After는 존중) 동안 추가 전송을 보류하며, CharacterCatalog는 캐시를 유지하고 전체 조회를 보류합니다. LostArkRegistration은 기존 키를 유지하며 점검·서비스 중단 안내를 전달합니다. 최종 갱신: 2026-10-14.
 

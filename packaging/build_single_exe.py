@@ -1,23 +1,44 @@
 """공식 Windows 런타임/휠을 7-Zip SFX로 묶습니다. Windows 실행 검증과는 별개입니다."""
 from pathlib import Path
-import zipfile,shutil,hashlib,json,sys
+import zipfile,shutil,hashlib,json,sys,re,email
 ROOT=Path(__file__).resolve().parents[1]
 native_ui=ROOT/'build/native-ui'
 if not (native_ui/'BeatricePC.exe').is_file():
     raise ValueError('WinUI 앱을 ui/Beatrice.App/build.ps1 -Publish로 먼저 준비해주세요.')
+expected_hashes=set(re.findall(r'--hash=sha256:([0-9a-f]{64})',
+    (ROOT/'packaging/requirements-windows-lock.txt').read_text(encoding='utf-8')))
+if not expected_hashes:raise ValueError('배포 라이브러리 lock 목록이 비어 있습니다.')
+selected_wheels={}
+for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
+    with wheel.open('rb') as file:digest=hashlib.file_digest(file,'sha256').hexdigest()
+    if digest in expected_hashes:selected_wheels[digest]=wheel
+if set(selected_wheels)!=expected_hashes:
+    raise ValueError('배포 라이브러리 누락 또는 해시 불일치: packaging/prepare_windows.ps1을 실행해주세요.')
+sources=ROOT/'build/third-party-sources'
+source_manifest=json.loads((sources/'manifest.json').read_text(encoding='utf-8'))
+for item in source_manifest:
+    if hashlib.sha256((sources/item['file']).read_bytes()).hexdigest()!=item['sha256']:
+        raise ValueError('대응 소스 해시 불일치: '+item['file'])
 stage=ROOT/'build/windows-app'
+if not stage.resolve().is_relative_to((ROOT/'build').resolve()):raise ValueError('Unsafe staging path')
 if stage.exists():shutil.rmtree(stage)  # 이 스크립트가 생성한 임시 패키지 폴더만 재구성
 stage.mkdir(parents=True,exist_ok=True)
 runtime=stage/'runtime';runtime.mkdir(exist_ok=True)
 with zipfile.ZipFile(ROOT/'build/runtime-downloads/python-3.12.10-embed-amd64.zip') as z:z.extractall(runtime)
 site=runtime/'Lib/site-packages';site.mkdir(parents=True,exist_ok=True)
 wheel_manifest=[]
-for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
+third_party=[]
+for digest,wheel in sorted(selected_wheels.items(),key=lambda item:item[1].name):
     if wheel.name.startswith(('torch-','torchvision-')) and not wheel.name.startswith(('torch-2.8.0-','torchvision-0.23.0-')):continue
     if wheel.name.lower().startswith(('easyocr-','pyside6','shiboken6')):continue
     # contrib가 필요한 PaddleOCR와 다른 OpenCV 의존성은 동일 cv2 바이너리를 공유합니다.
     skip_cv=wheel.name.startswith(('opencv_python-','opencv_python_headless-'))
     with zipfile.ZipFile(wheel) as z:
+        metadata=email.message_from_bytes(z.read(next(n for n in z.namelist() if n.endswith('.dist-info/METADATA'))))
+        third_party.append(dict(name=metadata['Name'],version=metadata['Version'],
+                               license=str(metadata['License-Expression'] or metadata['License'] or ''),
+                               classifiers=metadata.get_all('Classifier',[]),
+                               licenseFiles=[n for n in z.namelist() if any(word in n.lower() for word in ('license','copying','notice'))]))
         for name in z.namelist():
             if name.endswith('/'):continue
             if skip_cv and '.dist-info/' not in name:continue
@@ -27,7 +48,7 @@ for wheel in sorted((ROOT/'build/windows-wheels').glob('*.whl')):
                 relative=Path(*parts[2:])
             else:relative=Path(name)
             target=site/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read(name))
-    wheel_manifest.append(dict(file=wheel.name,sha256=hashlib.sha256(wheel.read_bytes()).hexdigest()))
+    wheel_manifest.append(dict(file=wheel.name,sha256=digest))
 # Resolve the app-local VC runtime from the embedded Python archive, bundled
 # numerical wheels or explicitly prepared build/vc-runtime files, without Qt.
 for source in (site,native_ui,ROOT/'build/vc-runtime'):
@@ -51,9 +72,9 @@ shutil.copy2(ROOT/'LICENSE',stage/'LICENSE')
 # Corresponding Beatrice source accompanies the GPL engine distribution.
 source_zip=stage/'obs-runtime/licenses/beatrice-source.zip'
 with zipfile.ZipFile(source_zip,'w',compression=zipfile.ZIP_DEFLATED) as source:
-    for folder in ('beatrice','config','packaging','tests','ui'):
+    for folder in ('beatrice','config','packaging','tests','ui','tools','docs'):
         for path in (ROOT/folder).rglob('*'):
-            if path.is_file() and not {'__pycache__','bin','obj'}.intersection(path.parts) and path.suffix not in ('.pyc','.png'):
+            if path.is_file() and not {'__pycache__','bin','obj'}.intersection(path.parts) and path.suffix not in ('.pyc',) and path.name!='uipro.cmd':
                 source.write(path,str(path.relative_to(ROOT)))
     for name in ('LICENSE','README.md','app_launcher.py','Run-Beatrice.cmd'):
         source.write(ROOT/name,name)
@@ -81,6 +102,27 @@ if active_config['mode']=='yolo':
 shutil.copy2(ROOT/'app_launcher.py',stage/'app_launcher.py')
 shutil.copy2(ROOT/'Run-Beatrice.cmd',stage/'Run-Beatrice.cmd')
 shutil.copy2(ROOT/'build/7zip-sdk/DOC/installer.txt',stage/'7zip-SFX-license.txt')
+licenses=stage/'licenses';licenses.mkdir()
+shutil.copytree(sources,licenses/'sources')
+shutil.copy2(ROOT/'build/7zip-sdk/DOC/lzma-sdk.txt',licenses/'7zip-LZMA-SDK.txt')
+shutil.copy2(ROOT/'build/runtime-downloads/lzma2603.7z',licenses/'sources/lzma2603.7z')
+shutil.copy2(ROOT/'build/runtime-downloads/Microsoft.VCLibs.x64.14.00.Desktop.appx',licenses/'Microsoft.VCLibs.x64.14.00.Desktop.appx')
+for package in sorted((ROOT/'outputs/nuget').glob('microsoft.*')):
+    for version in package.iterdir():
+        if not version.is_dir():continue
+        for notice in version.iterdir():
+            if notice.is_file() and any(word in notice.name.lower() for word in ('license','notice')):
+                target=licenses/'microsoft'/package.name/version.name/notice.name
+                target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(notice,target)
+shutil.copy2(ROOT/'packaging/requirements-windows-lock.txt',licenses/'requirements-windows-lock.txt')
+(licenses/'third-party.json').write_text(json.dumps(third_party,indent=2),encoding='utf-8')
+(licenses/'README.txt').write_text(
+    'Python package license/notice files remain in runtime/Lib/site-packages.\n'
+    'Python license remains in runtime/LICENSE.txt.\n'
+    'OBS license and source plus Beatrice source are in obs-runtime/licenses.\n'
+    'GPL-family Python source distributions and 7-Zip SDK source are in licenses/sources.\n'
+    'WinUI/.NET package license and notices are collected in licenses/microsoft.\n'
+    'These collected materials do not replace a final distribution license review.\n',encoding='utf-8')
 (stage/'package-manifest.json').write_text(json.dumps(dict(python='3.12.10 embedded amd64',wheels=wheel_manifest,windowsRuntimeTested=False),indent=2))
 print('Staged',sum(p.stat().st_size for p in stage.rglob('*') if p.is_file()),'bytes',flush=True)
 if '--stage-only' in sys.argv:sys.exit()
