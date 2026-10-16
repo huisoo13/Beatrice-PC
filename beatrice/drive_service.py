@@ -34,10 +34,11 @@ class PersonalDrive:
         return dict(busy=self.busy, message=self.message, available=self.available)
 
     def begin(self, action, automatic=False):
-        if action not in ('upload', 'download') or not self.available:
+        if action not in ('upload', 'download', 'delete') or not self.available:
             return False
         revision, count, omitted = None, 0, 0
         try:
+            deletion = self.store.drive_deletion_checkpoint() if action == 'delete' else None
             records, omitted, revision = export_snapshot(self.store) if action == 'upload' else (None, 0, None)
             if action == 'upload' and not records:
                 self.auto.failed(time.monotonic())
@@ -45,16 +46,17 @@ class PersonalDrive:
                 return False
             count = len(records or [])
         except Exception:
-            self.auto.failed(time.monotonic())
-            self.message = '저장할 기록을 확인하지 못했습니다. 자동 저장을 재시도합니다.'
+            if action == 'upload': self.auto.failed(time.monotonic())
+            self.message = '백업 작업에 필요한 PC 기록 상태를 확인하지 못했습니다. 다시 시도해주세요.'
             return False
         session = self.account.session
         def run(cancel):
             client = DriveClient(drive_access_token(self.root, session, cancel), cancel, backup_directory=self.data / 'drive-backups')
-            return client.upload(records) if action == 'upload' else client.download()
+            return client.upload(records) if action == 'upload' else client.delete_backup() if action == 'delete' else client.download()
         self.pending = dict(job=Job(run, 'GoogleDrive'), action=action, account=session['account']['sub'],
-                            revision=revision, count=count, omitted=omitted, automatic=automatic)
+                            revision=revision, count=count, omitted=omitted, automatic=automatic, deletion=deletion)
         self.message = ('새 완료 기록을 Drive에 자동 저장하는 중…' if automatic else 'Drive에 저장하고 확인하는 중…') if action == 'upload' else 'Drive 기록을 읽는 중…'
+        if action == 'delete': self.message = 'Drive PC 백업을 삭제하는 중…'
         return True
 
     def poll(self):
@@ -86,6 +88,13 @@ class PersonalDrive:
             except Exception:
                 delay = self.auto.failed(time.monotonic())
                 self.message = f'업로드 확인 상태를 저장하지 못했습니다. {delay}초 후 재시도합니다.'
+        elif task['action'] == 'delete':
+            try:
+                self.store.defer_drive_until_completion(task['account'], *task['deletion'])
+                self.auto.reset()
+                self.message = ('Drive PC 백업을 삭제했습니다.' if value else '삭제할 Drive PC 백업이 없습니다.') + ' 새 완료 기록이 생기면 다시 백업합니다.'
+            except Exception:
+                self.message = 'Drive PC 백업 삭제 후 자동 백업 대기 상태를 저장하지 못했습니다.'
         elif not self.closed:
             self.preview = dict(id=secrets.token_hex(16), account=task['account'], result=value)
             self.message = 'Drive 기록을 확인하고 복원 여부를 선택해주세요.'
@@ -135,6 +144,6 @@ class PersonalDrive:
     def shutdown(self):
         self.closed = True
         self.preview = None
-        # Complete and verify an in-flight upload before the host closes SQLite.
+        # Finish uploads and confirmed deletions before the host closes SQLite.
         if self.pending and self.pending['action'] == 'download':
             self.pending['job'].cancel.set()

@@ -190,10 +190,10 @@ public partial class MainWindow : Window
             ValidateWeeklySummary();
             await ValidateSettingsTextNavigation();
             ValidateApiRegistrationUI();
-            var views = new[]{"weekly", "weekly-640", "weekly-375", "records", "character-selecting", "character-unset", "rewards", "settings", "settings-public", "settings-records", "settings-obs", "settings-api", "settings-api-focused", "settings-api-filled", "settings-api-registered", "settings-api-error", "settings-api-busy", "weekly-api-required", "records-api-required", "settings-drive", "settings-drive-signed-in", "drive-restore", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty", "weekly-empty"};
+            var views = new[]{"weekly", "weekly-640", "weekly-375", "records", "character-selecting", "character-unset", "rewards", "settings", "settings-public", "settings-records", "settings-obs", "settings-api", "settings-api-focused", "settings-api-filled", "settings-api-registered", "settings-api-error", "settings-api-busy", "weekly-api-required", "records-api-required", "settings-drive", "settings-drive-signed-in", "settings-drive-signed-in-640", "settings-drive-signed-in-375", "drive-restore", "drive-delete", "google-logout", "drive-delete-375", "google-logout-375", "records-640", "rewards-640", "settings-640", "settings-drive-640", "settings-api-640", "records-375", "rewards-375", "settings-375", "settings-drive-375", "settings-api-375", "empty", "weekly-empty"};
             foreach (var view in views)
             {
-                if(view=="records" || view=="weekly-empty") AppWindow.Resize(new Windows.Graphics.SizeInt32(1280,880));
+                if(view=="records" || view=="weekly-empty" || view is "drive-delete" or "google-logout") AppWindow.Resize(new Windows.Graphics.SizeInt32(1280,880));
                 if (view.EndsWith("640")) AppWindow.Resize(new Windows.Graphics.SizeInt32(640,1000));
                 if (view.EndsWith("375")) AppWindow.Resize(new Windows.Graphics.SizeInt32(375,900));
                 var before = AppWindow.Size;
@@ -217,6 +217,10 @@ public partial class MainWindow : Window
                 if (view == "rewards") ValidateRewardInteractions();
                 Task? detailTask = null;
                 if (view == "drive-restore") detailTask = ShowDrivePreview(JsonSerializer.SerializeToElement(new { previewId = "review-preview", email = "preview@example.com", createdTime = "2026-10-08T03:00:00Z", completedCount = 8, omittedCount = 0, localCount = records.Count }));
+                if (view.StartsWith("drive-delete") || view.StartsWith("google-logout")) {
+                    google=JsonSerializer.SerializeToElement(new { signedIn=true,email="preview@example.com" });
+                    detailTask=view.StartsWith("drive-delete") ? ConfirmDeleteDriveBackup() : ConfirmGoogleLogout();
+                }
                 if (view == "empty" || view == "weekly-empty") { records.Clear(); RebuildRecords(); }
                 if (view.StartsWith("settings-drive")) google=JsonSerializer.SerializeToElement(new { signedIn=view.Contains("signed-in"), name="샘플 사용자", email="preview@example.com", busy=false });
                 if (view.StartsWith("settings")) ToggleSettings();
@@ -237,7 +241,12 @@ public partial class MainWindow : Window
                 if (view.StartsWith("settings") && (Grid.GetRow(SettingsPresenter) != 1 || Grid.GetRowSpan(SettingsPresenter) != 2 || SettingsPresenter.TransformToVisual(Root).TransformPoint(new Windows.Foundation.Point()).Y < 44))
                     throw new InvalidOperationException("설정 오버레이 상단바 제외 실패");
                 if (view.StartsWith("rewards")) await ValidateRewardMotion();
-                var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(view is "detail" or "drive-restore" ? activeDialog! : Root);
+                if(view.StartsWith("drive-delete") || view.StartsWith("google-logout")) {
+                    if(activeDialog is null || activeDialog.DefaultButton!=ContentDialogButton.Close || activeDialog.CloseButtonText!="취소" ||
+                        activeDialog.PrimaryButtonText!=(view.StartsWith("drive-delete") ? "백업 삭제" : "로그아웃"))
+                        throw new InvalidOperationException("Google 경고 팝업의 작업/취소 기본 선택 실패");
+                }
+                var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync((view is "detail" or "drive-restore" || view.StartsWith("drive-delete") || view.StartsWith("google-logout")) ? activeDialog! : Root);
                 var pixels = await bitmap.GetPixelsAsync();
                 var file = await folder.CreateFileAsync(view + "-native.png",Windows.Storage.CreationCollisionOption.ReplaceExisting);
                 using var stream = await file.OpenAsync(Windows.Storage.FileAccessMode.ReadWrite);
@@ -525,7 +534,7 @@ public partial class MainWindow : Window
         var apiWasConfigured=Flag(lostArkApi,"configured");
         if (snapshot.LostArkApi is JsonElement lostArkApiState) lostArkApi = lostArkApiState;
         if (apiWasConfigured != Flag(lostArkApi,"configured")) RebuildRecords();
-        if (snapshot.Google is JsonElement googleState) google = googleState;
+        if (snapshot.Google is JsonElement googleState) ReceiveGoogleState(googleState);
         if (snapshot.Drive is JsonElement driveState) drive = driveState;
         UpdateSettingsState();
         if (startupCheck && value.TryGetProperty("startupReady", out var startupReady) && startupReady.GetBoolean())

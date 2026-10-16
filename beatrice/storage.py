@@ -319,7 +319,26 @@ class Store:
             if not row['isTest']:self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
         return row
 
+    def drive_deletion_checkpoint(self):
+        """Snapshot actual completions; metadata edits cannot recreate a deleted backup."""
+        with self.transaction(snapshot=True):
+            epoch, _ = self.drive_revision()
+            count = self.db.execute("SELECT COUNT(*) FROM completion_history WHERE json_extract(payload,'$.isTest')=0").fetchone()[0]
+        return epoch, count
+
+    def defer_drive_until_completion(self, account, epoch, completion_count):
+        """Persist deletion without acknowledging an upload that never happened."""
+        with self.db:
+            if self.drive_revision()[0] != epoch:return
+            self.db.execute('''INSERT INTO drive_deletions VALUES(?,?,?)
+                ON CONFLICT(account) DO UPDATE SET epoch=excluded.epoch,completion_count=excluded.completion_count''',
+                (account,epoch,completion_count))
+
     def drive_pending(self,account):
+        deletion=self.db.execute('SELECT epoch,completion_count FROM drive_deletions WHERE account=?',(account,)).fetchone()
+        if deletion:
+            epoch,count=self.drive_deletion_checkpoint()
+            if deletion[0]==epoch and count<=deletion[1]:return None
         row=self.db.execute('''SELECT c.epoch,c.revision FROM drive_changes c
             LEFT JOIN drive_uploads u ON u.account=? AND u.epoch=c.epoch
             WHERE c.id=1 AND c.revision>COALESCE(u.revision,0)''',(account,)).fetchone()
@@ -338,6 +357,7 @@ class Store:
         """Part of the caller's clear/restore transaction; don't publish old pending data."""
         self.db.execute('UPDATE drive_changes SET epoch=lower(hex(randomblob(16))),revision=0 WHERE id=1')
         self.db.execute('DELETE FROM drive_uploads')
+        self.db.execute('DELETE FROM drive_deletions')
 
     def clear_all(self, transactional=True):
         """분석 작업자가 정지한 뒤 호출합니다. 모델/설정은 보존합니다."""

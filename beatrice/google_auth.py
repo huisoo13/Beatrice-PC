@@ -15,7 +15,7 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.request import Request, urlopen
-import webbrowser
+from .oauth_browser import OAuthBrowser
 
 TOKEN_URL = 'https://oauth2.googleapis.com/token'
 USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
@@ -132,6 +132,7 @@ def authorize(client, cancel, timeout=180, opener=None, login_hint=None):
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode('ascii')).digest()).rstrip(b'=').decode('ascii')
     result = {}
+    browser = OAuthBrowser() if opener is None else None
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -150,10 +151,10 @@ def authorize(client, cancel, timeout=180, opener=None, login_hint=None):
                 message = str(exc)
             # Browser-opened tabs may refuse window.close(); retain a quiet fallback.
             closing = ('<script>window.close();setTimeout(function(){'
-                       'document.getElementById("message").hidden=false;},500);</script>') if 'code' in result else ''
+                       'document.getElementById("message").hidden=false;},500);</script>') if 'code' in result and not (browser and browser.managed) else ''
             hidden = ' hidden' if closing else ''
             body = ('<!doctype html><meta charset="utf-8"><title>Beatrice</title>'
-                    '<p id="message"' + hidden + '>' + message + '</p>' + closing).encode('utf-8')
+                    '<p id="message"' + hidden + '>' + message + '</p>' + closing).replace('<title>Beatrice</title>', '<title>' + (browser.completion_title if browser else 'Beatrice') + '</title>').encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(body)))
@@ -171,21 +172,25 @@ def authorize(client, cancel, timeout=180, opener=None, login_hint=None):
         def handle_error(self, request, address):
             pass  # Never print OAuth callback contents or request exceptions.
 
-    with Server(('127.0.0.1', 0), Handler) as server:
-        server.timeout = .2
-        redirect = f'http://127.0.0.1:{server.server_port}/'
-        parameters = dict(
-            client_id=client['client_id'], redirect_uri=redirect, response_type='code',
-            scope=SCOPES, state=state, code_challenge=challenge, code_challenge_method='S256',
-            access_type='offline', prompt='consent select_account')
-        if login_hint:
-            parameters['login_hint'] = login_hint
-        url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(parameters)
-        if not (opener or webbrowser.open)(url):
-            raise AuthError('브라우저를 열지 못했습니다. 기본 브라우저 설정을 확인해주세요.')
-        deadline = time.monotonic() + timeout
-        while not result and not cancel.is_set() and time.monotonic() < deadline:
-            server.handle_request()
+    try:
+        with Server(('127.0.0.1', 0), Handler) as server:
+            server.timeout = .2
+            redirect = f'http://127.0.0.1:{server.server_port}/'
+            parameters = dict(
+                client_id=client['client_id'], redirect_uri=redirect, response_type='code',
+                scope=SCOPES, state=state, code_challenge=challenge, code_challenge_method='S256',
+                access_type='offline', prompt='consent select_account')
+            if login_hint:
+                parameters['login_hint'] = login_hint
+            url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urlencode(parameters)
+            if not (opener or browser.open)(url):
+                raise AuthError('브라우저를 열지 못했습니다. 기본 브라우저 설정을 확인해주세요.')
+            deadline = time.monotonic() + timeout
+            while not result and not cancel.is_set() and time.monotonic() < deadline:
+                server.handle_request()
+    finally:
+        if browser and result:
+            browser.close_completed()
     if cancel.is_set():
         raise AuthError('로그인을 취소했습니다.')
     if not result:

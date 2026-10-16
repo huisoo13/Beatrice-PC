@@ -43,6 +43,8 @@ def initialize_schema(db):
     CREATE TABLE IF NOT EXISTS drive_changes (
         id INTEGER PRIMARY KEY CHECK(id=1), epoch TEXT NOT NULL, revision INTEGER NOT NULL);
     INSERT OR IGNORE INTO drive_changes VALUES(1,lower(hex(randomblob(16))),0);
+    CREATE TABLE IF NOT EXISTS drive_deletions (
+      account TEXT PRIMARY KEY, epoch TEXT NOT NULL, completion_count INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS drive_uploads (
         account TEXT PRIMARY KEY, epoch TEXT NOT NULL, revision INTEGER NOT NULL);
     ''')

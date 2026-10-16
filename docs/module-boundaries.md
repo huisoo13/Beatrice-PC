@@ -163,3 +163,25 @@ initial_login.observe_login은 탐지된 카드 안의 이름 영역을 요구�
 CharacterVision.read_name은 탐지된 이름 crop의 명암차를 확인해 dim 정규화를 글자 군집 선택 전에 적용합니다. 새로운 모델의 박스가 1픽셀 달라져도 어두운 끝 글자를 잘라 짧은 이름으로 확정하는 일을 방지하며, 이름 추측이나 저장된 캐릭터명 보정은 사용하지 않습니다.
 
 2026-10-14 source 제거: characterInfo에는 className·itemLevel·serverName·fetchedAt만 출력합니다. CharacterRecordService는 Store.pending_character_records와 set_character_info(pending/finalize_pending)를 사용하며 조회 대기 상태는 record_character_pending 테이블에만 보관합니다. remove_character_info_source는 기존 값과 ID·관측·생성 시각을 유지하며 과거 source를 제거합니다. 호환 읽기는 이전 source를 버리고 출력에서는 제거합니다.
+
+## Drive 백업 관리 (2026-10-16)
+
+Google Drive 설정에 로그인한 계정의 백업 불러오기와 백업 데이터 삭제를 제공합니다. MainWindow.Drive는 UI·삭제 확인만 소유합니다. drive_download → Host.pause_for(restore) → PersonalDrive.begin(download) → drive_preview → 기존 복원 확인/로컬 DB 백업/복원 경로를 재사용합니다. drive_delete → PersonalDrive.begin(delete) → DriveClient.delete_backup → FilesApi.delete로 연결합니다. DriveClient는 appDataFolder의 beatriceRecords=v1 및 PC.json 이름·JSON MIME을 확인한 파일만 삭제합니다. 다른 기기·공용 데이터와 PC 로컬 기록은 삭제하지 않습니다. UI는 대상·복구 불가·자동 백업 재개 조건을 확인 창에 표시하고 취소를 기본 선택합니다.
+
+Store.drive_deletion_checkpoint()는 기록 epoch와 확정 완료 건수를 함께 읽고, defer_drive_until_completion(account, epoch, count)은 drive_deletions에 계정별 재백업 대기 상태를 저장합니다. drive_pending은 동일 epoch에서 새 완료 건수가 늘기 전까지 자동 업로드를 보류합니다. 메타데이터/골드 결과 갱신은 새 완료로 취급하지 않으며, 이후 새 관문 완료는 기존 기록을 포함해 다시 백업합니다. 삭제 요청 도중 발생한 완료도 놓치지 않도록 요청 시작 시 체크포인트를 사용합니다. clear/restore는 reset_drive_queue를 통해 대기 상태를 정리합니다. 업로드 성공으로 위장해 acknowledge_drive를 호출하지 않습니다. SQL은 Store와 storage_schema에서만 실행합니다. 삭제·복원·업로드는 PersonalDrive의 기존 작업 잠금과 계정 검증을 공유하며, 종료 시 실행 중인 삭제를 완료하고 owner thread의 poll에서 대기 상태를 저장합니다.
+
+## 외부 로그인 전용 창 (2026-10-16)
+
+OAuthBrowser는 인증 토큰·계정 저장소에 의존하지 않고 browser_executable/open/completion_title/close_completed를 제공합니다. Windows의 기본 Chrome/Edge를 우선하고 확인되지 않으면 설치된 Edge/Chrome을 사용합니다. 인증은 기존 시스템 브라우저의 새 창(--new-window)에서 진행하며 WebView나 별도 브라우저 프로필을 만들지 않습니다. 브라우저 실행 전 HWND 집합을 보관하고, state 검증을 통과한 콜백 응답의 제목에 시도별 임시 식별자를 표시합니다. google_auth.authorize는 콜백 HTTP 응답 후 close_completed를 호출하고 기존 PKCE 토큰 교환·계정 검증을 이어갑니다.
+
+WindowsBrowserWindows는 새 HWND·Chrome_WidgetWin_1 클래스·정확한 실행 파일 경로·완료 제목·프로세스 ID를 확인합니다. 닫기 직전에 동일 신원과 임시 창 속성을 재확인한 후 해당 HWND에만 WM_CLOSE를 보냅니다. 브라우저 프로세스를 종료하지 않으며 기존 창은 후보에서 제외합니다. 둘 이상의 후보나 식별 실패 시 닫지 않습니다. 미지원/실행 실패 시 기본 브라우저 방식으로 되돌아가며 완료 페이지의 기존 자동 닫기 시도와 수동 복귀 안내를 유지합니다. 취소·시간 초과 등 완료 페이지가 없는 경우에는 확인되지 않은 창을 닫지 않습니다.
+
+MainWindow.Drive는 사용자가 로그인 버튼을 눌렀는지와 엔진의 Google busy 전환을 추적합니다. 해당 요청이 완료되면 최소화된 앱을 복원하고 Activate로 복귀를 요청합니다. 자동 세션 복원·일반 스냅샷은 포커스를 가져오지 않습니다. Windows가 활성화 요청을 제한할 수 있으므로 강제 키 입력이나 다른 창 조작으로 우회하지 않습니다.
+
+검증: 임시 로컬 HTTP 페이지로 Chrome·Edge에서 완료 창 닫기와 다른 창 보존을 실측했고, 소유권 불일치·여러 후보·실행 실패·state 검증·취소·기존 PKCE 교환은 모의 회귀 테스트로 확인합니다. 실제 Google 계정 로그인 완료는 사용자 환경에서 확인해야 합니다.
+
+Google 설정의 경고 팝업 (2026-10-16): MainWindow.Drive의 ConfirmGoogleAction이 로그아웃·백업 삭제의 경고/취소 기본 선택/중복 팝업 방지/계정·busy 재검증/버튼 포커스 복구를 담당합니다. 각 버튼은 확인 결과가 승인일 때만 기존 google_logout 또는 drive_delete 명령을 전송합니다. 취소·Esc·닫기는 명령을 보내지 않습니다.
+
+Google 경고 팝업 디자인: GoogleWarningDialog.Create(XamlRoot, ViewTheme, deleteBackup)가 두 경고의 설명·색상·44px 하단 버튼 스타일을 소유합니다. MainWindow.Drive는 승인 결과와 계정 재검증·명령 전송을 연결하며 팝업 내부 스타일을 직접 구성하지 않습니다. WinUI 기본 취소 버튼의 파란 Accent 색은 이 팝업 리소스 안에서만 중립 에셋으로 재정의합니다.
+
+경고 팝업의 계정 정보는 표시하지 않습니다. 계정 변경 시 명령을 막는 내부 재검증은 MainWindow.Drive에 유지하고, GoogleWarningDialog에는 계정 값을 전달하지 않습니다. CommandSpace의 패딩과 버튼 사이 간격을 0으로 설정하여 44px 버튼 두 개를 좌우·하단에 밀착합니다. 본문 패딩은 24px로 유지하고 버튼 하단 모서리만 팝업 외곽 곡선에 맞춥니다.

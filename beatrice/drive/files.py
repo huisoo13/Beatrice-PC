@@ -36,6 +36,10 @@ class FilesApi:
     def get(self, file_id, *, fields=None):
         return self._client.json_request(self._path(file_id), params={'fields': fields} if fields else None)
 
+    def delete(self, file_id):
+        """Delete exactly one file; successful responses can have no body."""
+        self._client.request(self._path(file_id), method='DELETE')
+
     def download(self, file_id, *, max_bytes=None):
         return self._client.request(self._path(file_id), params={'alt': 'media'}, max_bytes=max_bytes)
 

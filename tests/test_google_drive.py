@@ -116,6 +116,9 @@ class FakeDrive:
     def __call__(self, request, timeout):
         self.requests.append(request)
         self.assert_auth(request)
+        if request.method == 'DELETE':
+            del self.files[urlsplit(request.full_url).path.rsplit('/',1)[-1]]
+            return io.BytesIO(b'')
         if request.method in ('POST', 'PATCH'):
             message = BytesParser(policy=default).parsebytes(
                 ('Content-Type: ' + request.headers['Content-type'] + '\r\n\r\n').encode() + request.data)
@@ -152,6 +155,21 @@ class DriveTests(unittest.TestCase):
         responses = iter([{'files': [], 'nextPageToken': 'next'}, {'files': [{'id': 'found'}]}])
         client = DriveClient('fake', threading.Event(), opener=lambda *a, **k: io.BytesIO(json.dumps(next(responses)).encode()))
         self.assertEqual(client.latest(), {'id': 'found'})
+
+    def test_delete_backup_targets_only_production_pc_and_preserves_other_files(self):
+        fake=FakeDrive()
+        client=DriveClient('fake',threading.Event(),opener=fake,backup_directory=self.temp.name)
+        uploaded=client.upload([row()])
+        fake.files['ios']=(dict(name='iOS.json',id='ios',appProperties={'beatriceRecords':'v1'}),b'[]')
+        fake.files['old']=(dict(name='old.json',id='old',appProperties={'beatriceRecords':'v1'}),b'[]')
+        self.assertTrue(client.delete_backup())
+        self.assertNotIn(uploaded['id'],fake.files)
+        self.assertEqual(set(fake.files),{'ios','old'})
+        self.assertFalse(client.delete_backup())
+        unsafe=DriveClient('fake',threading.Event(),namespace='integration-test',opener=fake)
+        with self.assertRaises(DriveError):unsafe.delete_backup()
+        with patch.object(client,'latest',return_value=dict(id='ios',name='iOS.json')):
+            with self.assertRaises(DriveError):client.delete_backup()
 
     def test_multiple_uploads_update_pc_only_and_back_up_previous(self):
         fake = FakeDrive()

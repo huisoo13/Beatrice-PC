@@ -71,6 +71,34 @@ class GoogleAuthTests(unittest.TestCase):
                 authorize({'client_id': 'client'}, threading.Event(), timeout=0, opener=lambda url: True)
             request.assert_not_called()
 
+    def test_dedicated_browser_completion_closes_only_after_valid_callback(self):
+        from unittest.mock import Mock
+        browser=Mock(managed=True,completion_title='Beatrice-login-test-marker')
+        pages=[];threads=[]
+        def open_browser(url):
+            query=parse_qs(urlsplit(url).query)
+            def callback():
+                with urlopen(query['redirect_uri'][0]+'?'+urlencode(dict(state=query['state'][0],code='test-code')),timeout=5) as response:
+                    pages.append(response.read().decode())
+            thread=threading.Thread(target=callback);threads.append(thread);thread.start()
+            return True
+        browser.open.side_effect=open_browser
+        with patch('beatrice.google_auth.OAuthBrowser',return_value=browser),patch('beatrice.google_auth.request_json',return_value={'access_token':'fake'}):
+            self.assertEqual(authorize({'client_id':'client'},threading.Event()),{'access_token':'fake'})
+        for thread in threads:thread.join(timeout=5)
+        browser.close_completed.assert_called_once_with()
+        self.assertIn('<title>Beatrice-login-test-marker</title>',pages[0])
+        self.assertNotIn('window.close()',pages[0])
+        self.assertNotIn('test-code',pages[0])
+
+    def test_cancelled_dedicated_login_cannot_close_unidentified_browser(self):
+        from unittest.mock import Mock
+        browser=Mock();browser.open.return_value=True
+        cancel=threading.Event();cancel.set()
+        with patch('beatrice.google_auth.OAuthBrowser',return_value=browser),patch('beatrice.google_auth.request_json') as request:
+            with self.assertRaises(AuthError):authorize({'client_id':'client'},cancel)
+        browser.close_completed.assert_not_called();request.assert_not_called()
+
     def test_refresh_keeps_refresh_token_and_checks_account(self):
         saved = dict(client_id='client', refresh_token='refresh', account={'sub': 'person'})
         with patch('beatrice.google_auth.load_client', return_value={'client_id': 'client', 'client_secret': 'secret'}), \

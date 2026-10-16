@@ -24,6 +24,20 @@ class DriveClientTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertIs(LegacyDriveError, DriveError)
 
+    def test_delete_uses_exact_id_empty_response_and_private_credentials(self):
+        calls=[]
+        def opener(request, timeout):
+            calls.append(request)
+            return io.BytesIO(b'')
+        client=GoogleDriveClient(access_token='private-token',opener=opener)
+        client.files.delete('pc-file')
+        self.assertEqual(calls[0].method,'DELETE')
+        self.assertEqual(calls[0].full_url,API+'/pc-file')
+        self.assertIsNone(calls[0].data)
+        with self.assertRaises(ValueError):client.files.delete('../bad')
+        with self.assertRaises(DrivePermissionError):GoogleDriveClient(api_key='key',opener=opener).files.delete('pc-file')
+        self.assertEqual(len(calls),1)
+
     def test_public_and_private_requests_keep_credentials_separate(self):
         calls = []
         def opener(request, timeout):

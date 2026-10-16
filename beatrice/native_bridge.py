@@ -242,6 +242,9 @@ class Host:
         elif kind == 'drive_upload':
             if self.can_change_records(): self.drive.begin('upload')
             self.snapshot()
+        elif kind == 'drive_delete':
+            if self.can_change_records(): self.drive.begin('delete')
+            self.snapshot()
         elif kind == 'drive_download':
             if self.can_change_records() and self.drive.available: self.pause_for('restore')
             self.snapshot()

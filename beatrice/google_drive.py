@@ -64,6 +64,19 @@ class DriveClient:
             raise DriveError('이 Google 계정에 저장된 Beatrice 기록이 없습니다.')
         return dict(metadata=metadata, records=self.read(metadata))
 
+    def delete_backup(self):
+        """Remove only the PC-owned production backup, never other app files."""
+        if self.namespace != VERSION:
+            raise DriveError('PC 백업 저장 영역에서만 삭제할 수 있습니다.')
+        metadata = self.latest()
+        if metadata is None:
+            return False
+        if (metadata.get('name') != 'PC.json' or metadata.get('mimeType') != 'application/json'
+                or metadata.get('appProperties', {}).get(PROPERTY) != VERSION):
+            raise DriveError('삭제할 PC 백업 정보를 확인하지 못했습니다.')
+        self.api.files.delete(metadata['id'])
+        return True
+
     def upload(self, records):
         body = encode_records(records)
         previous = self.latest() if self.namespace == VERSION else None

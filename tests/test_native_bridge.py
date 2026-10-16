@@ -63,6 +63,12 @@ class NativeBridgeTests(unittest.TestCase):
         self.patch.stop()
         self.folder.cleanup()
 
+    def test_drive_delete_is_routed_and_rejected_while_busy(self):
+        with patch.object(self.host.drive,'begin') as begin,patch.object(self.host,'can_change_records',return_value=False):
+            self.host.command(dict(type='drive_delete'));begin.assert_not_called()
+        with patch.object(self.host.drive,'begin') as begin,patch.object(self.host,'can_change_records',return_value=True):
+            self.host.command(dict(type='drive_delete'));begin.assert_called_once_with('delete')
+
     def test_old_worker_queued_callback_is_ignored_after_restart(self):
         worker=self.host.worker
         thread=threading.Thread(target=lambda:worker.progress.emit('old queued progress'))

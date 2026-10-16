@@ -47,6 +47,54 @@ class ServiceTests(unittest.TestCase):
         self.drive.pending=dict(job=FakeJob(dict(records=validate_records([{k:v for k,v in row().items() if k!='observedAt'}]),metadata={'createdTime':'2026-10-08T00:00:00Z'}),error),action='download',account='person')
         self.drive.poll()
 
+    def finish_delete(self,error=None,checkpoint=None):
+        self.drive.pending=dict(job=FakeJob(True,error),action='delete',account='person',
+            deletion=checkpoint or self.store.drive_deletion_checkpoint())
+        self.drive.poll()
+
+    def test_delete_keeps_local_records_and_waits_for_new_completion_across_restart(self):
+        self.account.session=session();self.seed()
+        before=self.store.history_records()
+        self.finish_delete()
+        self.assertEqual(self.store.history_records(),before)
+        self.assertIsNone(self.store.drive_pending('person'))
+        self.assertIsNotNone(self.store.drive_pending('other'))
+        reopened=Store(Path(self.temp.name)/'records.sqlite3')
+        try:self.assertIsNone(reopened.drive_pending('person'))
+        finally:reopened.close()
+        # Updating a receipt does not count as a newly completed gate.
+        self.store.set_gold_reward(before[0]['recordId'],True)
+        self.assertIsNone(self.store.drive_pending('person'))
+        self.seed(2)
+        self.assertIsNotNone(self.store.drive_pending('person'))
+
+    def test_delete_failure_and_account_change_do_not_suppress_pending_upload(self):
+        self.account.session=session();self.seed()
+        self.finish_delete('offline')
+        self.assertIsNotNone(self.store.drive_pending('person'))
+        self.account.session['account']['sub']='other';self.finish_delete()
+        self.assertIsNotNone(self.store.drive_pending('person'))
+
+    def test_new_completion_during_delete_is_still_pending_and_shutdown_finishes_delete(self):
+        self.account.session=session();self.seed()
+        checkpoint=self.store.drive_deletion_checkpoint();self.seed(2)
+        self.finish_delete(checkpoint=checkpoint)
+        self.assertIsNotNone(self.store.drive_pending('person'))
+        self.drive.pending=dict(job=FakeJob(True),action='delete',account='person',deletion=self.store.drive_deletion_checkpoint())
+        self.drive.shutdown();self.assertFalse(self.drive.pending['job'].cancel.is_set())
+        self.drive.poll();self.assertIsNone(self.store.drive_pending('person'))
+
+    def test_delete_job_dispatches_only_backup_delete_and_blocks_overlap(self):
+        self.account.session=session();self.seed()
+        from unittest.mock import Mock
+        client=Mock();client.delete_backup.return_value=True
+        with patch('beatrice.drive_service.drive_access_token',return_value='fake'),patch('beatrice.drive_service.DriveClient',return_value=client):
+            self.assertTrue(self.drive.begin('delete'))
+            self.assertFalse(self.drive.begin('download'))
+            self.drive.pending['job'].thread.join(timeout=2)
+            self.drive.poll()
+        client.delete_backup.assert_called_once_with();client.upload.assert_not_called();client.download.assert_not_called()
+
     def test_cancelled_login_result_cannot_save(self):
         job=FakeJob(session());self.account.pending=job
         self.account.cancel()

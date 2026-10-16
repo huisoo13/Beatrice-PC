@@ -139,7 +139,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 ## 모듈 구조
 
-최종 갱신: 2026-10-14. 주요 실행 모듈과 관련 파일을 표시합니다.
+최종 갱신: 2026-10-16. 주요 실행 모듈과 관련 파일을 표시합니다.
 모듈의 추가·삭제·이동, 책임 또는 연결 관계를 변경할 때 이 구조와 설명을 함께 갱신합니다.
 각 모듈의 API와 검증 근거는 [모듈 경계 정리](docs/module-boundaries.md)를 참고하세요.
 
@@ -161,8 +161,8 @@ Beatrice-PC/
 │  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
-│  ├─ storage.py                  # 저장소 API·트랜잭션·캐릭터 정보 확정·기록 정정·골드·보상 갱신
-│  ├─ storage_schema.py           # DB v5 스키마·캐릭터 조회 대기 표식·이전 완료 JSON 변환
+│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 정정·골드·보상·Drive 삭제 후 재백업 대기
+│  ├─ storage_schema.py           # DB v5 스키마·캐릭터 조회 및 Drive 삭제 대기 표식·이전 완료 JSON 변환
 │  ├─ completion_record.py        # 완료 JSON 검증·변환·주간 중복 규칙
 │  ├─ weekly.py                   # 주간 기준·저장소 열기
 │  ├─ drive_data.py               # Drive JSON v5·v4/이전 형식 읽기·복원
@@ -191,9 +191,10 @@ Beatrice-PC/
 │  │  ├─ folders.py              # 폴더 작업
 │  │  └─ errors.py               # 오류 정의
 │  ├─ account_service.py         # Google 계정 작업 관리
-│  ├─ google_auth.py             # 인증·토큰 보관
-│  ├─ drive_service.py           # 개인 기록 업로드·복원 작업 관리
-│  ├─ google_drive.py            # 개인 기록용 Drive 어댑터
+│  ├─ google_auth.py             # 인증·토큰 보관·외부 로그인 창 연결
+│  ├─ oauth_browser.py           # Chrome/Edge 전용 창 실행·완료 창 식별·해당 창 닫기
+│  ├─ drive_service.py           # 개인 기록 업로드·복원·백업 삭제 작업 관리
+│  ├─ google_drive.py            # 개인 기록용 Drive 어댑터·PC 백업 대상 한정 삭제
 │  │
 │  ├─ lostark/                   # 로스트아크 API
 │  │  ├─ __init__.py              # 공개 진입점
@@ -213,7 +214,8 @@ Beatrice-PC/
 │  ├─ MainWindow.Splash.cs       # 초기 준비·스플래시 전환·공통 종료·재실행 연결
 │  ├─ AppRelaunch.cs             # 엔진 종료 후 새 앱 프로세스 실행·설치 경로 인자 보존
 │  ├─ MainWindow.ObsSettings.cs  # 감지 클라이언트 선택·OBS 상태·오류 설정 화면
-│  ├─ MainWindow.Drive.cs        # Google 로그인·계정·로그아웃 화면·복원 확인 연결
+│  ├─ MainWindow.Drive.cs        # Google 계정·백업 불러오기·삭제 확인 연결
+│  ├─ GoogleWarningDialog.cs     # Google 로그아웃·백업 삭제 확인 팝업·하단 밀착 버튼
 │  ├─ GoogleAccountView.cs       # 계정 이름·이메일·원형 사진·로딩 실패 대체 표시
 │  ├─ MainWindow.LostArkApi.cs    # 등록·검증·변경 설정 화면·발급 안내 연결
 │  ├─ ApiKeyRequiredView.cs       # 주간 현황·완료 일지의 API 미등록 안내·등록 진입
