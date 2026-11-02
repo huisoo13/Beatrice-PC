@@ -8,6 +8,37 @@ from train_dungeon_panel import prepare
 ROOT=Path(__file__).resolve().parents[1]
 CLASSES=['reward_panel','reward_gate_title','gold_reward_present','gold_reward_absent']
 
+def extend_reviewed(manifest,output):
+    """Keep legacy examples and augment only reviewed training-session frames."""
+    import os
+    reviewed=json.loads(manifest.read_text(encoding='utf-8'))
+    base=ROOT/reviewed['baseManifest']
+    document=json.loads(base.read_text(encoding='utf-8'))
+    raw=ROOT/reviewed['variantDirectory'];raw.mkdir(parents=True,exist_ok=True)
+    generated=raw/'manifest.json'
+    for row in document['images']:
+        row['path']=Path(os.path.relpath((base.parent/row['path']).resolve(),generated.parent)).as_posix()
+    train_sessions={row['sessionId'] for row in reviewed['samples'] if row['purpose']=='train'}
+    held_sessions={row['sessionId'] for row in reviewed['samples'] if row['purpose']=='session-holdout'}
+    if train_sessions.intersection(held_sessions):raise ValueError('학습 세션과 검증 세션이 겹칩니다.')
+    for sample in reviewed['samples']:
+        if sample['purpose']!='train':continue
+        source=ROOT/sample['path']
+        with Image.open(source) as im:original=im.convert('RGB')
+        for scale in (1,.75,1.25):
+            for brightness in (1,.75,.5,.35):
+                image=ImageEnhance.Brightness(original).enhance(brightness)
+                for index,bounds in enumerate(reviewed['cropBounds']):
+                    current=image if bounds is None else image.crop(bounds)
+                    current=current.resize((round(current.width*scale),round(current.height*scale)))
+                    dest=raw/f'{source.stem}-{scale}-{brightness}-{index}.png';current.save(dest)
+                    x,y=(0,0) if bounds is None else bounds[:2]
+                    boxes=[dict(box,xyxy=[round((box['xyxy'][i]-(x if i%2==0 else y))*scale) for i in range(4)])
+                           for box in sample['boxes'] if (box['class']=='reward_panel')==(bounds is None)]
+                    document['images'].append(dict(path=dest.name,split='train',sessionId=sample['sessionId'],boxes=boxes))
+    generated.write_text(json.dumps(document,ensure_ascii=False,indent=2),encoding='utf-8')
+    return prepare(generated,output,CLASSES,True)
+
 def build(output):
     raw=ROOT/'data/raw/gold-reward-1011';raw.mkdir(parents=True,exist_ok=True)
     session=Path('C:/Users/Huisoo/AppData/Local/BeatricePC/completion-diagnostics/20261011T053841Z-92af6174')
@@ -49,8 +80,12 @@ def build(output):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=ROOT/'data/datasets/gold-reward-context-1011')
+    parser.add_argument('--reviewed',type=Path,help='기존 학습 자료에 추가할 검토 완료 화면 목록')
     parser.add_argument('--parent',action='store_true');args=parser.parse_args()
-    if args.parent:
+    if args.reviewed:
+        if args.parent:parser.error('--reviewed는 요소 모델 추가 학습 전용입니다.')
+        print(extend_reviewed(args.reviewed,args.output))
+    elif args.parent:
         doc=json.loads((ROOT/'data/annotations/gold-reward-context-1011.json').read_text(encoding='utf-8'))
         doc['classes']=['reward_panel'];doc['images']=[row for row in doc['images'] if Path(row['path']).stem.endswith('-0')]
         manifest=ROOT/'data/annotations/gold-reward-panel-1011.json';manifest.write_text(json.dumps(doc,ensure_ascii=False,indent=2),encoding='utf-8')

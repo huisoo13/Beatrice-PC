@@ -2,6 +2,7 @@ import json
 import tempfile
 import threading
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -57,7 +58,7 @@ class CharacterRecordTests(unittest.TestCase):
             self.assertEqual(updated[field],row[field])
         self.assertNotIn('source',updated['characterInfo'])
         self.assertEqual(updated['characterInfo']['itemLevel'],'1,774.16')
-        self.assertGreater(updated['updatedAt'],row['updatedAt'])
+        self.assertGreater(datetime.fromisoformat(updated['updatedAt']),datetime.fromisoformat(row['updatedAt']))
         self.assertEqual(self.store.state_records(),[updated])
         self.assertEqual(self.store.drive_revision()[1],revision+1)
         self.catalog.characters['후이수'] = cached('1,800.00')

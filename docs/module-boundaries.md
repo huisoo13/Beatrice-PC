@@ -1,4 +1,4 @@
-# 모듈 경계 정리 (최종 갱신: 2026-10-14)
+# 모듈 경계 정리 (최종 갱신: 2026-11-02)
 
 ## Windows 배포 준비 경계 (2026-10-14)
 
@@ -185,3 +185,9 @@ Google 설정의 경고 팝업 (2026-10-16): MainWindow.Drive의 ConfirmGoogleAc
 Google 경고 팝업 디자인: GoogleWarningDialog.Create(XamlRoot, ViewTheme, deleteBackup)가 두 경고의 설명·색상·44px 하단 버튼 스타일을 소유합니다. MainWindow.Drive는 승인 결과와 계정 재검증·명령 전송을 연결하며 팝업 내부 스타일을 직접 구성하지 않습니다. WinUI 기본 취소 버튼의 파란 Accent 색은 이 팝업 리소스 안에서만 중립 에셋으로 재정의합니다.
 
 경고 팝업의 계정 정보는 표시하지 않습니다. 계정 변경 시 명령을 막는 내부 재검증은 MainWindow.Drive에 유지하고, GoogleWarningDialog에는 계정 값을 전달하지 않습니다. CommandSpace의 패딩과 버튼 사이 간격을 0으로 설정하여 44px 버튼 두 개를 좌우·하단에 밀착합니다. 본문 패딩은 24px로 유지하고 버튼 하단 모서리만 팝업 외곽 곡선에 맞춥니다.
+
+## 골드 수령 정정과 추가 학습 (2026-11-02)
+
+`Store.correct_gold_reward(record_id, received, expected_updated_at=...)`는 검토된 수령 결과의 명시적 정정 진입점이다. 저장소 안에서 변경 시각 충돌 검사·이력/체크포인트 갱신·단조 증가 updatedAt·Drive revision 처리를 수행한다. 자동 인식용 `set_gold_reward`는 이미 확정한 반대 결과를 계속 거부한다. 호출부는 SQL을 실행하거나 payload를 직접 바꾸지 않는다. 기록 ID·완료/생성 시각·OCR·보상 연결은 보존한다.
+
+`train_gold_reward.py --reviewed`는 기존 학습 자료를 보존하고 검토 목록에서 train 세션만 변형해 추가한다. session-holdout은 학습에 넣지 않으며 세션 중복은 거부한다. `evaluate_gold_reward.py --reviewed --output`은 기존 사례와 추가 화면을 함께 평가한다. 실행 중 모델/세션 연결 책임은 GoldRewardDetector와 GoldRewardSession에 그대로 유지한다. 상세 근거는 [골드 보상 인식](65-gold-reward-recognition.md)을 참고한다.

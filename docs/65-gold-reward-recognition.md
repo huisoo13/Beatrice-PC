@@ -1,6 +1,6 @@
 # 골드 보상 여부 인식과 기록 연결
 
-최종 갱신: 2026-10-11.
+최종 갱신: 2026-11-02.
 
 ## 기록 정정
 
@@ -71,3 +71,37 @@ GoldRewardSession은 final 결과를 현재 프레임의 모든 관문 완료·�
 최종 보완 검증: 기존 관문 보상 96개 변형 + 최종 보상 36개 변형 + 음성 4개, 총 136/136 통과. 최종 학습 원본 1장 외 동일 세션의 다른 시간 2장으로 재생했으며 독립 정확도 검증은 아니다. 실제 event-00000255/256을 메모리 DB로 재생해 2관문 한 건에 goldReward=false 연결, ID·관측 시각 보존을 확인했다. 새 요소 학습 자료 224장(기존 152장 + 최종 보상 전체/crop·dim·크기 변형 72장), CPU 4스레드 20 epoch 추가 학습. OCR 제목 양끝의 따옴표 장식만 제거하며 다른 문구는 허용하지 않는다. Python 503개, .NET 90개 통과, Release publish 성공. 요소 모델 SHA-256: `b0854ea7cec585c27c853fb085a9fdc8bbb5917e902dbb5427dd80baf75f173e`. 다른 .pt 모델 5개의 해시는 유지했다.
 
 2026-10-11: 실제 최종 보상 재생에서 미획득으로 확인된 기존 1막 2관문 기록을 Store.set_gold_reward로 false 정정했다. 모델 보완만으로 과거 미확인 기록이 소급 갱신되지 않아 공용 금액이 표시되던 사례다. 정정 전 DB를 백업하고 ID·완료 시각을 보존했다. 주간 미확인 안내 문구는 사용자 요청으로 제거했다.
+
+
+## 귀속 골드만 있는 보상표 보완 (2026-11-02)
+
+### 원인과 기록 정정
+
+10월 29일 테베체와 11월 2일 후이수의 지평의 성당 3단계에서 1관문 화면에 귀속 골드 20,000이 실제로 표시됐지만 요소 모델이 gold_reward_absent로 약 96~97% 확신하며 오판했다. 2회 관측이 같은 오판을 반복해 goldReward=false로 저장됐고, 주간 합계에서 20,000이 제외됐다. 기존 획득 학습 원본은 일반 골드와 귀속 골드가 함께 있는 화면 한 종류였으며 귀속 골드만 있는 별도 형태는 포함하지 않았다. 이전 모델의 기존 평가 136/136 통과와 새 귀속 골드 화면·변형 0/48 통과를 재현했다. 이름·난이도·관문 보상 매칭과 합산 공식의 문제가 아니다.
+
+같은 두 플레이의 최종 보상표에도 귀속 골드 30,000이 보이는 것을 확인했다. 1관문 false 2건과 2관문 미확인 2건, 총 4건을 true로 정정했다. 각 캐릭터의 두 관문 공용 보상 합계는 귀속 골드 50,000이다. 다른 기록과 recordId·observedAt·createdAt·OCR 원문·보상 연결은 보존하며 goldReward와 updatedAt만 변경한다. 운영 DB는 정정 전에 WAL을 포함해 outputs/gold-reward-bound-1102/before-record-correction.sqlite3로 백업했다. 전후 값은 같은 폴더 record-corrections.json에 보관한다. 개인 기록과 진단 이미지는 Git에 포함하지 않는다.
+
+정정은 Store.correct_gold_reward 공개 API로만 수행한다. expected_updated_at 불일치는 거부하고, 같은 결과는 no-op이며 테스트 기록은 Drive revision을 올리지 않는다. 일반 기록은 revision을 올려 기존 동기화 경로의 전송 대상으로 만든다. 서버 업로드 성공 여부는 이 정정 작업만으로 단정하지 않는다. 자동 인식용 set_gold_reward의 확정 결과 덮어쓰기 금지는 유지한다.
+
+### 추가 자료와 재현
+
+검토 목록은 data/annotations/gold-reward-bound-1102.json이다. 원본은 data/raw/gold-reward-bound-1102에 보관한다. 11월 2일 후이수의 1관문·던전 종료 화면 2장을 train으로 사용하고, 10월 29일 테베체의 같은 두 화면은 session-holdout으로 분리해 학습에서 제외한다. 추가한 박스는 기존 reward_gate_title과 gold_reward_present이며 클래스와 실행 중 ROI 방식은 바꾸지 않는다. 패널 좌표는 오프라인 학습 라벨에만 쓴다.
+
+기존 224개 자료를 보존하고 후이수의 밝기·크기·부모 경계 변형 144개를 더해 총 368개로 요소 모델만 추가 학습한다. 부모 및 다른 인식 모델은 변경하지 않는다. 추가 검증은 4개 원본의 크기 3종·밝기 4종, 총 48개다. 이 중 테베체의 24개 변형은 학습에 사용하지 않은 세션이지만 원본은 2장이고 동일 던전·해상도이다. 변형 개수를 독립적인 실게임 정확도로 해석하지 않는다.
+
+```powershell
+.venv-win/Scripts/python.exe tools/train_gold_reward.py --reviewed data/annotations/gold-reward-bound-1102.json --output data/datasets/gold-reward-bound-1102
+.venv-win/Scripts/python.exe tools/train_dungeon_panel.py train data/datasets/gold-reward-bound-1102/dataset.yaml --weights models/gold-reward.pt --epochs 20 --imgsz 640 --freeze 10 --lr 0.001 --nominal-batch-size 2 --warmup-bias-lr 0 --warmup-epochs 0 --name gold-reward-bound-1102
+.venv-win/Scripts/python.exe tools/evaluate_gold_reward.py --weights outputs/training/gold-reward-bound-1102/weights/best.pt --parent-weights models/gold-reward-panel.pt --reviewed data/annotations/gold-reward-bound-1102.json --output outputs/gold-reward-bound-1102/evaluation.json
+```
+
+기존 모델 백업, 학습 로그, 이전 모델 기준 평가와 검증 결과는 outputs/gold-reward-bound-1102에 보관한다. 모델 바이너리·원본·변형 이미지·데이터셋은 기존 Git 제외 정책을 유지한다. 실행 중 프로세스는 메모리에 이전 모델을 보유하므로 모델 적용 후 앱을 재시작해야 한다.
+
+### 적용 결과
+
+- CPU 4스레드, batch/nominal batch 2, freeze 10, AdamW, warmup 0으로 기존 모델을 20 epoch 추가 학습했다. 최종 후보를 검증한 뒤 models/gold-reward.pt로 원자적 교체하고 config의 학습 목록·실행 이름·SHA-256을 갱신했다. 이전 모델은 outputs/gold-reward-bound-1102/previous-gold-reward.pt에 보존한다.
+- 이전 일반/혼합 골드·미획득·최종 보상·음성 136/136 유지, 귀속 골드 48/48 통과. 합계 184/184 통과이며 학습 제외 테베체 세션의 24개 변형도 모두 통과했다.
+- 후이수 event-11261/11262 및 테베체 event-4843/4845의 실제 프레임 쌍을 GoldRewardDetector → GoldRewardSession → 메모리 Store에 재생해 각각 true 1회 갱신, 완료 ID·시각 보존과 중복 생성 없음을 확인했다. 검사 도구는 서로 다른 날짜를 재생할 때 탐지용 시계를 단조 증가시키며 세션 연결에는 원래 관측 시각을 사용한다.
+- 정정 후 운영 DB를 다시 읽어 후이수·테베체의 각 1·2관문이 모두 true이고 표시용 현재 보상 합계가 각각 귀속 골드 50,000인 것을 확인했다.
+- Python 전체 559개, .NET 표시·합계·프로세스 수명 검사 101개 통과. 기존 캐릭터 보강 테스트는 밀리초/마이크로초 ISO 문자열의 사전식 비교로 간헐 실패하여 실제 datetime 비교로 바로잡았다. 관련 제품 동작은 바꾸지 않았다. README 모듈 트리 105개 경로의 실재를 확인했다.
+- 활성 요소 모델 SHA-256: `a4bbe37e59d6d172a0715709c51ed29ab3b258a5eda725956c979fadfe76de73`. 부모 모델 및 다른 .pt 파일의 SHA-256은 작업 전후 동일하다. 앱 실행 중 실제 OBS 재검사는 하지 않았으며 다음 실행부터 새 모델을 로딩한다. 배포 EXE는 재생성하지 않았다.

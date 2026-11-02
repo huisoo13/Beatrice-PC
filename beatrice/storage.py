@@ -299,8 +299,17 @@ class Store:
             if not row['isTest']:self.db.execute('UPDATE drive_changes SET revision=revision+1 WHERE id=1')
         return row
 
+    def correct_gold_reward(self, record_id, received, *, expected_updated_at):
+        """Correct a manually reviewed receipt with optimistic concurrency control."""
+        if not isinstance(expected_updated_at,str) or not expected_updated_at:
+            raise ValueError('정정 전 기록의 변경 시각이 필요합니다.')
+        return self._set_gold_reward(record_id, received, expected_updated_at=expected_updated_at)
+
     def set_gold_reward(self, record_id, received):
         """Attach verified receipt once; repeated runs cannot replace a known result."""
+        return self._set_gold_reward(record_id, received)
+
+    def _set_gold_reward(self, record_id, received, *, expected_updated_at=None):
         from datetime import datetime,timedelta,timezone
         if type(received) is not bool:raise ValueError('확인된 골드 보상 여부가 필요합니다.')
         with self.db:
@@ -308,9 +317,11 @@ class Store:
             found=self.db.execute('SELECT payload FROM completion_history WHERE record_id=?',(record_id,)).fetchone()
             if found is None:raise ValueError('보상을 연결할 완료 기록이 없습니다.')
             previous=json.loads(found[0])
+            if expected_updated_at is not None and previous['updatedAt']!=expected_updated_at:
+                raise ValueError('기록이 변경되었습니다. 다시 확인해주세요.')
             if previous.get('goldReward') is not None:
-                if previous['goldReward']!=received:raise ValueError('확정된 골드 보상 결과는 덮어쓸 수 없습니다.')
-                return previous
+                if previous['goldReward']==received:return previous
+                if expected_updated_at is None:raise ValueError('확정된 골드 보상 결과는 덮어쓸 수 없습니다.')
             old=datetime.fromisoformat(previous['updatedAt'].replace('Z','+00:00'))
             row=validate(dict(previous,goldReward=received,updatedAt=max(datetime.now(timezone.utc),old+timedelta(milliseconds=1)).isoformat(timespec='milliseconds').replace('+00:00','Z')))
             encoded=json.dumps(row,ensure_ascii=False)

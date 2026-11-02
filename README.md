@@ -1,5 +1,7 @@
 # Beatrice PC
 
+2026-11-02: [귀속 골드 보상 추가 학습·기록 정정](docs/65-gold-reward-recognition.md#귀속-골드만-있는-보상표-보완-2026-11-02). 검토된 수령 결과의 명시적 정정은 Store API가 변경 시각을 확인해 처리하며, 자동 인식은 확정된 결과를 덮어쓰지 않습니다.
+
 2026-10-14: [캐릭터 선택 오탐 보완](docs/67-character-selection-false-positives.md). 영지 이동·팔찌 팝업 음성 학습을 추가하고, 카드 내부 이름 및 연속 관측으로 기존 캐릭터 확정 해제를 검증합니다. dim 이름의 부분 글자 누락도 보완했습니다.
 
 2026-10-11: [골드 보상 여부 인식·기록](docs/65-gold-reward-recognition.md). 관문 보상표를 전용 YOLO로 탐지하고 제목 OCR·새 완료 기록·반복 관측을 확인해 `goldReward`를 저장합니다. 주간 합계는 획득·미확인 기록의 공용 골드를 더하고, 미획득은 0으로 처리합니다. 최종 보상표는 현재 전체 관문 완료를 확인한 뒤 마지막 관문에 연결합니다.
@@ -139,7 +141,7 @@ PaddleOCR은 탐지된 글자 영역을 읽는 공용 한국어 인식기입니�
 
 ## 모듈 구조
 
-최종 갱신: 2026-10-16. 주요 실행 모듈과 관련 파일을 표시합니다.
+최종 갱신: 2026-11-02. 주요 실행 모듈과 관련 파일을 표시합니다.
 모듈의 추가·삭제·이동, 책임 또는 연결 관계를 변경할 때 이 구조와 설명을 함께 갱신합니다.
 각 모듈의 API와 검증 근거는 [모듈 경계 정리](docs/module-boundaries.md)를 참고하세요.
 
@@ -161,7 +163,7 @@ Beatrice-PC/
 │  ├─ content_match.py            # OCR/새 JSON field_name → name·정확한 보상 재매칭·완료 별칭
 │  ├─ native_presentation.py      # 화면 표시용 데이터 변환
 │  │
-│  ├─ storage.py                  # 저장소 API·트랜잭션·기록 정정·골드·보상·Drive 삭제 후 재백업 대기
+│  ├─ storage.py                  # 저장소 API·기록/골드 수령 정정·변경 충돌 검사·Drive 재백업 대기
 │  ├─ storage_schema.py           # DB v5 스키마·캐릭터 조회 및 Drive 삭제 대기 표식·이전 완료 JSON 변환
 │  ├─ completion_record.py        # 완료 JSON 검증·변환·주간 중복 규칙
 │  ├─ weekly.py                   # 주간 기준·저장소 열기
@@ -253,8 +255,8 @@ Beatrice-PC/
    ├─ prepare_character_false_positives.py  # 선택 화면 오탐 음성 자료·기존 라벨 보존
    ├─ evaluate_character_false_positives.py # 기존 라벨 탐지·팝업 오탐 비교
    ├─ review_title_elements.py   # 제목 첫 숫자 학습 자료·YOLO/OCR 재생 검증
-   ├─ train_gold_reward.py       # 검토한 보상표·dim·크기 변형 학습 자료 준비
-   ├─ evaluate_gold_reward.py    # 실제 보상표·같은 세션 별도 프레임·음성 평가
+   ├─ train_gold_reward.py       # 검토한 보상표 추가·세션 분리·dim/크기 학습 자료 준비
+   ├─ evaluate_gold_reward.py    # 기존/귀속 골드 보상표·분리 세션·음성 평가
    ├─ check_training_predictions.py
    ├─ check_login_holdout.py
    └─ evaluate_ui_bootstrap.py

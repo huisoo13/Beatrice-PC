@@ -1,0 +1,188 @@
+{
+  "baseManifest": "data/annotations/gold-reward-context-1011.json",
+  "variantDirectory": "data/raw/gold-reward-bound-1102/variants",
+  "review": "Both gate and final reward panels visibly contain bound gold: 20000 and 30000. Train on Nov 2 only; Oct 29 session is excluded from training.",
+  "cropBounds": [
+    null,
+    [
+      2960,
+      30,
+      3440,
+      1100
+    ],
+    [
+      2900,
+      0,
+      3440,
+      1100
+    ],
+    [
+      2940,
+      0,
+      3440,
+      1150
+    ],
+    [
+      2920,
+      0,
+      3440,
+      1100
+    ],
+    [
+      2940,
+      50,
+      3440,
+      1100
+    ]
+  ],
+  "samples": [
+    {
+      "path": "data/raw/gold-reward-bound-1102/1102-11262.jpg",
+      "sessionId": "20261102T121123Z-b0c20795",
+      "purpose": "train",
+      "received": true,
+      "scope": "gate",
+      "gate": 1,
+      "boxes": [
+        {
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ],
+          "class": "reward_panel"
+        },
+        {
+          "xyxy": [
+            3108,
+            82,
+            3326,
+            128
+          ],
+          "class": "reward_gate_title"
+        },
+        {
+          "xyxy": [
+            2985,
+            620,
+            3410,
+            763
+          ],
+          "class": "gold_reward_present"
+        }
+      ]
+    },
+    {
+      "path": "data/raw/gold-reward-bound-1102/1102-11867.jpg",
+      "sessionId": "20261102T121123Z-b0c20795",
+      "purpose": "train",
+      "received": true,
+      "scope": "final",
+      "gate": null,
+      "boxes": [
+        {
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ],
+          "class": "reward_panel"
+        },
+        {
+          "xyxy": [
+            3108,
+            82,
+            3326,
+            128
+          ],
+          "class": "reward_gate_title"
+        },
+        {
+          "xyxy": [
+            2985,
+            620,
+            3410,
+            763
+          ],
+          "class": "gold_reward_present"
+        }
+      ]
+    },
+    {
+      "path": "data/raw/gold-reward-bound-1102/1029-4845.jpg",
+      "sessionId": "20261029T115154Z-abca51fb",
+      "purpose": "session-holdout",
+      "received": true,
+      "scope": "gate",
+      "gate": 1,
+      "boxes": [
+        {
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ],
+          "class": "reward_panel"
+        },
+        {
+          "xyxy": [
+            3108,
+            82,
+            3326,
+            128
+          ],
+          "class": "reward_gate_title"
+        },
+        {
+          "xyxy": [
+            2985,
+            620,
+            3410,
+            763
+          ],
+          "class": "gold_reward_present"
+        }
+      ]
+    },
+    {
+      "path": "data/raw/gold-reward-bound-1102/1029-5753.jpg",
+      "sessionId": "20261029T115154Z-abca51fb",
+      "purpose": "session-holdout",
+      "received": true,
+      "scope": "final",
+      "gate": null,
+      "boxes": [
+        {
+          "xyxy": [
+            2960,
+            30,
+            3440,
+            1100
+          ],
+          "class": "reward_panel"
+        },
+        {
+          "xyxy": [
+            3108,
+            82,
+            3326,
+            128
+          ],
+          "class": "reward_gate_title"
+        },
+        {
+          "xyxy": [
+            2985,
+            620,
+            3410,
+            763
+          ],
+          "class": "gold_reward_present"
+        }
+      ]
+    }
+  ]
+}

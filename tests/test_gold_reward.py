@@ -35,6 +35,40 @@ class GoldRewardTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.store.set_gold_reward(self.row['recordId'],False)
         self.assertEqual(self.store.drive_revision(),revision)
 
+    def test_reviewed_receipt_correction_preserves_identity_and_checks_concurrency(self):
+        before=self.store.set_gold_reward(self.row['recordId'],False)
+        revision=self.store.drive_revision()[1]
+        with self.assertRaises(ValueError):
+            self.store.correct_gold_reward(before['recordId'],True,expected_updated_at='stale')
+        self.assertEqual(self.store.history_records(),[before])
+        self.assertEqual(self.store.drive_revision()[1],revision)
+        corrected=self.store.correct_gold_reward(before['recordId'],True,expected_updated_at=before['updatedAt'])
+        self.assertEqual({k:v for k,v in corrected.items() if k not in ('updatedAt','goldReward')},
+                         {k:v for k,v in before.items() if k not in ('updatedAt','goldReward')})
+        self.assertGreater(corrected['updatedAt'],before['updatedAt'])
+        self.assertIs(corrected['goldReward'],True)
+        self.assertEqual(self.store.state_records(),[corrected])
+        self.assertEqual(self.store.drive_revision()[1],revision+1)
+        self.store.correct_gold_reward(corrected['recordId'],True,expected_updated_at=corrected['updatedAt'])
+        self.assertEqual(self.store.drive_revision()[1],revision+1)
+        with self.assertRaises(ValueError):self.store.set_gold_reward(corrected['recordId'],False)
+
+    def test_reviewed_correction_requires_expected_version(self):
+        before=self.store.set_gold_reward(self.row['recordId'],False)
+        for invalid in (None,'',False):
+            with self.assertRaises(ValueError):
+                self.store.correct_gold_reward(before['recordId'],True,expected_updated_at=invalid)
+        self.assertEqual(self.store.history_records(),[before])
+
+    def test_test_record_correction_does_not_schedule_drive(self):
+        source=dict(characterName='테스트',dungeonName='던전',difficulty='싱글 모드',gate=1,
+                    state='완료',observedAt='2026-10-11T05:39:36Z',isTest=True)
+        row=self.store.save_completions('test:name:테스트','던전',[source],2)[0]
+        before=self.store.set_gold_reward(row['recordId'],False)
+        revision=self.store.drive_revision()
+        self.store.correct_gold_reward(row['recordId'],True,expected_updated_at=before['updatedAt'])
+        self.assertEqual(self.store.drive_revision(),revision)
+
     def test_unregistered_prior_weekly_record_never_associated(self):
         self.session.reset();self.assertEqual(self.observe(11),[]);self.assertEqual(self.observe(12),[])
         self.assertNotIn('goldReward',self.store.history_records()[0])

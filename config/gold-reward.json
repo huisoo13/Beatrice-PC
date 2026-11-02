@@ -10,8 +10,8 @@
   "confidence": 0.7,
   "imageSize": 640,
   "intervalSeconds": 0.75,
-  "trainingRun": "gold-reward-final-1011",
-  "trainingManifest": "data/annotations/gold-reward-context-1011.json",
+  "trainingRun": "gold-reward-bound-1102",
+  "trainingManifest": "data/annotations/gold-reward-bound-1102.json",
   "parentConfig": "config/gold-reward-panel.json",
-  "modelSha256": "b0854ea7cec585c27c853fb085a9fdc8bbb5917e902dbb5427dd80baf75f173e"
+  "modelSha256": "a4bbe37e59d6d172a0715709c51ed29ab3b258a5eda725956c979fadfe76de73"
 }
